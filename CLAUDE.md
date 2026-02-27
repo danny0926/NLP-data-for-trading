@@ -51,6 +51,8 @@ python -m src.alpha_signal_generator           # Alpha 信號生成
 python -m src.signal_enhancer                  # Signal v2: PACS + VIX 增強
 python -m src.sector_rotation                  # 板塊輪動分析 (RB-007)
 python -m src.sector_rotation --days 90 --top 5  # Top 5 sectors, 90 天
+python -m src.rebalance_advisor                # 再平衡建議 (比較持倉 vs 最新信號)
+python -m src.rebalance_advisor --dry-run      # 只看建議不寫 DB
 python -m src.signal_enhancer --buy-only       # Buy-Only 模式
 python -m src.portfolio_optimizer              # 投組最佳化
 python -m src.daily_report                     # 每日報告
@@ -177,7 +179,8 @@ src/ticker_enricher.py                 ← Ticker 補全 (靜態映射 → 模�
 ### Portfolio & Reporting (src/)
 
 ```
-src/portfolio_optimizer.py             ← MPT 投組最佳化 (max 10% 單一標的, min 2%)
+src/portfolio_optimizer.py             ← MPT 投組最佳化 (Buy-Only + 研究校正評分, RB-001/004/005/006)
+src/rebalance_advisor.py              ← 再平衡顧問 (持倉差異分析 + BUY/SELL/INCREASE/DECREASE 建議)
 src/daily_report.py                    ← 每日 Markdown 報告 (匯整全部資料來源)
 src/smart_alerts.py                    ← 5 類智慧告警 (高 alpha/收斂/大額/$100K+/異常 filing lag)
 ```
@@ -268,6 +271,9 @@ sector_rotation_signals (id, sector, etf, direction, signal_strength, expected_a
 portfolio_positions (id, ticker, sector, weight, conviction_score, expected_alpha,
                      volatility_30d, sharpe_estimate, reasoning, created_at)
 
+rebalance_history (id, ticker, action, sector, old_weight, old_score, new_score,
+                   score_delta, expected_alpha, risk_note, reason, created_at)
+
 signal_performance (id, signal_id UNIQUE, ticker, direction, signal_date,
                     expected_alpha_5d/20d, actual_return_5d/20d, actual_alpha_5d/20d,
                     spy_return_5d/20d, hit_5d, hit_20d, signal_strength, confidence,
@@ -348,6 +354,22 @@ institutional_holdings, ocr_queue
 - **Buy-Only 信號**: 排除 Energy (congress bad at energy timing)。門檻: trades≥3, politicians≥2, net_ratio≥55%, momentum≥0.30。
 - **ETF 映射**: 11 板塊 → SPDR ETF (XLK/XLF/XLV/XLI/XLB/XLE/XLY/XLP/XLRE/XLC/XLU)。
 - **預期 alpha**: 基於 RB-007 NET BUY +2.51% 20d return × signal_strength。
+
+### Portfolio Optimizer (Research-Aligned Scoring)
+
+- **Buy-Only (RB-004)**: SALE_CAR_5D=0, Sale-only tickers excluded (96 removed), buy_ratio bonus +5pts。
+- **SQS 降權 (RB-006)**: conviction score r=-0.50 with actual alpha。權重從 20→5，改為品質過濾用途。
+- **Senate > House (RB-004)**: 院別加分翻轉。Senate 20d +1.39% (69.2% WR) >> House -1.27%。
+- **議員品質 (RB-005)**: PIS 排名加分 (max +5pts)。Top 17 ranked politicians by PIS_total。
+- **評分權重 (滿分 100)**: breadth(25) + direction(15) + buy_ratio(5) + sqs(5) + convergence(20) + amount(15) + chamber(10) + politician(5)。
+
+### Rebalance Advisor
+
+- **差異分析**: 比較 portfolio_positions vs 最新 TickerScorer conviction scores。
+- **Actions**: BUY (new entry score≥40), SELL (dropped/score<25), INCREASE/DECREASE (score delta>5), HOLD (stable)。
+- **風險整合**: 讀取 risk_assessments + sector_rotation_signals 提供 context notes。
+- **歷史追蹤**: `rebalance_history` 表記錄每次建議。
+- **Turnover 估算**: actions/(actions+holds)，分 LOW/MODERATE/HIGH。
 
 ### Backtesting
 
