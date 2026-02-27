@@ -2,7 +2,7 @@ import time
 import argparse
 from src.discovery_engine_v4 import DiscoveryEngineV4
 from src.targets import CONGRESS_TARGETS, get_targets_by_tier, summary
-
+from src.logging_config import setup_logging
 
 def run_congress_monitoring(tiers=None, delay=5, model_name="gemini-2.5-flash"):
     """執行國會議員情報監控任務。
@@ -13,6 +13,8 @@ def run_congress_monitoring(tiers=None, delay=5, model_name="gemini-2.5-flash"):
         delay: 每位議員之間的等待秒數（避免 API rate limit）。
         model_name: Gemini 模型名稱。
     """
+    setup_logging()
+
     if tiers is None:
         tiers = [1, 2]
 

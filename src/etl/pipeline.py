@@ -14,8 +14,8 @@ from .capitoltrades_fetcher import CapitolTradesFetcher
 from .llm_transformer import LLMTransformer, TransformError
 from .loader import Loader
 from src.config import DB_PATH, GEMINI_MODEL
+from src.notifications import send_telegram, format_etl_summary
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("ETL.Pipeline")
 
 
@@ -49,16 +49,25 @@ class CongressETLPipeline:
         logger.info("=" * 60)
 
         total_stats = {"new": 0, "skipped": 0, "failed": 0, "sources_processed": 0}
+        errors = []
+        senate_new = 0
+        house_new = 0
 
         # ── Senate 路徑 ──
         if run_senate:
             senate_stats = self._run_senate(days)
             self._merge_stats(total_stats, senate_stats)
+            senate_new = senate_stats.get("new", 0)
+            if senate_stats.get("failed", 0) > 0:
+                errors.append(f"Senate: {senate_stats['failed']} 筆失敗")
 
         # ── House 路徑 ──
         if run_house:
             house_stats = self._run_house(filing_year, max_house_reports)
             self._merge_stats(total_stats, house_stats)
+            house_new = house_stats.get("new", 0)
+            if house_stats.get("failed", 0) > 0:
+                errors.append(f"House: {house_stats['failed']} 筆失敗")
 
         # ── 總結 ──
         elapsed = time.time() - start_time
@@ -70,6 +79,17 @@ class CongressETLPipeline:
         logger.info(f"  失敗: {total_stats['failed']}")
         logger.info(f"  耗時: {elapsed:.1f} 秒")
         logger.info("=" * 60)
+
+        # ── Telegram 通知 ──
+        try:
+            summary = format_etl_summary(
+                senate_count=senate_new,
+                house_count=house_new,
+                errors=errors if errors else None,
+            )
+            send_telegram(summary)
+        except Exception as e:
+            logger.warning(f"Telegram 通知發送失敗: {e}")
 
         return total_stats
 

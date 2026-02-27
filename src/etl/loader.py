@@ -12,7 +12,6 @@ from datetime import date, datetime
 from .schemas import ExtractionResult
 from src.config import DB_PATH, CONFIDENCE_THRESHOLD
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("ETL.Loader")
 
 

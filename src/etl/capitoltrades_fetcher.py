@@ -18,7 +18,6 @@ from curl_cffi import requests
 
 from .base_fetcher import BaseFetcher, FetchResult, SourceType
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("ETL.CapitolTradesFetcher")
 
 

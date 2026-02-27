@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from src.config import DB_PATH, GEMINI_MODEL
+from src.logging_config import setup_logging
 
 
 def query_trades(db_path: str, start_date: str, end_date: str) -> tuple:
@@ -162,6 +163,8 @@ def call_gemini_cli(context: str, model: str = "gemini-2.5-flash") -> str:
 
 
 def main():
+    setup_logging()
+
     parser = argparse.ArgumentParser(description="國會交易每日報告生成器")
     parser.add_argument("--date", help="報告結束日期 (YYYY-MM-DD)，預設今天")
     parser.add_argument("--days", type=int, default=1, help="回溯天數 (預設 1)")
