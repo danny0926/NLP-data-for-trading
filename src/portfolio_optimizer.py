@@ -263,34 +263,39 @@ class TickerScorer:
         buy_ratio = buy_count / total
         buy_ratio_score = buy_ratio * 5.0  # 純 Buy 標的得滿分 5 分
 
-        # ── 3. SQS 分數: 該 ticker 所有非 Discard 交易的平均 SQS ──
+        # ── 3. SQS 分數 (降權, RB-006: SQS 與實際 alpha r=-0.50) ──
+        # RB-006 發現 SQS conviction 與實際 alpha 負相關
+        # 保留作為品質過濾（淘汰 Discard），但權重從 20 降至 5
         sqs_records = self.sqs_map.get(ticker, [])
         if sqs_records:
             avg_sqs = sum(r["sqs"] for r in sqs_records) / len(sqs_records)
-            sqs_score = (avg_sqs / 100.0) * 20.0  # SQS 0-100 → 0-20
+            sqs_score = (avg_sqs / 100.0) * 5.0  # SQS 0-100 → 0-5 (降權)
         else:
-            sqs_score = 8.0  # 無 SQS 資料給中等分
+            sqs_score = 2.5  # 無 SQS 資料給中等分
 
-        # ── 4. 收斂訊號加分 ──
+        # ── 4. 收斂訊號加分 (提權: 15→20, RB-006 validated) ──
         convergence = self.convergence_map.get(ticker)
         if convergence:
-            conv_score = min(convergence["score"] / 2.0, 1.0) * 15.0
+            conv_score = min(convergence["score"] / 2.0, 1.0) * 20.0
         else:
             conv_score = 0.0
 
-        # ── 5. 金額加權: 較大金額 = 更高信念 ──
+        # ── 5. 金額加權: $15K-$50K 最強 (提權: 10→15, RB-001) ──
         amount_multipliers = []
         for t in trades:
             amt = t.get("amount_range", "")
             mult = AMOUNT_ALPHA.get(amt, 0.8)
             amount_multipliers.append(mult)
         avg_amount_mult = sum(amount_multipliers) / len(amount_multipliers)
-        amount_score = (avg_amount_mult / 1.5) * 10.0  # 1.5 為最大倍率
+        amount_score = (avg_amount_mult / 1.5) * 15.0  # 1.5 為最大倍率
 
-        # ── 6. 院別加權: House 優於 Senate ──
+        # ── 6. 院別加權: Senate >> House (RB-004) ──
+        # RB-004: Senate 20d +1.39% (69.2% WR) vs House -1.27%
+        senate_count = sum(1 for t in trades if t["chamber"] == "Senate")
+        senate_ratio = senate_count / len(trades)
         house_count = sum(1 for t in trades if t["chamber"] == "House")
         house_ratio = house_count / len(trades)
-        chamber_score = (0.5 + 0.5 * house_ratio) * 10.0  # House 有加分
+        chamber_score = (0.5 + 0.5 * senate_ratio) * 10.0  # Senate 有加分
 
         # ── 綜合分數 (滿分 100) ──
         conviction = (breadth_score + direction_score + buy_ratio_score
@@ -319,7 +324,9 @@ class TickerScorer:
             reasons.append(f"收斂訊號(分數{convergence['score']:.2f})")
         if avg_amount_mult > 1.0:
             reasons.append("高金額交易")
-        if house_ratio > 0.5:
+        if senate_ratio > 0.5:
+            reasons.append("Senate 為主(RB-004)")
+        elif house_ratio > 0.5:
             reasons.append("House 為主")
 
         return {
@@ -715,17 +722,17 @@ def generate_report(positions: List[dict], budget: float = 0) -> str:
     # ── 方法論 ──
     lines.append("## 方法論")
     lines.append("")
-    lines.append("### 評分模型 (Buy-Only, RB-004)")
+    lines.append("### 評分模型 (Research-Aligned, RB-001~RB-006)")
     lines.append("")
-    lines.append("| 因子 | 權重 | 說明 |")
-    lines.append("|------|------|------|")
-    lines.append("| 信念廣度 | 25 | 交易該標的的議員人數 (3 人得滿分) |")
-    lines.append("| Buy 方向 | 15 | Buy +0.77% CAR_5d (Sale 不計正 alpha) |")
-    lines.append("| Buy 比例 | 5 | 純 Buy 標的加分 (RB-004: Sale -3.21% 20d) |")
-    lines.append("| SQS 品質 | 20 | Signal Quality Score 平均 |")
-    lines.append("| 收斂訊號 | 15 | 多位議員同方向交易加分 |")
-    lines.append("| 金額權重 | 10 | $15K-$50K 最強訊號 |")
-    lines.append("| 院別加權 | 10 | House 優於 Senate |")
+    lines.append("| 因子 | 權重 | 說明 | 研究依據 |")
+    lines.append("|------|------|------|----------|")
+    lines.append("| 信念廣度 | 25 | 交易該標的的議員人數 (3 人得滿分) | RB-001 |")
+    lines.append("| Buy 方向 | 15 | Buy +0.77% CAR_5d (Sale 不計正 alpha) | RB-004 |")
+    lines.append("| Buy 比例 | 5 | 純 Buy 標的加分 (Sale -3.21% 20d) | RB-004 |")
+    lines.append("| SQS 品質 | 5 | 降權: SQS conviction 與 alpha r=-0.50 | RB-006 |")
+    lines.append("| 收斂訊號 | 20 | 多位議員同方向交易加分 (提權) | RB-006 |")
+    lines.append("| 金額權重 | 15 | $15K-$50K 最強訊號 (提權) | RB-001 |")
+    lines.append("| 院別加權 | 10 | Senate 20d +1.39% >> House -1.27% | RB-004 |")
     lines.append("")
     lines.append("### 配置限制")
     lines.append("")
