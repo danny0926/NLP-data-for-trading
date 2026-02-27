@@ -109,6 +109,32 @@ def init_db():
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_congress_ticker ON congress_trades(ticker)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_congress_date ON congress_trades(transaction_date)')
 
+    # Table: sec_form4_trades (SEC Form 4 Insider Trading)
+    # data_hash 去重: accession_number + transaction_date + transaction_type + shares
+    # 因為一個 filing (accession) 可能含多筆交易
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS sec_form4_trades (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        accession_number TEXT,
+        filer_name TEXT NOT NULL,
+        filer_title TEXT,
+        issuer_name TEXT,
+        ticker TEXT,
+        transaction_type TEXT,
+        transaction_date TEXT,
+        shares REAL,
+        price_per_share REAL,
+        total_value REAL,
+        ownership_type TEXT,
+        source_url TEXT,
+        data_hash TEXT UNIQUE,
+        created_at TEXT DEFAULT (datetime('now'))
+    )
+    ''')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_form4_ticker ON sec_form4_trades(ticker)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_form4_date ON sec_form4_trades(transaction_date)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_form4_filer ON sec_form4_trades(filer_name)')
+
     # Table: extraction_log (ETL Pipeline 萃取紀錄)
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS extraction_log (
