@@ -28,6 +28,26 @@ from src.config import DB_PATH, PROJECT_ROOT
 logger = logging.getLogger("RiskManager")
 
 # ══════════════════════════════════════════════════════════════════════
+#  VIX 體制感知 (RB-004: VIX Goldilocks Zone)
+# ══════════════════════════════════════════════════════════════════════
+
+# VIX 體制 → 風險乘數 (越高=越危險)
+# 基於 RB-004: VIX 14-16 最佳，<14 或 >16 均不利
+VIX_RISK_MULTIPLIER = {
+    "ultra_low":  0.9,   # VIX<12: 市場自滿，低波動但隱含風險
+    "goldilocks": 0.7,   # VIX 14-16: 最佳交易區間，降低風險
+    "moderate":   1.0,   # VIX 16-20: 正常
+    "high":       1.3,   # VIX 20-30: 高波動，提高風險
+    "extreme":    1.6,   # VIX>30: 極端恐慌，大幅提高風險
+    "unknown":    1.0,   # 無法取得 VIX
+}
+
+# VIX 極端區域自動觸發的行動建議
+VIX_EXTREME_THRESHOLD = 30    # VIX > 30 → 建議暫停新進場
+VIX_HIGH_THRESHOLD = 25       # VIX > 25 → 建議減倉
+
+
+# ══════════════════════════════════════════════════════════════════════
 #  風險參數常數
 # ══════════════════════════════════════════════════════════════════════
 
@@ -294,6 +314,7 @@ class RiskManager:
         self.sqs_map = {}             # type: Dict[str, List[dict]]
         self.alpha_signals = {}       # type: Dict[str, List[dict]]
         self.convergence_map = {}     # type: Dict[str, dict]
+        self.vix_regime = {"zone": "unknown", "vix": None, "multiplier": 1.0, "label": "N/A"}
 
     # ── 資料載入 ────────────────────────────────────────────────────
 
@@ -379,6 +400,22 @@ class RiskManager:
 
         conn.close()
         return self.convergence_map
+
+    def load_vix_regime(self) -> dict:
+        """載入當前 VIX 體制 (透過 signal_enhancer 的 VIXRegimeDetector)。"""
+        try:
+            from src.signal_enhancer import VIXRegimeDetector
+            detector = VIXRegimeDetector()
+            regime = detector.classify_regime()
+            self.vix_regime = regime
+            logger.info("VIX regime: %.2f (%s, risk_mult=%.1f)",
+                        regime.get("vix", 0) or 0,
+                        regime.get("zone", "unknown"),
+                        VIX_RISK_MULTIPLIER.get(regime.get("zone", "unknown"), 1.0))
+        except Exception as e:
+            logger.warning("VIX regime detection failed: %s", e)
+            self.vix_regime = {"zone": "unknown", "vix": None, "multiplier": 1.0, "label": "N/A"}
+        return self.vix_regime
 
     # ── 部位層級風險檢查 ────────────────────────────────────────────
 
@@ -543,6 +580,27 @@ class RiskManager:
             )
             actions.append("RISK_OFF: 進入風險控制模式，暫停新進場訊號")
 
+        # ── 規則 5: VIX 體制 (RB-004) ──
+        vix_val = self.vix_regime.get("vix")
+        vix_zone = self.vix_regime.get("zone", "unknown")
+        metrics["vix"] = vix_val
+        metrics["vix_zone"] = vix_zone
+        metrics["vix_risk_multiplier"] = VIX_RISK_MULTIPLIER.get(vix_zone, 1.0)
+
+        if vix_val is not None:
+            if vix_val >= VIX_EXTREME_THRESHOLD:
+                violations.append(
+                    f"VIX_EXTREME: VIX={vix_val:.1f} (>={VIX_EXTREME_THRESHOLD}) "
+                    f"市場恐慌，建議暫停所有新進場"
+                )
+                actions.append("RISK_OFF: VIX 極端，暫停新進場，考慮減倉 50%")
+            elif vix_val >= VIX_HIGH_THRESHOLD:
+                violations.append(
+                    f"VIX_HIGH: VIX={vix_val:.1f} (>={VIX_HIGH_THRESHOLD}) "
+                    f"高波動環境，建議減少曝險"
+                )
+                actions.append("REDUCE: VIX 偏高，建議減倉至原來的 70%")
+
         return {"violations": violations, "actions": actions, "metrics": metrics}
 
     # ── 訊號層級風險過濾 ────────────────────────────────────────────
@@ -679,6 +737,12 @@ class RiskManager:
                             RISK_WEIGHT_HOLDING)
 
         total = pnl_score + sector_score + vol_score + freshness_score + sqs_score + holding_score
+
+        # ── VIX 體制風險乘數 (RB-004) ──
+        vix_zone = self.vix_regime.get("zone", "unknown")
+        vix_mult = VIX_RISK_MULTIPLIER.get(vix_zone, 1.0)
+        total = total * vix_mult
+
         return round(min(total, 100.0), 1)
 
     @staticmethod
@@ -719,6 +783,17 @@ class RiskManager:
         self.load_sqs_scores()
         self.load_alpha_signals()
         self.load_convergence()
+
+        # 2b. VIX 體制偵測
+        print("[2b/5] VIX regime detection...")
+        self.load_vix_regime()
+        vix_val = self.vix_regime.get("vix")
+        vix_zone = self.vix_regime.get("zone", "unknown")
+        vix_mult = VIX_RISK_MULTIPLIER.get(vix_zone, 1.0)
+        if vix_val is not None:
+            print(f"  VIX={vix_val:.1f} ({vix_zone}), risk_mult={vix_mult:.1f}x")
+        else:
+            print(f"  VIX unavailable, using neutral multiplier")
 
         # 3. 取得市場數據
         print("[3/5] 取得即時市場數據...")
@@ -835,6 +910,9 @@ class RiskManager:
             "all_violations": all_violations,
             "all_actions": all_actions,
             "risk_off_mode": portfolio_metrics.get("portfolio_pnl", 0) <= DRAWDOWN_LIMIT,
+            "vix": portfolio_metrics.get("vix"),
+            "vix_zone": portfolio_metrics.get("vix_zone", "unknown"),
+            "vix_risk_multiplier": portfolio_metrics.get("vix_risk_multiplier", 1.0),
         }
 
 
@@ -875,6 +953,10 @@ def generate_risk_report(result: dict) -> str:
     lines.append(f"| HIGH Risk Positions | {summary['high_count']} |")
     lines.append(f"| Portfolio Beta | {summary.get('portfolio_beta', 'N/A')} |")
     lines.append(f"| Portfolio P&L | {summary.get('portfolio_pnl', 0):.2%} |")
+    vix_val = summary.get("vix")
+    if vix_val is not None:
+        lines.append(f"| VIX | {vix_val:.1f} ({summary.get('vix_zone', '?')}) |")
+        lines.append(f"| VIX Risk Multiplier | {summary.get('vix_risk_multiplier', 1.0):.1f}x |")
 
     if summary.get("risk_off_mode"):
         lines.append(f"| **MODE** | **RISK-OFF** |")
@@ -1035,6 +1117,12 @@ def print_risk_summary(result: dict):
     print(f"    Total Violations:   {summary['total_violations']}")
     print(f"    Portfolio Beta:     {summary.get('portfolio_beta', 'N/A')}")
     print(f"    Portfolio P&L:      {summary.get('portfolio_pnl', 0):.2%}")
+    vix_val = summary.get("vix")
+    if vix_val is not None:
+        print(f"    VIX:                {vix_val:.1f} ({summary.get('vix_zone', '?')})")
+        print(f"    VIX Risk Mult:      {summary.get('vix_risk_multiplier', 1.0):.1f}x")
+    else:
+        print(f"    VIX:                N/A")
 
     if summary.get("risk_off_mode"):
         print(f"    *** RISK-OFF MODE ACTIVATED ***")
