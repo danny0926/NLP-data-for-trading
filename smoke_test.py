@@ -86,9 +86,29 @@ def main():
         ("src.discovery_engine_v4", "Discovery Engine"),
         ("src.fama_french", "Fama-French Model"),
         ("src.ticker_enricher", "Ticker Enricher"),
+        ("src.risk_manager", "Risk Manager"),
+        ("src.portfolio_simulator", "Portfolio Simulator"),
+        ("src.telegram_bot", "Telegram Bot"),
+        ("src.ml_signal_model", "ML Signal Model"),
     ]
 
     for mod_path, name in modules:
+        def make_check(mp):
+            def inner():
+                __import__(mp)
+                return "OK"
+            return inner
+        if check(name, make_check(mod_path)): passed += 1
+        else: failed += 1
+
+    # ── Root-level 模組 ──
+    print("\n  --- Root-level Modules ---")
+
+    root_modules = [
+        ("api_server", "API Server"),
+    ]
+
+    for mod_path, name in root_modules:
         def make_check(mp):
             def inner():
                 __import__(mp)
@@ -196,6 +216,73 @@ def main():
             conn.close()
             return None
     if check("sec_form4_trades", check_sec_form4): passed += 1
+    else: failed += 1
+
+    def check_risk_assessments():
+        conn = sqlite3.connect('data/data.db')
+        try:
+            count = conn.execute("SELECT COUNT(*) FROM risk_assessments").fetchone()[0]
+            conn.close()
+            return f"{count} rows" if count > 0 else None
+        except Exception:
+            conn.close()
+            return None
+    if check("risk_assessments", check_risk_assessments): passed += 1
+    else: failed += 1
+
+    def check_portfolio_simulation():
+        conn = sqlite3.connect('data/data.db')
+        try:
+            count = conn.execute("SELECT COUNT(*) FROM portfolio_simulation").fetchone()[0]
+            conn.close()
+            return f"{count} rows" if count > 0 else None
+        except Exception:
+            conn.close()
+            return None
+    if check("portfolio_simulation", check_portfolio_simulation): passed += 1
+    else: failed += 1
+
+    def check_simulation_trades():
+        conn = sqlite3.connect('data/data.db')
+        try:
+            count = conn.execute("SELECT COUNT(*) FROM simulation_trades").fetchone()[0]
+            conn.close()
+            return f"{count} rows" if count > 0 else None
+        except Exception:
+            conn.close()
+            return None
+    if check("simulation_trades", check_simulation_trades): passed += 1
+    else: failed += 1
+
+    def check_ml_predictions():
+        conn = sqlite3.connect('data/data.db')
+        try:
+            count = conn.execute("SELECT COUNT(*) FROM ml_predictions").fetchone()[0]
+            conn.close()
+            return f"{count} rows" if count > 0 else None
+        except Exception:
+            conn.close()
+            return None
+    if check("ml_predictions", check_ml_predictions): passed += 1
+    else: failed += 1
+
+    def check_telegram_subscribers():
+        conn = sqlite3.connect('data/data.db')
+        try:
+            exists = conn.execute(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='telegram_subscribers'"
+            ).fetchone()[0]
+            if exists:
+                count = conn.execute("SELECT COUNT(*) FROM telegram_subscribers").fetchone()[0]
+                conn.close()
+                return f"{count} subscribers"
+            else:
+                conn.close()
+                return "table created on first bot use (OK)"
+        except Exception:
+            conn.close()
+            return None
+    if check("telegram_subscribers", check_telegram_subscribers): passed += 1
     else: failed += 1
 
     # ── 摘要 ──
