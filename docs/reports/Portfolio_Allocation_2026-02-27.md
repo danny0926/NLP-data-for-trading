@@ -7,48 +7,53 @@
 
 | 指標 | 數值 |
 |------|------|
-| 持股數 | 15 |
-| 總權重 | 100.00% |
-| 投資預算 | $100,000 |
-| 平均信念分數 | 62.5/100 |
-| 加權預期 Alpha (5日) | 0.8618% |
-| 年化預期 Alpha | 44.81% |
-| 平均 30 日波動率 | 39.24% |
-| 平均 Sharpe 估算 | 1.19 |
+| 持股數 | 20 |
+| 總權重 | 100.01% |
+| 平均信念分數 | 60.6/100 |
+| 加權預期 Alpha (5日) | 0.8043% |
+| 年化預期 Alpha | 41.82% |
+| 平均 30 日波動率 | 39.48% |
+| 平均 Sharpe 估算 | 1.09 |
 
 ## 板塊分布
 
 | 板塊 | 權重 | 持股數 |
 |------|------|--------|
-| Industrials | 26.39% | 4 |
-| Financial Services | 20.28% | 3 |
-| Communication Services | 14.13% | 2 |
-| Technology | 13.48% | 2 |
-| Basic Materials | 12.94% | 2 |
-| Energy | 6.41% | 1 |
-| Healthcare | 6.37% | 1 |
+| Industrials | 24.87% | 5 |
+| Financial Services | 20.21% | 4 |
+| Technology | 15.03% | 3 |
+| Communication Services | 10.79% | 2 |
+| Basic Materials | 9.86% | 2 |
+| Healthcare | 9.61% | 2 |
+| Energy | 4.88% | 1 |
+| Consumer Cyclical | 4.76% | 1 |
 
-**多樣性分數**: 0.8262 (1.0=完全分散, 0.0=集中)
+**多樣性分數**: 0.8395 (1.0=完全分散, 0.0=集中)
 
 ## 持倉明細
 
-| # | Ticker | 名稱 | 板塊 | 權重 | 金額 | 股數 | 信念分數 | Alpha(5d) | 波動率 | Sharpe | 理由 |
-|---|--------|------|------|------|------|------|---------|-----------|--------|--------|------|
-| 1 | **GS** | Goldman Sachs Group, | Financial Services | 7.35% | $7,346 | 7 | 75.3 | 0.8100% | 31.53% | 1.34 | 4 位議員交易; 4 筆賣出(反向); 收斂訊號(分數1.42); 高金額交易; House 為主 |
-| 2 | **AAPL** | Apple Inc. | Technology | 7.11% | $7,107 | 26 | 70.8 | 0.8500% | 27.84% | 1.59 | 2 位議員交易; 2 筆買入; 收斂訊號(分數1.50) |
-| 3 | **NFLX** | Netflix, Inc. | Communication Services | 7.07% | $7,074 | 83 | 70.2 | 0.5900% | 33.68% | 0.91 | 3 位議員交易; 1 筆買入; 2 筆賣出(反向); 收斂訊號(分數0.97); House 為主 |
-| 4 | **DIS** | Walt Disney Company  | Communication Services | 7.06% | $7,063 | 66 | 70.0 | 0.8400% | 35.69% | 1.22 | 2 位議員交易; 2 筆買入; 收斂訊號(分數1.48) |
-| 5 | **ETN** | Eaton Corporation, P | Industrials | 7.02% | $7,019 | 18 | 69.2 | 0.7500% | 31.61% | 1.23 | 2 位議員交易; 2 筆買入; 1 筆賣出(反向); 收斂訊號(分數1.48); House 為主 |
-| 6 | **PWR** | Quanta Services, Inc | Industrials | 6.56% | $6,564 | 11 | 60.6 | 0.5300% | 40.75% | 0.68 | 2 位議員交易; 1 筆買入; 3 筆賣出(反向); 收斂訊號(分數0.63); House 為主 |
-| 7 | **BRO** | Brown & Brown, Inc. | Financial Services | 6.48% | $6,479 | 90 | 59.0 | 0.5400% | 34.51% | 0.81 | 2 位議員交易; 2 筆買入; 1 筆賣出(反向); House 為主 |
-| 8 | **WPM** | Wheaton Precious Met | Basic Materials | 6.47% | $6,474 | 40 | 58.9 | 1.1600% | 60.81% | 0.99 | 1 筆買入; 高金額交易; House 為主 |
-| 9 | **FNV** | Franco-Nevada Corpor | Basic Materials | 6.47% | $6,474 | 23 | 58.9 | 1.1600% | 53.09% | 1.14 | 1 筆買入; 高金額交易; House 為主 |
-| 10 | **SPGI** | S&P Global Inc. | Financial Services | 6.45% | $6,447 | 14 | 58.4 | 1.1600% | 49.82% | 1.21 | 1 筆買入; 高金額交易; House 為主 |
-| 11 | **GE** | GE Aerospace | Industrials | 6.42% | $6,421 | 18 | 57.9 | 1.1600% | 35.93% | 1.68 | 1 筆買入; 高金額交易; House 為主 |
-| 12 | **XOM** | Exxon Mobil Corporat | Energy | 6.41% | $6,405 | 43 | 57.6 | 0.6700% | 27.95% | 1.25 | 2 位議員交易; 1 筆買入; 1 筆賣出(反向); 高金額交易 |
-| 13 | **FERG** | Ferguson Enterprises | Industrials | 6.39% | $6,394 | 24 | 57.4 | 1.1600% | 27.27% | 2.21 | 1 筆買入; 高金額交易; House 為主 |
-| 14 | **UNH** | UnitedHealth Group I | Healthcare | 6.37% | $6,367 | 22 | 56.9 | 1.1600% | 62.26% | 0.97 | 1 筆買入; 高金額交易; House 為主 |
-| 15 | **PTC** | PTC Inc. | Technology | 6.37% | $6,366 | 40 | 56.9 | 0.4400% | 35.89% | 0.64 | 2 位議員交易; 1 筆買入; 4 筆賣出(反向); House 為主 |
+| # | Ticker | 名稱 | 板塊 | 權重 | 信念分數 | Alpha(5d) | 波動率 | Sharpe | 理由 |
+|---|--------|------|------|------|---------|-----------|--------|--------|------|
+| 1 | **GS** | Goldman Sachs Group, | Financial Services | 5.61% | 75.3 | 0.8100% | 31.53% | 1.34 | 4 位議員交易; 4 筆賣出(反向); 收斂訊號(分數1.42); 高金額交易; House 為主 |
+| 2 | **AAPL** | Apple Inc. | Technology | 5.42% | 70.8 | 0.8500% | 27.84% | 1.59 | 2 位議員交易; 2 筆買入; 收斂訊號(分數1.50) |
+| 3 | **NFLX** | Netflix, Inc. | Communication Services | 5.40% | 70.2 | 0.5900% | 33.68% | 0.91 | 3 位議員交易; 1 筆買入; 2 筆賣出(反向); 收斂訊號(分數0.97); House 為主 |
+| 4 | **DIS** | Walt Disney Company  | Communication Services | 5.39% | 70.0 | 0.8400% | 35.69% | 1.22 | 2 位議員交易; 2 筆買入; 收斂訊號(分數1.48) |
+| 5 | **ETN** | Eaton Corporation, P | Industrials | 5.35% | 69.2 | 0.7500% | 31.61% | 1.23 | 2 位議員交易; 2 筆買入; 1 筆賣出(反向); 收斂訊號(分數1.48); House 為主 |
+| 6 | **PWR** | Quanta Services, Inc | Industrials | 5.00% | 60.6 | 0.5300% | 40.75% | 0.68 | 2 位議員交易; 1 筆買入; 3 筆賣出(反向); 收斂訊號(分數0.63); House 為主 |
+| 7 | **BRO** | Brown & Brown, Inc. | Financial Services | 4.93% | 59.0 | 0.5400% | 34.51% | 0.81 | 2 位議員交易; 2 筆買入; 1 筆賣出(反向); House 為主 |
+| 8 | **WPM** | Wheaton Precious Met | Basic Materials | 4.93% | 58.9 | 1.1600% | 60.81% | 0.99 | 1 筆買入; 高金額交易; House 為主 |
+| 9 | **FNV** | Franco-Nevada Corpor | Basic Materials | 4.93% | 58.9 | 1.1600% | 53.09% | 1.14 | 1 筆買入; 高金額交易; House 為主 |
+| 10 | **SPGI** | S&P Global Inc. | Financial Services | 4.91% | 58.4 | 1.1600% | 49.82% | 1.21 | 1 筆買入; 高金額交易; House 為主 |
+| 11 | **GE** | GE Aerospace | Industrials | 4.89% | 57.9 | 1.1600% | 35.93% | 1.68 | 1 筆買入; 高金額交易; House 為主 |
+| 12 | **XOM** | Exxon Mobil Corporat | Energy | 4.88% | 57.6 | 0.6700% | 27.95% | 1.25 | 2 位議員交易; 1 筆買入; 1 筆賣出(反向); 高金額交易 |
+| 13 | **FERG** | Ferguson Enterprises | Industrials | 4.87% | 57.4 | 1.1600% | 27.27% | 2.21 | 1 筆買入; 高金額交易; House 為主 |
+| 14 | **UNH** | UnitedHealth Group I | Healthcare | 4.85% | 56.9 | 1.1600% | 62.26% | 0.97 | 1 筆買入; 高金額交易; House 為主 |
+| 15 | **PTC** | PTC Inc. | Technology | 4.85% | 56.9 | 0.4400% | 35.89% | 0.64 | 2 位議員交易; 1 筆買入; 4 筆賣出(反向); House 為主 |
+| 16 | **FINMF** | Leonardo S.P.A. | Industrials | 4.76% | 54.8 | 0.6200% | 41.45% | 0.78 | 1 筆買入; House 為主 |
+| 17 | **HESAF** | Hermes International | Consumer Cyclical | 4.76% | 54.8 | 0.6200% | 39.67% | 0.81 | 1 筆買入; House 為主 |
+| 18 | **SAN** | Banco Santander, S.A | Financial Services | 4.76% | 54.8 | 0.6200% | 38.52% | 0.84 | 1 筆買入; House 為主 |
+| 19 | **BIIB** | Biogen Inc. | Healthcare | 4.76% | 54.8 | 0.6200% | 40.69% | 0.79 | 1 筆買入; House 為主 |
+| 20 | **ASML** | ASML Holding N.V. -  | Technology | 4.76% | 54.8 | 0.6200% | 40.70% | 0.79 | 1 筆買入; House 為主 |
 
 ## 方法論
 

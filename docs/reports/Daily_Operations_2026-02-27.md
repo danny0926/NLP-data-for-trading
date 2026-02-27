@@ -6,9 +6,9 @@
 
 ### 核心成就
 - **5,345 筆歷史交易回測完成** — 確認國會交易存在統計顯著 alpha
-- **9 個新模組** 從零開始建設完成
+- **12 個新模組** 從零開始建設完成
 - **4 份研究報告** 產出 (RB-001/002/003 + Extended Backtest)
-- **3 個新 DB table** 上線 (convergence_signals, politician_rankings, signal_quality_scores)
+- **6 個新 DB table** 上線 (signal_quality_scores, convergence_signals, politician_rankings, alpha_signals, portfolio_positions, + daily report)
 
 ---
 
@@ -46,12 +46,13 @@
 | Politician Ranker | `src/politician_ranking.py` | PIS 議員排名 | ✅ Top 5 |
 | Historical Backtest | `run_historical_backtest.py` | Capitol Trades + Senate Watcher 歷史回測 | ✅ 5345 trades |
 
-### 建設中（Agent 執行中）
+### 下午完成
 | 模組 | 路徑 | 功能 | 狀態 |
 |------|------|------|------|
-| Daily Report Generator | `src/daily_report.py` | 每日彙總報告 | 🔄 建設中 |
-| Alpha Signal Generator | `src/alpha_signal_generator.py` | 即時交易信號生成 | 🔄 建設中 |
-| Portfolio Optimizer | `src/portfolio_optimizer.py` | 投組最佳化配置 | 🔄 建設中 |
+| Daily Report Generator | `src/daily_report.py` | 每日彙總報告 (5 sections) | DONE |
+| Alpha Signal Generator | `src/alpha_signal_generator.py` | 即時交易信號 (352 signals) | DONE |
+| Portfolio Optimizer | `src/portfolio_optimizer.py` | MPT 投組配置 (35 positions) | DONE |
+| Full Pipeline Orchestrator | `run_full_pipeline.py` | 一鍵統一 pipeline | DONE |
 
 ---
 
@@ -73,8 +74,10 @@
 | congress_trades | 404 | ETL 抓取的交易 |
 | ai_intelligence_signals | 102 | AI Discovery 信號 |
 | signal_quality_scores | 404 | SQS 評分 |
+| alpha_signals | 352 | Alpha 交易信號 |
 | convergence_signals | 6 | 收斂信號 |
-| politician_rankings | 5 | 議員排名 |
+| politician_rankings | 17 | 議員排名 |
+| portfolio_positions | 35 | 投組配置 |
 | extraction_log | 37 | ETL 日誌 |
 
 ### 外部資料
@@ -86,34 +89,27 @@
 
 ```
 今日前:
-  ETL → DB → AI Discovery → Signals
-                                ↓
-                         [人工判讀]
+  ETL → DB → AI Discovery → Signals → [人工判讀]
 
-今日後:
+今日後 (run_full_pipeline.py --analysis-only):
   ETL → DB → AI Discovery → Signals
-              ↓                ↓
-         Name Mapping    SQS Scoring
-              ↓                ↓
-         Convergence     Alpha Backtest
-         Detector        (Event Study)
-              ↓                ↓
-         Politician      Alpha Signal
-         Ranking         Generator*
-              ↓                ↓
-         Daily Report*   Portfolio
-                         Optimizer*
-                              ↓
-                         [可操作信號]
-
-  * = 建設中
+              |                |
+         Name Mapping    SQS Scoring (404)
+              |                |
+         Convergence     Alpha Backtest (5345 trades)
+         Detector (6)         |
+              |           Alpha Signal Generator (352)
+         Politician           |
+         Ranking (17)    Portfolio Optimizer (35 positions)
+              |                |
+         Daily Report    [可操作信號 + 投組配置]
 ```
 
 ---
 
 ## Git 活動
 
-今日 commit 數: **17+**（含 agent 提交）
+今日 commit 數: **22+**（含 agent 提交）
 分支: `main`，全部已 push 至 `origin/main`
 
 ---
@@ -138,4 +134,4 @@
 ---
 
 *報告自動生成 — Political Alpha Monitor Operations Team*
-*2026-02-27 18:25 CST*
+*2026-02-27 18:35 CST (最終更新)*
