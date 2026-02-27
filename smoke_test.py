@@ -82,6 +82,7 @@ def main():
         ("src.smart_alerts", "Smart Alerts"),
         ("src.name_mapping", "Name Mapping"),
         ("src.alpha_backtest", "Alpha Backtest"),
+        ("src.signal_tracker", "Signal Tracker"),
         ("src.discovery_engine_v4", "Discovery Engine"),
     ]
 

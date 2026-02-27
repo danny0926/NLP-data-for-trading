@@ -54,6 +54,14 @@
 | Portfolio Optimizer | `src/portfolio_optimizer.py` | MPT 投組配置 (35 positions) | DONE |
 | Full Pipeline Orchestrator | `run_full_pipeline.py` | 一鍵統一 pipeline | DONE |
 
+### 晚間完成
+| 模組 | 路徑 | 功能 | 狀態 |
+|------|------|------|------|
+| Smart Alert System | `src/smart_alerts.py` | 5 類告警 (Alpha/Convergence/LargeTrade/TopPolitician/UrgentFiling) | DONE |
+| Signal Performance Tracker | `src/signal_tracker.py` | 信號實際表現追蹤 (hit rate/MAE/MFE) | DONE |
+| HTML Dashboard Generator | `generate_dashboard.py` | 互動式儀表板 (Chart.js, 44KB self-contained) | DONE |
+| Smoke Test | `smoke_test.py` | 31 項系統健康檢查 — 31/31 PASS | DONE |
+
 ---
 
 ## 研究報告產出
@@ -78,10 +86,12 @@
 | convergence_signals | 6 | 收斂信號 |
 | politician_rankings | 17 | 議員排名 |
 | portfolio_positions | 35 | 投組配置 |
+| signal_performance | 0 | 信號績效追蹤 (新建) |
 | extraction_log | 37 | ETL 日誌 |
 
 ### 外部資料
 - `data/ticker_sectors.json` — 226 個 ticker 的 GICS 分類
+- `docs/reports/dashboard.html` — 互動式 HTML 儀表板 (44KB)
 
 ---
 
@@ -133,5 +143,11 @@
 
 ---
 
+### 最終統計
+- **模組數**: 19 個 src modules + 5 entry points + smoke_test
+- **DB 表數**: 16 (含 signal_performance 新表)
+- **Smoke Test**: 31/31 PASS
+- **總 commit 數**: 44+
+
 *報告自動生成 — Political Alpha Monitor Operations Team*
-*2026-02-27 18:35 CST (最終更新)*
+*2026-02-27 18:45 CST (最終更新)*
