@@ -114,6 +114,31 @@ def load_sqs_scores(db_path: str = None) -> Dict[str, List[dict]]:
     return result
 
 
+def load_politician_rankings(db_path: str = None) -> Dict[str, dict]:
+    """讀取 politician_rankings，以 politician_name 為 key (RB-005)"""
+    if db_path is None:
+        db_path = DB_PATH
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            SELECT politician_name, pis_total, rank
+            FROM politician_rankings
+        """)
+        result = {}
+        for row in cursor.fetchall():
+            result[row["politician_name"]] = {
+                "pis_total": row["pis_total"],
+                "rank": row["rank"],
+            }
+        conn.close()
+        return result
+    except Exception:
+        conn.close()
+        return {}
+
+
 def load_convergence_signals(db_path: str = None) -> Dict[str, dict]:
     """讀取 convergence_signals，以 ticker 為 key"""
     if db_path is None:
@@ -210,11 +235,13 @@ class TickerScorer:
         sqs_map: Dict[str, List[dict]],
         convergence_map: Dict[str, dict],
         sector_map: Dict[str, dict],
+        politician_map: Optional[Dict[str, dict]] = None,
     ):
         self.trades = trades
         self.sqs_map = sqs_map
         self.convergence_map = convergence_map
         self.sector_map = sector_map
+        self.politician_map = politician_map or {}
 
         # 按 ticker 分組交易
         self.ticker_trades: Dict[str, List[dict]] = defaultdict(list)
@@ -297,9 +324,27 @@ class TickerScorer:
         house_ratio = house_count / len(trades)
         chamber_score = (0.5 + 0.5 * senate_ratio) * 10.0  # Senate 有加分
 
+        # ── 7. 議員品質加分 (RB-005): 頂尖議員交易加分 ──
+        if self.politician_map:
+            pis_scores = []
+            for p in politicians:
+                info = self.politician_map.get(p)
+                if info:
+                    pis_scores.append(info["pis_total"])
+            if pis_scores:
+                # 使用最高 PIS 分數（Top 議員交易最有價值）
+                best_pis = max(pis_scores)
+                # PIS 0-60 → 0-5 分
+                politician_score = min(best_pis / 60.0, 1.0) * 5.0
+            else:
+                politician_score = 0.0
+        else:
+            politician_score = 0.0
+
         # ── 綜合分數 (滿分 100) ──
         conviction = (breadth_score + direction_score + buy_ratio_score
-                      + sqs_score + conv_score + amount_score + chamber_score)
+                      + sqs_score + conv_score + amount_score + chamber_score
+                      + politician_score)
 
         # 預期 alpha 估算 (Buy-Only, RB-004)
         base_alpha = buy_alpha / total  # Sale 不貢獻正 alpha
@@ -328,6 +373,14 @@ class TickerScorer:
             reasons.append("Senate 為主(RB-004)")
         elif house_ratio > 0.5:
             reasons.append("House 為主")
+        if politician_score >= 3.0:
+            top_pol = max(
+                (p for p in politicians if p in self.politician_map),
+                key=lambda p: self.politician_map[p]["pis_total"],
+                default=None,
+            )
+            if top_pol:
+                reasons.append(f"Top議員({top_pol.split()[-1]})")
 
         return {
             "ticker": ticker,
@@ -351,6 +404,7 @@ class TickerScorer:
             "_convergence": round(conv_score, 2),
             "_amount": round(amount_score, 2),
             "_chamber": round(chamber_score, 2),
+            "_politician": round(politician_score, 2),
         }
 
 
@@ -733,6 +787,7 @@ def generate_report(positions: List[dict], budget: float = 0) -> str:
     lines.append("| 收斂訊號 | 20 | 多位議員同方向交易加分 (提權) | RB-006 |")
     lines.append("| 金額權重 | 15 | $15K-$50K 最強訊號 (提權) | RB-001 |")
     lines.append("| 院別加權 | 10 | Senate 20d +1.39% >> House -1.27% | RB-004 |")
+    lines.append("| 議員品質 | 5 | Top PIS 議員交易加分 | RB-005 |")
     lines.append("")
     lines.append("### 配置限制")
     lines.append("")
@@ -836,16 +891,18 @@ def run_portfolio_optimization(
     trades = load_congress_trades(db_path, days=days)
     print(f"      讀取到 {len(trades)} 筆交易 (過去 {days} 天，有 ticker)")
 
-    print("[2/6] 讀取品質分數與收斂訊號...")
+    print("[2/6] 讀取品質分數、收斂訊號、議員排名...")
     sqs_map = load_sqs_scores(db_path)
     convergence_map = load_convergence_signals(db_path)
     sector_map = load_sector_map()
+    politician_map = load_politician_rankings(db_path)
     print(f"      SQS: {sum(len(v) for v in sqs_map.values())} 筆, "
           f"收斂訊號: {len(convergence_map)} 個, "
-          f"板塊映射: {len(sector_map)} 支")
+          f"板塊映射: {len(sector_map)} 支, "
+          f"議員排名: {len(politician_map)} 位")
 
     print("[3/6] 計算標的信念分數...")
-    scorer = TickerScorer(trades, sqs_map, convergence_map, sector_map)
+    scorer = TickerScorer(trades, sqs_map, convergence_map, sector_map, politician_map)
     scored = scorer.score_all()
     print(f"      {len(scored)} 支有效標的已評分 (最高: {scored[0]['conviction_score']:.1f}, "
           f"最低: {scored[-1]['conviction_score']:.1f})" if scored else "      無有效標的")
