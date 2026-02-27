@@ -169,6 +169,57 @@ def init_db():
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_anomaly_type ON anomaly_detections(anomaly_type)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_anomaly_severity ON anomaly_detections(severity)')
 
+    # Table: social_posts (社群貼文原始資料)
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS social_posts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        platform TEXT NOT NULL,
+        author_name TEXT NOT NULL,
+        author_handle TEXT,
+        author_type TEXT NOT NULL,
+        post_id TEXT,
+        post_text TEXT NOT NULL,
+        post_url TEXT,
+        post_time TEXT,
+        likes INTEGER DEFAULT 0,
+        retweets INTEGER DEFAULT 0,
+        replies INTEGER DEFAULT 0,
+        media_type TEXT,
+        data_hash TEXT UNIQUE,
+        fetched_at TEXT NOT NULL,
+        created_at TEXT DEFAULT (datetime('now'))
+    )
+    ''')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_social_posts_author ON social_posts(author_name)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_social_posts_platform ON social_posts(platform)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_social_posts_time ON social_posts(post_time)')
+
+    # Table: social_signals (社群訊號分析結果)
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS social_signals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        post_id INTEGER REFERENCES social_posts(id),
+        author_name TEXT NOT NULL,
+        author_type TEXT NOT NULL,
+        platform TEXT NOT NULL,
+        sentiment TEXT,
+        sentiment_score REAL,
+        signal_type TEXT,
+        sarcasm_detected INTEGER DEFAULT 0,
+        tickers_explicit TEXT,
+        tickers_implied TEXT,
+        sector TEXT,
+        analysis_model TEXT,
+        impact_score REAL,
+        reasoning TEXT,
+        congress_trade_match INTEGER DEFAULT 0,
+        speech_trade_alignment TEXT,
+        created_at TEXT DEFAULT (datetime('now'))
+    )
+    ''')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_social_signals_author ON social_signals(author_name)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_social_signals_impact ON social_signals(impact_score)')
+
     conn.commit()
     conn.close()
 
