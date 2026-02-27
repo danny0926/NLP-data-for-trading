@@ -21,17 +21,25 @@ pip install -r requirements_v3.txt
 bash setup_wsl.sh          # 一鍵安裝 WSL 環境 (Xvfb + venv + Playwright)
 bash run_etl_wsl.sh --days 7  # 執行 ETL pipeline (免佔桌面)
 
-# ── 主要入口 ──
+# ── 統一 Pipeline（推薦）──
+python run_full_pipeline.py                      # 完整 pipeline (ETL→Discovery→Analysis)
+python run_full_pipeline.py --analysis-only      # 只跑分析 (SQS/收斂/排名/信號/投組)
+python run_full_pipeline.py --skip-etl           # 跳過 ETL
+python run_full_pipeline.py --days 14            # ETL 回溯 14 天
+
+# ── 個別入口 ──
 python run_etl_pipeline.py --senate-only --days 7     # ETL: Senate 交易
 python run_etl_pipeline.py --house-only --max-house 5  # ETL: House 交易
-python run_etl_pipeline.py --days 14                   # ETL: 兩院都跑
 python run_congress_discovery.py                        # AI Discovery: 投資訊號
 
-# ── 報告生成（需要 Gemini CLI: npm install -g @anthropic-ai/gemini-cli）──
-python generate_report.py                    # 今日報告
-python generate_report.py --days 7           # 過去 7 天總結
-python generate_report.py --date 2026-02-13  # 指定日期
-python generate_report.py --days 90          # 長期總結
+# ── 分析模組 ──
+python -m src.signal_scorer                    # SQS 信號評分
+python -m src.convergence_detector             # 多議員收斂偵測
+python -m src.politician_ranking               # 議員 PIS 排名
+python -m src.alpha_signal_generator           # Alpha 信號生成
+python -m src.portfolio_optimizer              # 投組最佳化
+python -m src.daily_report                     # 每日報告
+python -m src.daily_report --days 7            # 過去 7 天總結
 
 # ── 初始化資料庫 ──
 python -c "from src.database import init_db; init_db()"
@@ -41,7 +49,7 @@ There is no test suite, no linter configuration, and no build step.
 
 ## Architecture
 
-系統由三個子系統組成：**ETL Pipeline**（資料抓取）、**AI Discovery**（訊號生成）、**Report Generator**（報告生成）。
+系統由五個子系統組成：**ETL Pipeline**（資料抓取）、**AI Discovery**（訊號生成）、**Signal Analysis**（信號分析）、**Portfolio Optimization**（投組配置）、**Report Generator**（報告生成）。統一入口: `run_full_pipeline.py`。
 
 ### ETL Pipeline (src/etl/) — LLM-Driven 融合架構
 
