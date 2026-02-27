@@ -2,8 +2,11 @@
 投資組合最佳化器 — 基於國會交易訊號的 Modern Portfolio Theory 配置
 
 根據 congress_trades、signal_quality_scores、convergence_signals 三張表，
-以及歷史回測結果（Buy +0.77% CAR_5d、Sale 反向 +0.50%、House 優於 Senate、
-$15K-$50K 最強），對每支股票評分並產生最佳投資組合配置。
+以及歷史回測結果（Buy +0.77% CAR_5d, Buy +1.10% CAR_20d 59.2% WR,
+Sale -3.21% CAR_20d → Buy-Only 策略），對每支股票評分並產生最佳投資組合配置。
+
+RB-004 核心發現: Buy-Only strategy 遠優於 Buy+Sale，Sale 信號有負 alpha。
+因此本模組採用 Buy-Only 過濾: Sale-Only 標的自動排除，Sale 交易不貢獻正 alpha。
 
 用法:
     python -m src.portfolio_optimizer                    # 產生投資組合
@@ -44,9 +47,11 @@ AMOUNT_ALPHA = {
     "$1,001 - $15,000":       0.8,   # 最低金額，訊號較弱
 }
 
-# 回測結果常數
-BUY_CAR_5D = 0.0077    # Buy 方向 5 日 CAR
-SALE_CAR_5D = 0.0050   # Sale 反向 5 日 CAR（contrarian）
+# 回測結果常數 (RB-004 validated)
+BUY_CAR_5D = 0.0077    # Buy 方向 5 日 CAR (p<0.001)
+BUY_CAR_20D = 0.0110   # Buy 方向 20 日 CAR (59.2% WR)
+SALE_CAR_5D = 0.0       # Sale: 不給正 alpha (RB-004: -3.21% 20d, 有害)
+# 歷史值: SALE_CAR_5D = 0.0050 (contrarian hypothesis, 已被 RB-004 否定)
 
 logger = logging.getLogger("PortfolioOptimizer")
 
@@ -233,24 +238,30 @@ class TickerScorer:
         return scored
 
     def _score_ticker(self, ticker: str, trades: List[dict]) -> Optional[dict]:
-        """計算單一 ticker 的綜合分數"""
+        """計算單一 ticker 的綜合分數 (Buy-Only 策略, RB-004)"""
         # ── 1. 信念廣度分數 (breadth): 多少議員在交易 ──
         politicians = set(t["politician_name"] for t in trades)
         breadth_score = min(len(politicians) / 3.0, 1.0) * 25.0  # 3 位議員得滿分
 
-        # ── 2. 方向分數 (direction): Buy/Sale 加權 ──
+        # ── 2. 方向分數 (direction): Buy-Only 策略 (RB-004) ──
         buy_count = sum(1 for t in trades if t["transaction_type"] == "Buy")
         sale_count = sum(1 for t in trades if t["transaction_type"] == "Sale")
         total = buy_count + sale_count
         if total == 0:
             return None
 
-        # Buy 有正 alpha, Sale 是 contrarian 也有正 alpha
-        # 但 Buy 訊號更強 (0.77% vs 0.50%)
+        # RB-004: Sale-Only 標的排除 — Sale 信號有 -3.21% 20d alpha
+        if buy_count == 0:
+            return None
+
+        # Buy-Only alpha: Sale 不貢獻正 alpha (SALE_CAR_5D = 0)
         buy_alpha = buy_count * BUY_CAR_5D
-        sale_alpha = sale_count * SALE_CAR_5D
-        direction_weight = (buy_alpha + sale_alpha) / total
-        direction_score = min(direction_weight / 0.008, 1.0) * 20.0
+        direction_weight = buy_alpha / total
+        direction_score = min(direction_weight / 0.008, 1.0) * 15.0
+
+        # ── 2b. Buy 比例加分 (RB-004): 純 Buy 標的加分 ──
+        buy_ratio = buy_count / total
+        buy_ratio_score = buy_ratio * 5.0  # 純 Buy 標的得滿分 5 分
 
         # ── 3. SQS 分數: 該 ticker 所有非 Discard 交易的平均 SQS ──
         sqs_records = self.sqs_map.get(ticker, [])
@@ -282,10 +293,11 @@ class TickerScorer:
         chamber_score = (0.5 + 0.5 * house_ratio) * 10.0  # House 有加分
 
         # ── 綜合分數 (滿分 100) ──
-        conviction = breadth_score + direction_score + sqs_score + conv_score + amount_score + chamber_score
+        conviction = (breadth_score + direction_score + buy_ratio_score
+                      + sqs_score + conv_score + amount_score + chamber_score)
 
-        # 預期 alpha 估算 (基於回測和分數)
-        base_alpha = (buy_count * BUY_CAR_5D + sale_count * SALE_CAR_5D) / total
+        # 預期 alpha 估算 (Buy-Only, RB-004)
+        base_alpha = buy_alpha / total  # Sale 不貢獻正 alpha
         expected_alpha = base_alpha * avg_amount_mult * (1.0 + conv_score / 30.0)
 
         sector_info = self.sector_map.get(ticker, {})
@@ -298,7 +310,11 @@ class TickerScorer:
         if buy_count > 0:
             reasons.append(f"{buy_count} 筆買入")
         if sale_count > 0:
-            reasons.append(f"{sale_count} 筆賣出(反向)")
+            reasons.append(f"{sale_count} 筆賣出(不計 alpha)")
+        if buy_ratio >= 0.8:
+            reasons.append("強力買入信號")
+        elif buy_ratio >= 0.5:
+            reasons.append("買入為主")
         if convergence:
             reasons.append(f"收斂訊號(分數{convergence['score']:.2f})")
         if avg_amount_mult > 1.0:
@@ -319,9 +335,11 @@ class TickerScorer:
             "avg_sqs": round(avg_sqs if sqs_records else 0, 2),
             "has_convergence": convergence is not None,
             "reasoning": "; ".join(reasons),
+            "buy_ratio": round(buy_ratio, 2),
             # 分項 (debug 用)
             "_breadth": round(breadth_score, 2),
             "_direction": round(direction_score, 2),
+            "_buy_ratio": round(buy_ratio_score, 2),
             "_sqs": round(sqs_score, 2),
             "_convergence": round(conv_score, 2),
             "_amount": round(amount_score, 2),
@@ -697,12 +715,13 @@ def generate_report(positions: List[dict], budget: float = 0) -> str:
     # ── 方法論 ──
     lines.append("## 方法論")
     lines.append("")
-    lines.append("### 評分模型 (滿分 100)")
+    lines.append("### 評分模型 (Buy-Only, RB-004)")
     lines.append("")
     lines.append("| 因子 | 權重 | 說明 |")
     lines.append("|------|------|------|")
     lines.append("| 信念廣度 | 25 | 交易該標的的議員人數 (3 人得滿分) |")
-    lines.append("| 方向訊號 | 20 | Buy +0.77% / Sale 反向 +0.50% CAR_5d |")
+    lines.append("| Buy 方向 | 15 | Buy +0.77% CAR_5d (Sale 不計正 alpha) |")
+    lines.append("| Buy 比例 | 5 | 純 Buy 標的加分 (RB-004: Sale -3.21% 20d) |")
     lines.append("| SQS 品質 | 20 | Signal Quality Score 平均 |")
     lines.append("| 收斂訊號 | 15 | 多位議員同方向交易加分 |")
     lines.append("| 金額權重 | 10 | $15K-$50K 最強訊號 |")
@@ -721,6 +740,7 @@ def generate_report(positions: List[dict], budget: float = 0) -> str:
     lines.append("- 國會交易揭露存在延遲 (中位數 28 天)")
     lines.append("- 過去績效不保證未來表現")
     lines.append("- Sharpe 估算基於簡化假設 (5 日 CAR * 52 週年化)")
+    lines.append("- Buy-Only 策略 (RB-004): Sale-Only 標的已排除")
     lines.append("")
 
     return "\n".join(lines)
