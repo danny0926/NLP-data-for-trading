@@ -1,0 +1,33 @@
+# Virtual environment
+venv/
+.venv_wsl/
+
+# Data files
+data/
+
+# Backup / scratch
+bk/
+
+# Windows artifacts
+nul
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Environment / secrets
+.env
+*.key
+credentials*.json
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store
