@@ -17,7 +17,6 @@ from google.genai import types as genai_types
 from .base_fetcher import FetchResult, SourceType
 from .schemas import ExtractionResult
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("ETL.LLMTransformer")
 
 

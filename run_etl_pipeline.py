@@ -23,9 +23,12 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from src.database import init_db
 from src.etl.pipeline import CongressETLPipeline
+from src.logging_config import setup_logging
 
 
 def main():
+    setup_logging()
+
     parser = argparse.ArgumentParser(description="Congressional Trading ETL Pipeline")
     parser.add_argument("--days", type=int, default=7, help="Senate 回溯天數 (預設 7)")
     parser.add_argument("--year", type=int, default=None, help="House 報告年份 (預設今年)")

@@ -1,7 +1,10 @@
 import time
 from src.discovery_engine_v4 import DiscoveryEngineV4
+from src.logging_config import setup_logging
 
 def run_congress_monitoring():
+    setup_logging()
+
     # 使用新 Key 並切換回 Flash 模型以加快速度
     engine = DiscoveryEngineV4(model_name="gemini-2.5-flash")
     
