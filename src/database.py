@@ -150,6 +150,25 @@ def init_db():
     )
     ''')
 
+    # Table: anomaly_detections (異常偵測結果)
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS anomaly_detections (
+        id TEXT PRIMARY KEY,
+        politician_name TEXT NOT NULL,
+        ticker TEXT,
+        anomaly_type TEXT NOT NULL,
+        severity TEXT NOT NULL,
+        score REAL NOT NULL,
+        description TEXT,
+        transaction_date TEXT,
+        related_trades_count INTEGER DEFAULT 0,
+        detected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    ''')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_anomaly_politician ON anomaly_detections(politician_name)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_anomaly_type ON anomaly_detections(anomaly_type)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_anomaly_severity ON anomaly_detections(severity)')
+
     conn.commit()
     conn.close()
 
