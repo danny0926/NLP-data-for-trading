@@ -5,8 +5,9 @@ venv/
 # Data files
 data/
 
-# Backup / scratch
-bk/
+# Backup / scratch (legacy/ 子目錄保留在版控中)
+bk/*
+!bk/legacy/
 
 # Windows artifacts
 nul
