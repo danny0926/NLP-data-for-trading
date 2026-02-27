@@ -326,6 +326,17 @@ class PipelineOrchestrator:
         self.run_politician_ranking()
         self.run_report_generation()
 
+        # 告警檢查
+        try:
+            from src.smart_alerts import SmartAlertSystem
+            alert_system = SmartAlertSystem(days=self.days)
+            alerts = alert_system.run_all_checks()
+            alert_system.print_summary()
+            if alerts:
+                alert_system.send_alerts()
+        except Exception as e:
+            _safe_print(f"  [WARN] Smart alerts: {e}")
+
         self.print_summary()
 
 
