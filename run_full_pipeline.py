@@ -355,6 +355,10 @@ class PipelineOrchestrator:
                 detail = f"{result.get('enhanced', 0)} signals, PACS={result.get('avg_pacs', 0):.4f}, VIX={result.get('vix_zone', '?')}"
             elif stage == 'sector_rotation':
                 detail = f"{result.get('signals', 0)} sectors, top={result.get('top_sector', 'N/A')}"
+            elif stage == 'rebalance':
+                detail = (f"BUY={result.get('buy', 0)} SELL={result.get('sell', 0)} "
+                          f"INC={result.get('increase', 0)} DEC={result.get('decrease', 0)} "
+                          f"HOLD={result.get('hold', 0)}")
 
             error_info = f" -- {result.get('error', '')}" if status == 'error' else ''
             _safe_print(f"  {icon} {stage}: {detail}{error_info}")
@@ -365,6 +369,32 @@ class PipelineOrchestrator:
             _safe_print(f"\n  [OK] All stages completed successfully")
 
         _safe_print(f"{'='*60}\n")
+
+    def run_rebalance_check(self) -> bool:
+        """Rebalance Advisor — 再平衡建議。"""
+        _divider("Rebalance Advisor")
+        try:
+            from src.rebalance_advisor import run_rebalance_analysis
+            result = run_rebalance_analysis(days=90)
+            summary = result.get("summary", {})
+            self.results['rebalance'] = {
+                'buy': summary.get('actions_buy', 0),
+                'sell': summary.get('actions_sell', 0),
+                'increase': summary.get('actions_increase', 0),
+                'decrease': summary.get('actions_decrease', 0),
+                'hold': summary.get('actions_hold', 0),
+                'status': 'success',
+            }
+            total_actions = (summary.get('actions_buy', 0) + summary.get('actions_sell', 0)
+                             + summary.get('actions_increase', 0) + summary.get('actions_decrease', 0))
+            _safe_print(f"  [OK] Rebalance: {total_actions} actions, "
+                        f"{summary.get('actions_hold', 0)} holds")
+            return True
+        except Exception as e:
+            self.errors.append(f"Rebalance: {str(e)}")
+            self.results['rebalance'] = {'status': 'error', 'error': str(e)}
+            _safe_print(f"\n  [FAIL] Rebalance: {e}")
+            return False
 
     def run_social_intelligence(self) -> bool:
         """社群媒體情報: 抓取 + NLP 分析 + 交叉比對。"""
@@ -435,6 +465,7 @@ class PipelineOrchestrator:
         self.run_signal_enhancement()
         self.run_sector_rotation()
         self.run_report_generation()
+        self.run_rebalance_check()
 
         # 告警檢查
         try:

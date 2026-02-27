@@ -95,6 +95,7 @@ def main():
         ("src.social_analyzer", "Social Analyzer"),
         ("src.signal_enhancer", "Signal Enhancer v2"),
         ("src.sector_rotation", "Sector Rotation"),
+        ("src.rebalance_advisor", "Rebalance Advisor"),
     ]
 
     for mod_path, name in modules:
