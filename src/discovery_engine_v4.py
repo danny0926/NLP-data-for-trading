@@ -3,7 +3,7 @@ import json
 import re
 import uuid
 import sqlite3
-import hashlib
+import logging
 from datetime import datetime
 from google import genai
 
@@ -24,6 +24,7 @@ class DiscoveryEngineV4:
         self.client = genai.Client(api_key=self.api_key)
         self.db_path = db_path
         self.model_name = model_name
+        self.logger = logging.getLogger(self.__class__.__name__)
         self._init_extended_db()
 
     def _init_extended_db(self):
@@ -110,19 +111,75 @@ class DiscoveryEngineV4:
         conn.commit()
         conn.close()
 
+    def _get_local_trades(self, politician_name, days=30):
+        """查詢 congress_trades 表中該議員最近的交易，作為 prompt context。
+
+        Args:
+            politician_name: 議員姓名（模糊匹配）
+            days: 回溯天數（預設 30）
+
+        Returns:
+            格式化的交易記錄字串，若無資料則回傳空字串
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.execute(
+                """
+                SELECT transaction_date, ticker, asset_name, transaction_type,
+                       amount_range, extraction_confidence
+                FROM congress_trades
+                WHERE politician_name LIKE ?
+                  AND transaction_date >= date('now', ?)
+                ORDER BY transaction_date DESC
+                LIMIT 20
+                """,
+                (f"%{politician_name}%", f"-{days} days"),
+            )
+            rows = cursor.fetchall()
+            conn.close()
+
+            if not rows:
+                return ""
+
+            header = "以下是本系統 ETL 已收錄的近期交易記錄（來自官方申報）：\n"
+            lines = []
+            for row in rows:
+                date, ticker, asset, tx_type, amount, conf = row
+                ticker_str = ticker if ticker else "N/A"
+                lines.append(
+                    f"  {date} | {ticker_str} | {asset} | "
+                    f"{tx_type} | {amount} | confidence={conf}"
+                )
+            return header + "\n".join(lines)
+        except Exception as e:
+            self.logger.warning(f"讀取本地交易失敗: {e}")
+            return ""
+
     def monitor_target(self, target_type, target_name):
         """
         核心監控方法
         target_type: 'CONGRESS', '13F', 'SOCIAL'
         """
         print(f"[*] Discovery Engine 啟動監控 [{target_type}]: {target_name}")
-        
+
+        # 從 ETL 資料庫取得本地交易記錄作為額外 context
+        local_context = ""
+        if target_type == "CONGRESS":
+            local_trades = self._get_local_trades(target_name)
+            if local_trades:
+                local_context = (
+                    f"\n\n{local_trades}\n"
+                    "請參考上述已知交易記錄，搜尋是否有更新的交易或相關新聞，"
+                    "並結合這些資訊進行分析。\n"
+                )
+                print(f"  [ETL] 找到本地交易記錄，已附加至 prompt context")
+
         prompts = {
             "CONGRESS": f"""
                 查尋美國國會議員 {target_name} 最近 30 天內的金融活動。
                 優先尋找：1. Capitol Trades (股票交易申報)。
                 如果沒有交易，請尋找：2. 針對特定上市公司或產業的重大政策發言/新聞 (Policy/News)。
-                
+                {local_context}
                 請嚴格輸出純 JSON 格式 (不要 Markdown)，結構如下：
                 {{
                     "results": [
