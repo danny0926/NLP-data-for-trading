@@ -572,6 +572,10 @@ def save_portfolio_to_db(positions: List[dict], db_path: str = None):
         ON portfolio_positions(created_at)
     """)
 
+    # 清除舊的持倉資料，避免重複執行時產生重複 ticker
+    cursor.execute("DELETE FROM portfolio_positions")
+    logger.info("已清除舊持倉資料，準備寫入新的投資組合")
+
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     for pos in positions:
         cursor.execute("""
