@@ -6,6 +6,7 @@ Political Alpha Monitor — 每日自動排程執行器
     python run_daily.py                          # 完整每日流程
     python run_daily.py --skip-etl               # 跳過 ETL（用既有資料）
     python run_daily.py --skip-discovery         # 跳過 AI Discovery
+    python run_daily.py --skip-social            # 跳過社群媒體抓取分析
     python run_daily.py --analysis-only          # 只跑分析 + Dashboard
     python run_daily.py --days 7                 # ETL 回溯天數（預設 3）
 """
@@ -103,10 +104,12 @@ class DailyRunner:
     """每日 Pipeline 統一調度器。"""
 
     def __init__(self, days: int = 3, skip_etl: bool = False,
-                 skip_discovery: bool = False, analysis_only: bool = False):
+                 skip_discovery: bool = False, skip_social: bool = False,
+                 analysis_only: bool = False):
         self.days = days
         self.skip_etl = skip_etl
         self.skip_discovery = skip_discovery
+        self.skip_social = skip_social
         self.analysis_only = analysis_only
         self.results = []  # type: List[StepResult]
         self.logger = setup_daily_logging()
@@ -190,6 +193,31 @@ class DailyRunner:
                     self.logger.warning(f"Discovery {target['name']}: {e}")
 
         return f"signals={total_signals}, errors={total_errors}"
+
+    # ── Step 2.5: Social Media Intelligence ──
+
+    def step_social_intelligence(self):
+        """抓取社群媒體 + NLP 分析 + 交叉比對國會交易。"""
+        from src.database import init_db
+        from src.etl.social_fetcher import SocialFetcher
+        from src.social_analyzer import SocialAnalyzer
+
+        init_db()
+
+        # 抓取（過去 24 小時）
+        fetcher = SocialFetcher()
+        posts = fetcher.fetch_all_targets(hours=24)
+        fetch_count = len(posts)
+
+        # 分析 + 交叉比對 + alpha 信號
+        analyzer = SocialAnalyzer()
+        stats = analyzer.analyze_batch(hours=24)
+
+        return (
+            f"fetched={fetch_count}, signals={stats['signals']}, "
+            f"alpha={stats.get('alpha_signals', 0)}, "
+            f"consistent={stats['consistent']}, contradictory={stats['contradictory']}"
+        )
 
     # ── Step 4: Analysis Pipeline ──
 
@@ -296,6 +324,8 @@ class DailyRunner:
             mode += " (跳過 ETL)"
         if self.skip_discovery:
             mode += " (跳過 Discovery)"
+        if self.skip_social:
+            mode += " (跳過 Social)"
 
         self.logger.info(f"{'#'*60}")
         self.logger.info(f"  Political Alpha Monitor — 每日自動執行")
@@ -323,6 +353,12 @@ class DailyRunner:
             self._run_step("AI Discovery", self.step_discovery)
         else:
             self.logger.info("[SKIP] AI Discovery")
+
+        # Step 3.5: Social Media Intelligence
+        if not self.analysis_only and not self.skip_social:
+            self._run_step("Social Media Intelligence", self.step_social_intelligence)
+        else:
+            self.logger.info("[SKIP] Social Media Intelligence")
 
         # Step 4: Analysis
         self._run_step("Analysis Pipeline", self.step_analysis)
@@ -387,6 +423,7 @@ def main():
   python run_daily.py                          # 完整每日流程
   python run_daily.py --skip-etl               # 跳過 ETL
   python run_daily.py --skip-discovery         # 跳過 AI Discovery
+  python run_daily.py --skip-social            # 跳過社群媒體抓取分析
   python run_daily.py --analysis-only          # 只跑分析 + Dashboard
   python run_daily.py --days 7                 # ETL 回溯 7 天
         """
@@ -397,14 +434,17 @@ def main():
                         help="跳過 ETL 階段")
     parser.add_argument("--skip-discovery", action="store_true",
                         help="跳過 AI Discovery 階段")
+    parser.add_argument("--skip-social", action="store_true",
+                        help="跳過社群媒體抓取分析階段")
     parser.add_argument("--analysis-only", action="store_true",
-                        help="只跑分析 + Dashboard（跳過 ETL 和 Discovery）")
+                        help="只跑分析 + Dashboard（跳過 ETL/Discovery/Social）")
     args = parser.parse_args()
 
     runner = DailyRunner(
         days=args.days,
         skip_etl=args.skip_etl,
         skip_discovery=args.skip_discovery,
+        skip_social=args.skip_social,
         analysis_only=args.analysis_only
     )
 

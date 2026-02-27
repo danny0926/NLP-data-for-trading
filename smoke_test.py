@@ -90,6 +90,9 @@ def main():
         ("src.portfolio_simulator", "Portfolio Simulator"),
         ("src.telegram_bot", "Telegram Bot"),
         ("src.ml_signal_model", "ML Signal Model"),
+        ("src.social_targets", "Social Targets"),
+        ("src.social_nlp", "Social NLP"),
+        ("src.social_analyzer", "Social Analyzer"),
     ]
 
     for mod_path, name in modules:
@@ -129,6 +132,7 @@ def main():
         ("src.etl.llm_transformer", "LLM Transformer"),
         ("src.etl.loader", "Loader"),
         ("src.etl.sec_form4_fetcher", "SEC Form 4 Fetcher"),
+        ("src.etl.social_fetcher", "Social Fetcher"),
     ]
 
     for mod_path, name in etl_modules:
@@ -283,6 +287,44 @@ def main():
             conn.close()
             return None
     if check("telegram_subscribers", check_telegram_subscribers): passed += 1
+    else: failed += 1
+
+    def check_social_posts():
+        conn = sqlite3.connect('data/data.db')
+        try:
+            exists = conn.execute(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='social_posts'"
+            ).fetchone()[0]
+            if exists:
+                count = conn.execute("SELECT COUNT(*) FROM social_posts").fetchone()[0]
+                conn.close()
+                return f"{count} posts"
+            else:
+                conn.close()
+                return "table created on first fetch (OK)"
+        except Exception:
+            conn.close()
+            return None
+    if check("social_posts", check_social_posts): passed += 1
+    else: failed += 1
+
+    def check_social_signals():
+        conn = sqlite3.connect('data/data.db')
+        try:
+            exists = conn.execute(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='social_signals'"
+            ).fetchone()[0]
+            if exists:
+                count = conn.execute("SELECT COUNT(*) FROM social_signals").fetchone()[0]
+                conn.close()
+                return f"{count} signals"
+            else:
+                conn.close()
+                return "table created on first analysis (OK)"
+        except Exception:
+            conn.close()
+            return None
+    if check("social_signals", check_social_signals): passed += 1
     else: failed += 1
 
     # ── 摘要 ──
