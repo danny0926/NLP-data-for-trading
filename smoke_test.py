@@ -93,6 +93,7 @@ def main():
         ("src.social_targets", "Social Targets"),
         ("src.social_nlp", "Social NLP"),
         ("src.social_analyzer", "Social Analyzer"),
+        ("src.signal_enhancer", "Signal Enhancer v2"),
     ]
 
     for mod_path, name in modules:

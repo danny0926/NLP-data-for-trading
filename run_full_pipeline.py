@@ -219,6 +219,39 @@ class PipelineOrchestrator:
             _safe_print(f"\n  [FAIL] Ranking: {e}")
             return False
 
+    def run_signal_enhancement(self) -> bool:
+        """Signal Enhancement v2 — PACS + VIX 多信號融合。"""
+        _divider("Signal Enhancement v2 (PACS + VIX)")
+        try:
+            from src.signal_enhancer import SignalEnhancer
+
+            enhancer = SignalEnhancer()
+            signals = enhancer.enhance_signals()
+            if signals:
+                result = enhancer.save_enhanced(signals)
+                vix_zone = signals[0].get("vix_zone", "unknown")
+                avg_pacs = sum(s["pacs_score"] for s in signals) / len(signals)
+                self.results['enhancement'] = {
+                    'enhanced': len(signals),
+                    'avg_pacs': round(avg_pacs, 4),
+                    'vix_zone': vix_zone,
+                    'status': 'success'
+                }
+                _safe_print(
+                    f"\n  [OK] Enhancement: {len(signals)} signals, "
+                    f"PACS avg={avg_pacs:.4f}, VIX={vix_zone}"
+                )
+            else:
+                self.results['enhancement'] = {'enhanced': 0, 'status': 'success'}
+                _safe_print("\n  [OK] Enhancement: no signals to enhance")
+            return True
+
+        except Exception as e:
+            self.errors.append(f"Enhancement: {str(e)}")
+            self.results['enhancement'] = {'status': 'error', 'error': str(e)}
+            _safe_print(f"\n  [FAIL] Enhancement: {e}")
+            return False
+
     def run_report_generation(self) -> bool:
         """階段 6: Report Generation — 報告生成。"""
         _divider("Stage 6/6: Report Generation")
@@ -289,6 +322,8 @@ class PipelineOrchestrator:
                 detail = f"{result.get('events', 0)} events"
             elif stage == 'ranking':
                 detail = f"{result.get('ranked', 0)} politicians"
+            elif stage == 'enhancement':
+                detail = f"{result.get('enhanced', 0)} signals, PACS={result.get('avg_pacs', 0):.4f}, VIX={result.get('vix_zone', '?')}"
 
             error_info = f" -- {result.get('error', '')}" if status == 'error' else ''
             _safe_print(f"  {icon} {stage}: {detail}{error_info}")
@@ -366,6 +401,7 @@ class PipelineOrchestrator:
         self.run_signal_scoring()
         self.run_convergence_detection()
         self.run_politician_ranking()
+        self.run_signal_enhancement()
         self.run_report_generation()
 
         # 告警檢查
