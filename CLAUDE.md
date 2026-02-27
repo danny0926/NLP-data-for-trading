@@ -48,6 +48,8 @@ python -m src.signal_scorer                    # SQS 信號評分
 python -m src.convergence_detector             # 多議員收斂偵測
 python -m src.politician_ranking               # 議員 PIS 排名
 python -m src.alpha_signal_generator           # Alpha 信號生成
+python -m src.signal_enhancer                  # Signal v2: PACS + VIX 增強
+python -m src.signal_enhancer --buy-only       # Buy-Only 模式
 python -m src.portfolio_optimizer              # 投組最佳化
 python -m src.daily_report                     # 每日報告
 python -m src.daily_report --days 7            # 過去 7 天總結
@@ -163,6 +165,7 @@ src/politician_ranking.py              ← PIS 議員排名 (Activity/Conviction
 src/alpha_signal_generator.py          ← Alpha 信號生成 (基於回測實證 + SQS + 收斂)
 src/alpha_backtest.py                  ← Event Study 回測引擎 (CAR_5d/20d/60d vs SPY)
 src/fama_french.py                     ← Fama-French 三因子模型 (FF3 factor-adjusted CAR)
+src/signal_enhancer.py                 ← Signal Enhancer v2 (PACS + VIX 體制 + 多信號融合)
 src/signal_tracker.py                  ← 信號績效追蹤 (hit rate, actual alpha, MAE/MFE)
 src/name_mapping.py                    ← 跨系統議員姓名標準化 (ETL ↔ Discovery 名稱映射)
 src/ticker_enricher.py                 ← Ticker 補全 (靜態映射 → 模式偵測 → yfinance 搜尋)
@@ -243,6 +246,16 @@ alpha_signals (id, trade_id, ticker, asset_name, politician_name, chamber,
                has_convergence, politician_grade, filing_lag_days, sqs_score, sqs_grade,
                reasoning, created_at)
 
+enhanced_signals (trade_id PK, ticker, politician_name, chamber, transaction_type,
+                  direction, original_strength, original_confidence,
+                  pacs_score, confidence_v2, enhanced_strength,
+                  vix_zone, vix_multiplier,
+                  pacs_signal_component, pacs_lag_component,
+                  pacs_options_component, pacs_convergence_component,
+                  options_sentiment, options_signal_type,
+                  social_alignment, social_bonus,
+                  has_convergence, politician_grade, filing_lag_days, sqs_score, updated_at)
+
 -- Portfolio & Performance
 portfolio_positions (id, ticker, sector, weight, conviction_score, expected_alpha,
                      volatility_30d, sharpe_estimate, reasoning, created_at)
@@ -309,6 +322,15 @@ institutional_holdings, ocr_queue
 - **Alpha 信號**: 基於回測實證 (Buy +0.77% CAR_5d, Sale 反向 alpha)。乘數調整: chamber、amount($15K-$50K 最強)、filing_lag(<15d)、politician_grade。方向: Buy→LONG, Sale→LONG(反向 alpha)。
 - **Name mapping**: `name_mapping.py` 解決 ETL 格式 ("David H McCormick") vs Discovery 格式 ("Dave McCormick") 的名稱不匹配。使用 canonical name + alias 映射。
 - **Ticker enrichment**: `ticker_enricher.py` 四層策略 — 靜態映射 → 模式偵測 → yfinance 搜尋 → 不可解析標記。
+
+### Signal Enhancer v2 (PACS + VIX)
+
+- **PACS 公式**: Political Alpha Composite Score = 50% signal_strength + 25% filing_lag_inverse + 15% options_sentiment + 10% convergence (RB-006 實證)。Q1-Q4 alpha 差距 6.5%。
+- **VIX 體制偵測**: 即時 yfinance ^VIX。Goldilocks Zone (14-16) 1.3x，ultra_low (<14) 0.6x，moderate (16-20) 0.8x，high (20-30) 0.5x，extreme (>30) 0.3x。
+- **SQS 權重修正**: v1 SQS 占 40% 信心度，但 RB-006 發現 conviction r=-0.50。v2 降 SQS 至 10%，提升 actionability 至 30%。
+- **Buy-Only 模式**: `--buy-only` flag。RB-004: Buy +1.10% CAR_20d (59.2% WR) vs Sale -3.21%。
+- **社群情緒加成**: CONSISTENT +0.05 bonus，CONTRADICTORY -0.03 penalty。
+- **非破壞性**: 結果存入獨立 `enhanced_signals` 表，可 A/B 比較原始 vs 增強排名。
 
 ### Backtesting
 
