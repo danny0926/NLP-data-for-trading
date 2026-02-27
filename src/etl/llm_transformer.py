@@ -8,7 +8,7 @@ import json
 import logging
 import os
 import re
-from datetime import date
+from datetime import date, timedelta
 from typing import Optional
 
 from google import genai
@@ -274,6 +274,7 @@ class LLMTransformer:
 
             try:
                 result = ExtractionResult(**json_data)
+                result = self._validate_dates(result)
                 if len(result.trades) < result.raw_record_count:
                     logger.warning(
                         f"遺漏紀錄: 萃取 {len(result.trades)}/{result.raw_record_count}"
@@ -306,6 +307,7 @@ class LLMTransformer:
 
             try:
                 result = ExtractionResult(**json_data)
+                result = self._validate_dates(result)
                 if len(result.trades) < result.raw_record_count:
                     logger.warning(
                         f"遺漏紀錄: 萃取 {len(result.trades)}/{result.raw_record_count}"
@@ -418,6 +420,53 @@ class LLMTransformer:
         text_table = "\n".join(lines)
         logger.info(f"[CapitolTrades] HTML→文字表格: {len(html)} → {len(text_table)} chars")
         return text_table
+
+    def _validate_dates(self, result: ExtractionResult) -> ExtractionResult:
+        """
+        日期合理性校驗：若 transaction_date 超過今天或超過 filing_date + 60 天，
+        嘗試將年份減 1 修正。修正後更新 trades 列表。
+        """
+        today = date.today()
+        updated_trades = []
+
+        for trade in result.trades:
+            td = trade.transaction_date
+            fd = trade.filing_date
+            corrected = False
+
+            # 檢查 transaction_date 是否在未來
+            if td > today:
+                fixed_td = td.replace(year=td.year - 1)
+                logger.warning(
+                    f"未來交易日期偵測: {trade.politician_name} {trade.ticker} "
+                    f"{td} → 修正為 {fixed_td}"
+                )
+                trade = trade.model_copy(update={"transaction_date": fixed_td})
+                td = fixed_td
+                corrected = True
+
+            # 檢查 transaction_date 是否超過 filing_date + 60 天
+            if fd and td > fd + timedelta(days=60):
+                fixed_td = td.replace(year=td.year - 1)
+                if not corrected:
+                    logger.warning(
+                        f"交易日期晚於申報日+60天: {trade.politician_name} {trade.ticker} "
+                        f"交易={td} 申報={fd} → 修正為 {fixed_td}"
+                    )
+                    trade = trade.model_copy(update={"transaction_date": fixed_td})
+
+            # 檢查 filing_date 是否在未來
+            if fd > today:
+                fixed_fd = fd.replace(year=fd.year - 1)
+                logger.warning(
+                    f"未來申報日期偵測: {trade.politician_name} {trade.ticker} "
+                    f"{fd} → 修正為 {fixed_fd}"
+                )
+                trade = trade.model_copy(update={"filing_date": fixed_fd})
+
+            updated_trades.append(trade)
+
+        return result.model_copy(update={"trades": updated_trades})
 
     @staticmethod
     def _append_error_feedback(original_prompt: str, error: str) -> str:

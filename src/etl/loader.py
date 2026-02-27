@@ -14,6 +14,13 @@ from src.config import DB_PATH, CONFIDENCE_THRESHOLD
 
 logger = logging.getLogger("ETL.Loader")
 
+# Owner 縮寫 → 標準名稱映射
+OWNER_MAPPING = {
+    "SP": "Spouse",
+    "JT": "Joint",
+    "DC": "Dependent Child",
+}
+
 
 class Loader:
     def __init__(self, db_path: str = None):
@@ -53,6 +60,10 @@ class Loader:
         has_anomaly = False
 
         for trade in result.trades:
+            # Owner 值標準化
+            if trade.owner and trade.owner in OWNER_MAPPING:
+                trade = trade.model_copy(update={"owner": OWNER_MAPPING[trade.owner]})
+
             # 業務邏輯檢查（異常標記但不阻擋）
             anomalies = self._check_anomalies(trade)
             if anomalies:
