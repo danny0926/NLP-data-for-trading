@@ -84,6 +84,8 @@ def main():
         ("src.alpha_backtest", "Alpha Backtest"),
         ("src.signal_tracker", "Signal Tracker"),
         ("src.discovery_engine_v4", "Discovery Engine"),
+        ("src.fama_french", "Fama-French Model"),
+        ("src.ticker_enricher", "Ticker Enricher"),
     ]
 
     for mod_path, name in modules:
@@ -106,6 +108,7 @@ def main():
         ("src.etl.capitoltrades_fetcher", "Capitol Trades Fetcher"),
         ("src.etl.llm_transformer", "LLM Transformer"),
         ("src.etl.loader", "Loader"),
+        ("src.etl.sec_form4_fetcher", "SEC Form 4 Fetcher"),
     ]
 
     for mod_path, name in etl_modules:
@@ -169,6 +172,30 @@ def main():
             return f"{len(data.get('sector_map', {}))} tickers"
         return None
     if check("ticker_sectors.json", check_sectors): passed += 1
+    else: failed += 1
+
+    def check_fama_french():
+        conn = sqlite3.connect('data/data.db')
+        try:
+            count = conn.execute("SELECT COUNT(*) FROM fama_french_results").fetchone()[0]
+            conn.close()
+            return f"{count} rows" if count > 0 else None
+        except Exception:
+            conn.close()
+            return None
+    if check("fama_french_results", check_fama_french): passed += 1
+    else: failed += 1
+
+    def check_sec_form4():
+        conn = sqlite3.connect('data/data.db')
+        try:
+            count = conn.execute("SELECT COUNT(*) FROM sec_form4_trades").fetchone()[0]
+            conn.close()
+            return f"{count} rows" if count > 0 else None
+        except Exception:
+            conn.close()
+            return None
+    if check("sec_form4_trades", check_sec_form4): passed += 1
     else: failed += 1
 
     # ── 摘要 ──
