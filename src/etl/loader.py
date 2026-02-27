@@ -10,15 +10,16 @@ import uuid
 from datetime import date, datetime
 
 from .schemas import ExtractionResult
+from src.config import DB_PATH, CONFIDENCE_THRESHOLD
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("ETL.Loader")
 
-CONFIDENCE_THRESHOLD = 0.7
-
 
 class Loader:
-    def __init__(self, db_path: str = "data/data.db"):
+    def __init__(self, db_path: str = None):
+        if db_path is None:
+            db_path = DB_PATH
         self.db_path = db_path
 
     def load(self, result: ExtractionResult, source_url: str = "") -> dict:

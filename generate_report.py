@@ -12,6 +12,8 @@ from collections import Counter
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from src.config import DB_PATH, GEMINI_MODEL
+
 
 def query_trades(db_path: str, start_date: str, end_date: str) -> tuple:
     """查詢指定日期範圍的交易紀錄。"""
@@ -163,8 +165,8 @@ def main():
     parser = argparse.ArgumentParser(description="國會交易每日報告生成器")
     parser.add_argument("--date", help="報告結束日期 (YYYY-MM-DD)，預設今天")
     parser.add_argument("--days", type=int, default=1, help="回溯天數 (預設 1)")
-    parser.add_argument("--db", default="data/data.db", help="資料庫路徑")
-    parser.add_argument("--model", default="gemini-2.5-flash", help="Gemini 模型")
+    parser.add_argument("--db", default=DB_PATH, help="資料庫路徑")
+    parser.add_argument("--model", default=GEMINI_MODEL, help="Gemini 模型")
     args = parser.parse_args()
 
     # 日期範圍

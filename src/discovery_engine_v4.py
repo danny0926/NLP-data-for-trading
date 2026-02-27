@@ -6,17 +6,21 @@ import sqlite3
 import hashlib
 from datetime import datetime
 from google import genai
-from dotenv import load_dotenv
 
-load_dotenv()
+from src.config import DB_PATH, GEMINI_MODEL, GOOGLE_API_KEY
+
 
 class DiscoveryEngineV4:
     """
     Discovery Engine V4: Integrated AI Agent for Congress, 13F, Social, and News Intel.
     As specified in CONGRESS_AI_SOLUTION.md.
     """
-    def __init__(self, db_path="data/data.db", model_name="gemini-2.5-flash"):
-        self.api_key = os.getenv("GOOGLE_API_KEY")
+    def __init__(self, db_path=None, model_name=None):
+        if db_path is None:
+            db_path = DB_PATH
+        if model_name is None:
+            model_name = GEMINI_MODEL
+        self.api_key = GOOGLE_API_KEY
         self.client = genai.Client(api_key=self.api_key)
         self.db_path = db_path
         self.model_name = model_name
