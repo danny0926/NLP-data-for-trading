@@ -54,6 +54,12 @@ python -m src.daily_report --days 7            # 過去 7 天總結
 python -m src.smart_alerts --dry-run           # 智慧告警（預覽模式）
 python -m src.signal_tracker                   # 信號績效追蹤
 
+# ── 社群媒體情報 ──
+python run_social_fetch.py                     # 抓取社群貼文 (Apify + PRAW)
+python run_social_analysis.py                  # 完整流程: 抓取→NLP→交叉比對→信號
+python run_social_analysis.py --skip-fetch     # 只分析 DB 中現有貼文
+python -m src.social_analyzer --dry-run        # 分析預覽（不寫入 DB）
+
 # ── Dashboard ──
 streamlit run streamlit_app.py                 # 互動式 Streamlit 儀表板
 python generate_dashboard.py                   # 生成靜態 HTML Dashboard
@@ -69,7 +75,7 @@ There is no test suite, no linter configuration, and no build step.
 
 ## Architecture
 
-系統由七個子系統組成：**ETL Pipeline**（資料抓取）、**AI Discovery**（訊號生成）、**Signal Analysis**（信號分析與回測）、**Portfolio Optimization**（投組配置）、**Report & Alerts**（報告與告警）、**Dashboard**（互動式視覺化）、**Scheduling**（自動排程）。統一入口: `run_full_pipeline.py`、`run_daily.py`。
+系統由八個子系統組成：**ETL Pipeline**（資料抓取）、**Social Media Intelligence**（社群追蹤）、**AI Discovery**（訊號生成）、**Signal Analysis**（信號分析與回測）、**Portfolio Optimization**（投組配置）、**Report & Alerts**（報告與告警）、**Dashboard**（互動式視覺化）、**Scheduling**（自動排程）。統一入口: `run_full_pipeline.py`、`run_daily.py`。
 
 ### ETL Pipeline (src/etl/) — LLM-Driven 融合架構
 
@@ -99,6 +105,38 @@ src/etl/capitoltrades_fetcher.py       ← Capitol Trades fallback (1-based 分�
 src/etl/llm_transformer.py             ← LLM Transform 核心 (3 種 prompt + retry ×3)
 src/etl/loader.py                      ← Load 層 (confidence 門檻 + 去重 + DB 寫入)
 src/etl/sec_form4_fetcher.py           ← SEC EDGAR Form 4 insider trading (XML 解析)
+src/etl/social_fetcher.py              ← 社群媒體抓取 (Apify Twitter/Truth Social + PRAW Reddit)
+```
+
+### Social Media Intelligence (社群媒體追蹤)
+
+```
+run_social_analysis.py                 ← 統一入口: 抓取→NLP→交叉比對→信號
+run_social_fetch.py                    ← 單獨抓取入口
+        │
+        ▼
+src/etl/social_fetcher.py              ← SocialFetcher (Apify + PRAW)
+    ├── _fetch_twitter()               ← Apify twitter-scraper actor
+    ├── _fetch_truth_social()          ← Apify truth-social-scraper actor
+    └── _fetch_reddit()                ← PRAW (wallstreetbets/stocks/investing)
+        ↓
+  寫入 social_posts 表 (SHA256 去重)
+        │
+        ▼
+src/social_nlp.py                      ← 雙層 NLP: FinTwitBERT (本地) → Gemini Flash (深度)
+    ├── fast_classify()                ← Stage 1: FinTwitBERT (~100ms, 75% 直接處理)
+    ├── extract_cashtags()             ← $TICKER regex 提取
+    ├── has_sarcasm_signal()           ← 諷刺偵測 (4 pattern)
+    └── needs_deep_analysis()          ← 路由: confidence < 0.75 → Gemini
+        ↓
+src/social_analyzer.py                 ← SocialAnalyzer: 交叉比對 + 信號生成
+    ├── _cross_reference_speech_trade()← 議員言行比對 (CONSISTENT/CONTRADICTORY/NO_TRADE)
+    ├── _generate_alpha_signals()      ← 高影響力信號 (impact >= 7) → alpha_signals
+    └── generate_report()              ← Markdown 摘要 (供 daily_report 整合)
+        ↓
+  寫入 social_signals + alpha_signals 表
+
+src/social_targets.py                  ← 追蹤名單: 8 議員 + 6 KOL
 ```
 
 ### AI Discovery (原有系統)
@@ -219,6 +257,18 @@ fama_french_results (id, politician_name, ticker, transaction_type, direction,
                      ff3_car_5d/20d/60d, mkt_car_5d/20d/60d, alpha_est,
                      beta_mkt, beta_smb, beta_hml, r_squared, n_est, created_at)
 
+-- Social Media Intelligence 輸出
+social_posts (id, platform, author_name, author_handle, author_type,
+              post_id, post_text, post_url, post_time,
+              likes, retweets, replies, media_type,
+              data_hash UNIQUE, fetched_at, created_at)
+
+social_signals (id, post_id FK→social_posts, author_name, author_type, platform,
+                sentiment, sentiment_score, signal_type, sarcasm_detected,
+                tickers_explicit, tickers_implied, sector, analysis_model,
+                impact_score, reasoning, congress_trade_match,
+                speech_trade_alignment, created_at)
+
 -- AI Discovery 輸出 (原有)
 ai_intelligence_signals, senate_trades, house_trades,
 institutional_holdings, ocr_queue
@@ -227,6 +277,7 @@ institutional_holdings, ocr_queue
 ## Key Configuration
 
 - **`.env`** — must contain `GOOGLE_API_KEY` for Gemini API access
+- **`.env`** — optional: `APIFY_API_TOKEN` (social media scraping), `REDDIT_CLIENT_ID`/`REDDIT_CLIENT_SECRET`/`REDDIT_USER_AGENT` (Reddit API)
 - **Database path** — `data/data.db` (hardcoded in `database.py`, `discovery_engine_v4.py`, `loader.py`)
 - **Model** — `gemini-2.5-flash` (configurable via `--model` flag or constructor)
 
@@ -265,6 +316,17 @@ institutional_holdings, ocr_queue
 - **Fama-French 3-Factor**: 估計窗口 [-250,-10]，OLS 回歸 R-Rf = a + b1(Mkt-RF) + b2(SMB) + b3(HML)。因子數據自動從 Kenneth French Data Library 下載並快取於 `data/ff_factors_daily.csv`。
 - **Signal Tracker**: 追蹤已生成信號的實際表現，計算 hit rate、actual alpha、MAE/MFE，寫入 `signal_performance` 表。
 
+### Social Media Intelligence
+
+- **雙軌信號**: 軌道 A — 議員社群發言 vs `congress_trades` 交叉比對（言行一致/矛盾）。軌道 B — KOL (Trump/Musk/Cramer 等) 發言→股價影響偵測。
+- **Apify 抓取**: Twitter/X 用 `apify/twitter-scraper`，Truth Social 用 `trudax/truth-social-scraper`，Reddit 用 PRAW。成本 ~$5-49/mo（比 X API $200+/mo 便宜 10x）。
+- **雙層 NLP**: Stage 1 FinTwitBERT (`StephanAkkerman/FinTwitBERT-sentiment`, 110M params, CPU, ~100ms) 處理 75%。Stage 2 Gemini Flash 處理 confidence < 0.75 或偵測到諷刺的貼文。
+- **專用 Prompt**: 兩套 — `SOCIAL_POLITICIAN_PROMPT`（委員會感知）和 `SOCIAL_KOL_PROMPT`（meme/emoji 感知）。Jim Cramer 自動反轉 sentiment（Inverse Cramer effect）。
+- **交叉比對**: CONSISTENT（說多+買） → convergence_bonus +0.3，CONTRADICTORY（說多+賣）→ 異常告警，NO_TRADE → 正常權重。
+- **每日批次**: 台灣時間 ~19:00 執行，美東 6AM 完成，開盤前 3.5 小時出結果。
+- **Dedup**: SHA256(platform + author_handle + post_text[:200] + post_time)。
+- **追蹤名單**: `src/social_targets.py` — 8 議員 + 6 KOL + POLITICIAN_SECTOR_MAP（14 政策→ticker 映射）。
+
 ### SEC Form 4
 
 - **EDGAR API**: 使用 EFTS search-index 搜尋 Form 4 filings，解析 XML 取得交易詳情。必須含 User-Agent header（含信箱），速率限制 10 req/s。
@@ -298,6 +360,10 @@ institutional_holdings, ocr_queue
 | SEC Form 4 insider trading | SEC EDGAR EFTS API | `src/etl/sec_form4_fetcher.py` (XML) | ✅ Working |
 | Fama-French factors | Kenneth French Data Library | `src/fama_french.py` (daily CSV) | ✅ Working |
 | AI analysis | Google Gemini API | `src/discovery_engine_v4.py` | ✅ Working |
+| Twitter/X social posts | Apify Twitter Scraper | `src/etl/social_fetcher.py` | ✅ Ready (needs APIFY_API_TOKEN) |
+| Truth Social posts | Apify Truth Social Scraper | `src/etl/social_fetcher.py` | ✅ Ready (needs APIFY_API_TOKEN) |
+| Reddit posts | Reddit API (PRAW) | `src/etl/social_fetcher.py` | ✅ Ready (needs REDDIT_* creds) |
+| Financial sentiment | FinTwitBERT (local) | `src/social_nlp.py` | ✅ Working |
 
 ## WSL2 Environment
 

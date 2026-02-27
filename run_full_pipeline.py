@@ -300,7 +300,45 @@ class PipelineOrchestrator:
 
         _safe_print(f"{'='*60}\n")
 
+    def run_social_intelligence(self) -> bool:
+        """社群媒體情報: 抓取 + NLP 分析 + 交叉比對。"""
+        _divider("Social Media Intelligence")
+        try:
+            from src.database import init_db
+            from src.etl.social_fetcher import SocialFetcher
+            from src.social_analyzer import SocialAnalyzer
+
+            init_db()
+            fetcher = SocialFetcher()
+            posts = fetcher.fetch_all_targets(hours=24)
+            _safe_print(f"  Fetched: {len(posts)} posts")
+
+            analyzer = SocialAnalyzer()
+            stats = analyzer.analyze_batch(hours=24)
+
+            self.results['social'] = {
+                'fetched': len(posts),
+                'signals': stats.get('signals', 0),
+                'alpha': stats.get('alpha_signals', 0),
+                'consistent': stats.get('consistent', 0),
+                'contradictory': stats.get('contradictory', 0),
+                'status': 'success'
+            }
+            _safe_print(
+                f"\n  [OK] Social: {len(posts)} posts, "
+                f"{stats.get('signals', 0)} signals, "
+                f"{stats.get('contradictory', 0)} contradictions"
+            )
+            return True
+
+        except Exception as e:
+            self.errors.append(f"Social: {str(e)}")
+            self.results['social'] = {'status': 'error', 'error': str(e)}
+            _safe_print(f"\n  [FAIL] Social: {e}")
+            return False
+
     def run(self, skip_etl: bool = False, skip_discovery: bool = False,
+            skip_social: bool = False,
             analysis_only: bool = False, report_only: bool = False) -> None:
         """執行完整 pipeline。"""
         print(f"\n{'#'*60}")
@@ -319,6 +357,10 @@ class PipelineOrchestrator:
 
         if not analysis_only and not skip_discovery:
             self.run_discovery()
+
+        # 社群媒體情報
+        if not analysis_only and not skip_social:
+            self.run_social_intelligence()
 
         # 分析階段（總是執行）
         self.run_signal_scoring()
@@ -360,6 +402,7 @@ def main():
     parser.add_argument("--house-only", action="store_true", help="只跑 House ETL")
     parser.add_argument("--skip-etl", action="store_true", help="跳過 ETL 階段")
     parser.add_argument("--skip-discovery", action="store_true", help="跳過 AI Discovery 階段")
+    parser.add_argument("--skip-social", action="store_true", help="跳過社群媒體情報")
     parser.add_argument("--analysis-only", action="store_true", help="只跑分析階段")
     parser.add_argument("--report-only", action="store_true", help="只生成報告")
     args = parser.parse_args()
@@ -375,6 +418,7 @@ def main():
     orchestrator.run(
         skip_etl=args.skip_etl,
         skip_discovery=args.skip_discovery,
+        skip_social=args.skip_social,
         analysis_only=args.analysis_only,
         report_only=args.report_only
     )
