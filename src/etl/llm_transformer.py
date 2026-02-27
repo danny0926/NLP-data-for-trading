@@ -118,14 +118,34 @@ CAPITOLTRADES_HTML_PROMPT = """你是金融資料萃取專家。以下是 Capito
 - chamber: "Senate" 或 "House" (從 Politician 欄位中的 Senate/House 判斷)
 - transaction_date: 交易日期 (Traded 欄位，轉為 YYYY-MM-DD)
 - filing_date: 申報日期 (Published 欄位，轉為 YYYY-MM-DD)
-- ticker: 股票代碼 (從 Traded Issuer 萃取，格式如 $BTC 或 HWM:US → 取 HWM，無明確代碼則為 null)
+- ticker: 股票代碼 (**必須盡力萃取**，規則見下方)
 - asset_name: 資產名稱 (Traded Issuer 的公司/資產名，不含 ticker 部分)
-- asset_type: "Stock" (預設，如果是 Bond/Option/Fund 請標註)
+- asset_type: 見下方資產分類規則
 - transaction_type: "Buy" 或 "Sale" (從 Type 欄位判斷: buy→Buy, sell→Sale)
 - amount_range: 金額區間 (Size 欄位，轉為 "$X - $Y" 格式，例如 "1K–15K" → "$1,001 - $15,000")
 - owner: 持有人 (Owner 欄位: Self/Spouse/Joint/Undisclosed，無則為 null)
 - comment: null
 - source_url: "{source_url}"
+
+**Ticker 萃取規則（極重要，務必遵守）：**
+1. "HWM:US" 格式 → 取冒號前 "HWM"
+2. "$BTC" 格式 → 去掉 $ 取 "BTC"
+3. "AAPL" 等直接出現的代碼 → 直接使用
+4. 如果 Traded Issuer 包含知名公司名，推斷其 ticker：
+   - "Apple Inc" → "AAPL", "Microsoft" → "MSFT", "Amazon" → "AMZN"
+   - "Nvidia" → "NVDA", "Tesla" → "TSLA", "Meta Platforms" → "META"
+   - "Alphabet" → "GOOGL", "Broadcom" → "AVGO", "Berkshire" → "BRK.B"
+5. 只有在資產確實是 **私募基金(LLC/LP)、municipal bond、treasury** 等非上市標的時，才設為 null
+6. 絕不可因為「不確定」就設為 null —— 如果是上市公司就必須給 ticker
+
+**資產分類規則 (asset_type)：**
+- 上市公司股票 → "Stock"
+- ETF → "ETF"
+- 含 "LLC"、"LP"、"Private Fund"、"Venture" → "Private Fund"
+- Municipal/State bond → "Municipal Bond"
+- US Treasury → "Treasury"
+- 加密貨幣 → "Cryptocurrency"
+- 其他無法分類 → "Other"
 
 金額轉換規則：
 - 1K–15K → "$1,001 - $15,000"
@@ -149,6 +169,7 @@ CAPITOLTRADES_HTML_PROMPT = """你是金融資料萃取專家。以下是 Capito
 - 只萃取表格中實際存在的資料，絕不捏造
 - 日期轉為 YYYY-MM-DD (今年是 {current_year})
 - confidence 反映你對萃取品質的信心 (0.0-1.0)
+- **ticker 必須盡力萃取，只有私募/債券等非上市標的才可設為 null**
 
 HTML 內容：
 {html_content}
