@@ -3,7 +3,7 @@ import hashlib
 from datetime import datetime
 import os
 
-DB_PATH = os.path.join("data", "data.db")
+from src.config import DB_PATH
 
 def init_db():
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)

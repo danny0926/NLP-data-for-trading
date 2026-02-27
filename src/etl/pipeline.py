@@ -13,13 +13,18 @@ from .house_fetcher import HouseFetcher
 from .capitoltrades_fetcher import CapitolTradesFetcher
 from .llm_transformer import LLMTransformer, TransformError
 from .loader import Loader
+from src.config import DB_PATH, GEMINI_MODEL
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("ETL.Pipeline")
 
 
 class CongressETLPipeline:
-    def __init__(self, db_path: str = "data/data.db", model_name: str = "gemini-2.5-flash"):
+    def __init__(self, db_path: str = None, model_name: str = None):
+        if db_path is None:
+            db_path = DB_PATH
+        if model_name is None:
+            model_name = GEMINI_MODEL
         self.db_path = db_path
         self.transformer = LLMTransformer(model_name=model_name)
         self.loader = Loader(db_path=db_path)

@@ -21,6 +21,7 @@ load_dotenv()
 # 確保從專案根目錄執行
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+from src.config import DB_PATH, GEMINI_MODEL
 from src.database import init_db
 from src.etl.pipeline import CongressETLPipeline
 
@@ -32,7 +33,7 @@ def main():
     parser.add_argument("--senate-only", action="store_true", help="只執行 Senate 路徑")
     parser.add_argument("--house-only", action="store_true", help="只執行 House 路徑")
     parser.add_argument("--max-house", type=int, default=20, help="House PDF 最大下載數 (預設 20)")
-    parser.add_argument("--model", type=str, default="gemini-2.5-flash", help="Gemini model name")
+    parser.add_argument("--model", type=str, default=GEMINI_MODEL, help="Gemini model name")
     args = parser.parse_args()
 
     # 決定執行哪些路徑
@@ -43,7 +44,7 @@ def main():
     init_db()
 
     # 執行 pipeline
-    pipeline = CongressETLPipeline(db_path="data/data.db", model_name=args.model)
+    pipeline = CongressETLPipeline(db_path=DB_PATH, model_name=args.model)
     stats = pipeline.run(
         days=args.days,
         filing_year=args.year,
