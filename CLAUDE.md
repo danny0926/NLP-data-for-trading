@@ -49,6 +49,8 @@ python -m src.convergence_detector             # 多議員收斂偵測
 python -m src.politician_ranking               # 議員 PIS 排名
 python -m src.alpha_signal_generator           # Alpha 信號生成
 python -m src.signal_enhancer                  # Signal v2: PACS + VIX 增強
+python -m src.sector_rotation                  # 板塊輪動分析 (RB-007)
+python -m src.sector_rotation --days 90 --top 5  # Top 5 sectors, 90 天
 python -m src.signal_enhancer --buy-only       # Buy-Only 模式
 python -m src.portfolio_optimizer              # 投組最佳化
 python -m src.daily_report                     # 每日報告
@@ -166,6 +168,7 @@ src/alpha_signal_generator.py          ← Alpha 信號生成 (基於回測實�
 src/alpha_backtest.py                  ← Event Study 回測引擎 (CAR_5d/20d/60d vs SPY)
 src/fama_french.py                     ← Fama-French 三因子模型 (FF3 factor-adjusted CAR)
 src/signal_enhancer.py                 ← Signal Enhancer v2 (PACS + VIX 體制 + 多信號融合)
+src/sector_rotation.py                 ← 板塊輪動偵測 (淨買賣聚合 + 動能分數 + ETF 映射)
 src/signal_tracker.py                  ← 信號績效追蹤 (hit rate, actual alpha, MAE/MFE)
 src/name_mapping.py                    ← 跨系統議員姓名標準化 (ETL ↔ Discovery 名稱映射)
 src/ticker_enricher.py                 ← Ticker 補全 (靜態映射 → 模式偵測 → yfinance 搜尋)
@@ -256,6 +259,11 @@ enhanced_signals (trade_id PK, ticker, politician_name, chamber, transaction_typ
                   social_alignment, social_bonus,
                   has_convergence, politician_grade, filing_lag_days, sqs_score, updated_at)
 
+sector_rotation_signals (id, sector, etf, direction, signal_strength, expected_alpha_20d,
+                         momentum_score, net_ratio, net_dollar, trades, buy_count, sale_count,
+                         politician_count, ticker_count, cross_chamber, rotation_type,
+                         rotation_bonus, top_tickers, window_days, created_at)
+
 -- Portfolio & Performance
 portfolio_positions (id, ticker, sector, weight, conviction_score, expected_alpha,
                      volatility_30d, sharpe_estimate, reasoning, created_at)
@@ -331,6 +339,15 @@ institutional_holdings, ocr_queue
 - **Buy-Only 模式**: `--buy-only` flag。RB-004: Buy +1.10% CAR_20d (59.2% WR) vs Sale -3.21%。
 - **社群情緒加成**: CONSISTENT +0.05 bonus，CONTRADICTORY -0.03 penalty。
 - **非破壞性**: 結果存入獨立 `enhanced_signals` 表，可 A/B 比較原始 vs 增強排名。
+
+### Sector Rotation (RB-007)
+
+- **板塊聚合**: `congress_trades` → `ticker_sectors.json` 映射 → 11 GICS 板塊淨買賣計算。金額加權 (AMOUNT_RANGES 中位數)。
+- **動能分數**: 5 維度加權 — net_ratio(0.35), dollar_flow_norm(0.25), politician_breadth(0.20), ticker_diversity(0.10), cross_chamber(0.10)。
+- **輪動偵測**: 比較 30d vs 90d 動能。ACCELERATING/DECELERATING/REVERSING_UP/REVERSING_DOWN/STABLE。
+- **Buy-Only 信號**: 排除 Energy (congress bad at energy timing)。門檻: trades≥3, politicians≥2, net_ratio≥55%, momentum≥0.30。
+- **ETF 映射**: 11 板塊 → SPDR ETF (XLK/XLF/XLV/XLI/XLB/XLE/XLY/XLP/XLRE/XLC/XLU)。
+- **預期 alpha**: 基於 RB-007 NET BUY +2.51% 20d return × signal_strength。
 
 ### Backtesting
 
