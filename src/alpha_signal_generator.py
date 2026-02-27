@@ -107,6 +107,18 @@ POLITICIAN_GRADE_MULTIPLIER = {
     "unknown": 1.0,  # 不在排名表中
 }
 
+# ── SEC Form 4 內部人交易匯聚 ──
+# 國會交易與 SEC 內部人交易同方向 → 加分，反方向 → 扣分
+INSIDER_CONVERGENCE_BONUS = 0.3    # 同方向加分
+INSIDER_DIVERGENCE_PENALTY = -0.2  # 反方向扣分
+INSIDER_WINDOW_DAYS = 30           # 時間窗口
+
+# Form 4 transaction_type 分類
+# P=Purchase, A/A(D)=Acquisition(grant/award), M/M(D)=Exercise
+# S=Sale, F=Payment of exercise price or tax (disposition)
+INSIDER_BUY_TYPES = {"P", "A", "A(D)", "M", "M(D)", "P(D)"}
+INSIDER_SELL_TYPES = {"S", "F", "D"}
+
 
 # ============================================================================
 # 工具函式
@@ -304,6 +316,101 @@ class AlphaSignalGenerator:
         logger.info(f"載入 {len(convergence)} 個匯聚標的")
         return convergence
 
+    def _load_insider_trades(self) -> Dict[str, List[dict]]:
+        """載入 sec_form4_trades，回傳 {ticker: [trades...]}。"""
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        insider = defaultdict(list)
+        try:
+            cursor.execute("""
+                SELECT ticker, transaction_type, transaction_date
+                FROM sec_form4_trades
+                WHERE ticker IS NOT NULL AND ticker != ''
+            """)
+            for row in cursor.fetchall():
+                insider[row["ticker"]].append(dict(row))
+        except sqlite3.OperationalError:
+            logger.warning("sec_form4_trades 表不存在，跳過內部人交易匯聚")
+
+        conn.close()
+        logger.info(f"載入 {sum(len(v) for v in insider.values())} 筆內部人交易（{len(insider)} 個標的）")
+        return dict(insider)
+
+    def _calc_insider_convergence(
+        self,
+        ticker: str,
+        congress_direction: str,
+        transaction_date_str: str,
+        insider_trades: Dict[str, List[dict]],
+    ) -> Tuple[int, float]:
+        """計算 SEC 內部人交易匯聚加分/扣分。
+
+        Args:
+            ticker: 股票代號
+            congress_direction: 國會交易方向 ("Buy" 或 "Sale")
+            transaction_date_str: 國會交易日期
+            insider_trades: {ticker: [trades...]}
+
+        Returns:
+            (overlap_count, convergence_bonus)
+        """
+        trades = insider_trades.get(ticker, [])
+        if not trades:
+            return 0, 0.0
+
+        tx_date = _parse_date(transaction_date_str)
+        if tx_date is None:
+            return 0, 0.0
+
+        # 找出時間窗口內的內部人交易
+        insider_buys = 0
+        insider_sells = 0
+        overlap_count = 0
+
+        for t in trades:
+            insider_date = _parse_date(t.get("transaction_date"))
+            if insider_date is None:
+                continue
+
+            day_diff = abs((tx_date - insider_date).days)
+            if day_diff > INSIDER_WINDOW_DAYS:
+                continue
+
+            overlap_count += 1
+            ins_type = t.get("transaction_type", "")
+            if ins_type in INSIDER_BUY_TYPES:
+                insider_buys += 1
+            elif ins_type in INSIDER_SELL_TYPES:
+                insider_sells += 1
+
+        if overlap_count == 0:
+            return 0, 0.0
+
+        # 計算加分/扣分
+        # 國會 Buy + 內部人 Buy（同方向）→ +0.3
+        # 國會 Buy + 內部人 Sell（反方向）→ -0.2
+        # 國會 Sale + 內部人 Sell（同方向，強化反向 alpha）→ +0.3
+        # 國會 Sale + 內部人 Buy（反方向）→ -0.2
+        if congress_direction == "Buy":
+            if insider_buys > insider_sells:
+                bonus = INSIDER_CONVERGENCE_BONUS
+            elif insider_sells > insider_buys:
+                bonus = INSIDER_DIVERGENCE_PENALTY
+            else:
+                bonus = 0.0  # 買賣數相等，無明確訊號
+        else:
+            # Sale (反向 alpha)
+            if insider_sells > insider_buys:
+                bonus = INSIDER_CONVERGENCE_BONUS
+            elif insider_buys > insider_sells:
+                bonus = INSIDER_DIVERGENCE_PENALTY
+            else:
+                bonus = 0.0
+
+        return overlap_count, bonus
+
     def _load_politician_grades(self) -> Dict[str, str]:
         """載入 politician_rankings，回傳 {politician_name: grade}。"""
         conn = sqlite3.connect(self.db_path)
@@ -333,6 +440,7 @@ class AlphaSignalGenerator:
         sqs_data: Optional[dict],
         convergence_data: Optional[dict],
         politician_grade: str,
+        insider_trades: Optional[Dict[str, List[dict]]] = None,
     ) -> Optional[dict]:
         """為單筆交易產生 alpha 訊號。
 
@@ -380,6 +488,17 @@ class AlphaSignalGenerator:
             convergence_bonus = CONVERGENCE_BONUS_PCT
             has_convergence = True
 
+        # ── Step 3b: SEC 內部人交易匯聚 ──
+        insider_overlap_count = 0
+        insider_convergence_bonus = 0.0
+        if insider_trades is not None:
+            insider_overlap_count, insider_convergence_bonus = self._calc_insider_convergence(
+                ticker=ticker,
+                congress_direction=direction,
+                transaction_date_str=trade.get("transaction_date", ""),
+                insider_trades=insider_trades,
+            )
+
         # ── Step 4: 計算最終預期 alpha ──
         expected_alpha_5d = base_5d * combined_multiplier + convergence_bonus
         expected_alpha_20d = base_20d * combined_multiplier + convergence_bonus
@@ -398,7 +517,8 @@ class AlphaSignalGenerator:
         )
 
         # ── Step 7: 訊號強度（排序用）──
-        signal_strength = expected_alpha_5d * confidence
+        # 加入 SEC 內部人匯聚調整
+        signal_strength = expected_alpha_5d * confidence + insider_convergence_bonus
 
         # ── Step 8: 建構推理說明 ──
         reasoning = self._build_reasoning(
@@ -415,6 +535,8 @@ class AlphaSignalGenerator:
             has_convergence=has_convergence,
             expected_alpha_5d=expected_alpha_5d,
             expected_alpha_20d=expected_alpha_20d,
+            insider_overlap_count=insider_overlap_count,
+            insider_convergence_bonus=insider_convergence_bonus,
         )
 
         return {
@@ -439,6 +561,8 @@ class AlphaSignalGenerator:
             "filing_lag_days": filing_lag,
             "sqs_score": sqs_data["sqs"] if sqs_data else None,
             "sqs_grade": sqs_data["grade"] if sqs_data else None,
+            "insider_overlap_count": insider_overlap_count,
+            "insider_convergence_bonus": round(insider_convergence_bonus, 4),
             "reasoning": reasoning,
         }
 
@@ -507,6 +631,8 @@ class AlphaSignalGenerator:
         has_convergence: bool,
         expected_alpha_5d: float,
         expected_alpha_20d: float,
+        insider_overlap_count: int = 0,
+        insider_convergence_bonus: float = 0.0,
     ) -> str:
         """建構人類可讀的訊號推理說明。"""
         parts = []
@@ -536,6 +662,19 @@ class AlphaSignalGenerator:
             parts.append(
                 f"匯聚訊號加成 +{convergence_bonus:.2f}% (多位議員同標的)"
             )
+
+        # SEC 內部人交易匯聚
+        if insider_overlap_count > 0:
+            if insider_convergence_bonus > 0:
+                parts.append(
+                    f"SEC 內部人匯聚 +{insider_convergence_bonus:+.2f} "
+                    f"(同方向, {insider_overlap_count} 筆重合)"
+                )
+            elif insider_convergence_bonus < 0:
+                parts.append(
+                    f"SEC 內部人背離 {insider_convergence_bonus:+.2f} "
+                    f"(反方向, {insider_overlap_count} 筆重合)"
+                )
 
         # 結論
         parts.append(
@@ -568,6 +707,7 @@ class AlphaSignalGenerator:
         sqs_scores = self._load_sqs_scores()
         convergence = self._load_convergence_tickers()
         politician_grades = self._load_politician_grades()
+        insider_trades = self._load_insider_trades()
 
         if not trades:
             logger.warning("無可用交易資料，無法生成訊號")
@@ -592,6 +732,7 @@ class AlphaSignalGenerator:
                 sqs_data=sqs_data,
                 convergence_data=convergence_data,
                 politician_grade=grade,
+                insider_trades=insider_trades,
             )
 
             if signal is not None:
@@ -646,11 +787,24 @@ class AlphaSignalGenerator:
                 filing_lag_days INTEGER,
                 sqs_score REAL,
                 sqs_grade TEXT,
+                insider_overlap_count INTEGER DEFAULT 0,
+                insider_convergence_bonus REAL DEFAULT 0.0,
                 reasoning TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(trade_id)
             )
         """)
+
+        # 若表已存在但缺少新欄位，動態新增
+        existing_cols = {
+            row[1] for row in cursor.execute("PRAGMA table_info(alpha_signals)").fetchall()
+        }
+        if "insider_overlap_count" not in existing_cols:
+            cursor.execute("ALTER TABLE alpha_signals ADD COLUMN insider_overlap_count INTEGER DEFAULT 0")
+            logger.info("已新增 insider_overlap_count 欄位")
+        if "insider_convergence_bonus" not in existing_cols:
+            cursor.execute("ALTER TABLE alpha_signals ADD COLUMN insider_convergence_bonus REAL DEFAULT 0.0")
+            logger.info("已新增 insider_convergence_bonus 欄位")
 
         inserted = 0
         updated = 0
@@ -665,8 +819,9 @@ class AlphaSignalGenerator:
                         amount_range, direction, expected_alpha_5d, expected_alpha_20d,
                         confidence, signal_strength, combined_multiplier,
                         convergence_bonus, has_convergence, politician_grade,
-                        filing_lag_days, sqs_score, sqs_grade, reasoning
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        filing_lag_days, sqs_score, sqs_grade,
+                        insider_overlap_count, insider_convergence_bonus, reasoning
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     signal_id,
                     signal["trade_id"],
@@ -690,6 +845,8 @@ class AlphaSignalGenerator:
                     signal["filing_lag_days"],
                     signal["sqs_score"],
                     signal["sqs_grade"],
+                    signal.get("insider_overlap_count", 0),
+                    signal.get("insider_convergence_bonus", 0.0),
                     signal["reasoning"],
                 ))
                 inserted += 1
@@ -703,6 +860,7 @@ class AlphaSignalGenerator:
                         combined_multiplier = ?, convergence_bonus = ?,
                         has_convergence = ?, politician_grade = ?,
                         filing_lag_days = ?, sqs_score = ?, sqs_grade = ?,
+                        insider_overlap_count = ?, insider_convergence_bonus = ?,
                         reasoning = ?, created_at = CURRENT_TIMESTAMP
                     WHERE trade_id = ?
                 """, (
@@ -719,6 +877,8 @@ class AlphaSignalGenerator:
                     signal["filing_lag_days"],
                     signal["sqs_score"],
                     signal["sqs_grade"],
+                    signal.get("insider_overlap_count", 0),
+                    signal.get("insider_convergence_bonus", 0.0),
                     signal["reasoning"],
                     signal["trade_id"],
                 ))
@@ -888,6 +1048,17 @@ def print_signal_summary(signals: List[dict], top_n: int = 10):
     avg_alpha = sum(s["expected_alpha_5d"] for s in signals) / total
     avg_conf = sum(s["confidence"] for s in signals) / total
 
+    # SEC 內部人匯聚統計
+    insider_boosted = sum(
+        1 for s in signals if s.get("insider_convergence_bonus", 0) > 0
+    )
+    insider_penalized = sum(
+        1 for s in signals if s.get("insider_convergence_bonus", 0) < 0
+    )
+    insider_overlap_total = sum(
+        1 for s in signals if s.get("insider_overlap_count", 0) > 0
+    )
+
     print()
     print("=" * 100)
     print("  Alpha Trading Signals — 國會交易 Alpha 訊號產生器")
@@ -895,6 +1066,7 @@ def print_signal_summary(signals: List[dict], top_n: int = 10):
     print(f"  總訊號數: {total}")
     print(f"  Buy 訊號: {buy_count}  |  Sale 反向訊號: {sale_count}")
     print(f"  匯聚訊號: {conv_count}")
+    print(f"  SEC 內部人重合: {insider_overlap_total} (加分: {insider_boosted}, 扣分: {insider_penalized})")
     print(f"  平均預期 alpha (5d): {avg_alpha:+.3f}%")
     print(f"  平均信心度: {avg_conf:.3f}")
     print()
