@@ -225,6 +225,28 @@ def _parse_capitol_date(text):
 # 1B. Senate Stock Watcher 資料（2019-2020 歷史）
 # ════════════════════════════════════════════════════════════════
 
+def _extract_ticker_from_html(raw):
+    """從 HTML 連結或純文字中提取 ticker。
+    格式: '<a href="...?s=BA" ...>BA</a>' → 'BA'
+    或純文字 'AAPL' → 'AAPL'
+    """
+    if "<a " in raw:
+        # 從 href 的 ?s= 參數提取
+        match = re.search(r'\?s=([A-Za-z0-9./-]+)', raw)
+        if match:
+            return match.group(1).strip()
+        # 從 <a> 標籤內文字提取
+        match = re.search(r'>([A-Z]{1,6})</a>', raw)
+        if match:
+            return match.group(1).strip()
+        return ""
+    # 純文字
+    raw = raw.strip().upper()
+    if re.match(r'^[A-Z]{1,6}$', raw):
+        return raw
+    return ""
+
+
 def fetch_senate_historical() -> pd.DataFrame:
     """從 GitHub 下載 Senate 歷史交易（nested JSON with disclosure dates）。"""
     logger.info("正在下載 Senate Stock Watcher 歷史數據 ...")
