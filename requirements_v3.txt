@@ -3,3 +3,5 @@ pandas==2.2.0
 python-dotenv==1.0.1
 curl_cffi==0.7.4
 yfinance==0.2.36
+statsmodels>=0.14.0
+scipy>=1.10.0
