@@ -252,6 +252,35 @@ class PipelineOrchestrator:
             _safe_print(f"\n  [FAIL] Enhancement: {e}")
             return False
 
+    def run_sector_rotation(self) -> bool:
+        """Sector Rotation — 板塊輪動分析 (RB-007)。"""
+        _divider("Sector Rotation Analysis (RB-007)")
+        try:
+            from src.sector_rotation import SectorRotationDetector
+            detector = SectorRotationDetector()
+            signals = detector.generate_signals(days=90)
+            if signals:
+                result = detector.save_signals(signals)
+                top_sector = signals[0]["sector"] if signals else "N/A"
+                self.results['sector_rotation'] = {
+                    'signals': len(signals),
+                    'top_sector': top_sector,
+                    'status': 'success'
+                }
+                _safe_print(f"  [OK] Sector rotation: {len(signals)} sector signals, "
+                            f"top={top_sector}")
+            else:
+                self.results['sector_rotation'] = {
+                    'signals': 0, 'status': 'success', 'note': 'no signals above threshold'
+                }
+                _safe_print("  [OK] Sector rotation: no sectors above threshold")
+            return True
+        except Exception as e:
+            self.errors.append(f"SectorRotation: {str(e)}")
+            self.results['sector_rotation'] = {'status': 'error', 'error': str(e)}
+            _safe_print(f"\n  [FAIL] Sector rotation: {e}")
+            return False
+
     def run_report_generation(self) -> bool:
         """階段 6: Report Generation — 報告生成。"""
         _divider("Stage 6/6: Report Generation")
@@ -324,6 +353,8 @@ class PipelineOrchestrator:
                 detail = f"{result.get('ranked', 0)} politicians"
             elif stage == 'enhancement':
                 detail = f"{result.get('enhanced', 0)} signals, PACS={result.get('avg_pacs', 0):.4f}, VIX={result.get('vix_zone', '?')}"
+            elif stage == 'sector_rotation':
+                detail = f"{result.get('signals', 0)} sectors, top={result.get('top_sector', 'N/A')}"
 
             error_info = f" -- {result.get('error', '')}" if status == 'error' else ''
             _safe_print(f"  {icon} {stage}: {detail}{error_info}")
@@ -402,6 +433,7 @@ class PipelineOrchestrator:
         self.run_convergence_detection()
         self.run_politician_ranking()
         self.run_signal_enhancement()
+        self.run_sector_rotation()
         self.run_report_generation()
 
         # 告警檢查
