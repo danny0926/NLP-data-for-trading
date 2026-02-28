@@ -286,12 +286,16 @@ class ConvergenceDetector:
         # 涉及的院別
         chambers = sorted(set(t["chamber"] for t in window_trades))
 
+        # 合約近接分數 (RB-009)
+        contract_proximity = self._get_contract_proximity(ticker, window_start)
+
         # 計算評分
         score, breakdown = self._calc_score(
             politician_count=len(politician_map),
             chambers=chambers,
             span_days=span_days,
             trades=list(politician_map.values()),
+            contract_proximity=contract_proximity,
         )
 
         return {
@@ -307,9 +311,74 @@ class ConvergenceDetector:
             "score_breakdown": breakdown,
         }
 
+    def _get_contract_proximity(self, ticker: str, trade_date) -> float:
+        """查詢 contract_cross_refs 表，計算 ticker 在 trade_date ±90 天內的合約近接分數。
+
+        Returns:
+            proximity_score (0-1):
+              - BUY 方向: +0.3
+              - 大額 ($100M+): +0.3
+              - DoD 機構: +0.1
+              - 時間接近度: +0.3 * (1 - abs(days_diff)/90)
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+
+            # 確認表存在
+            cursor.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='contract_cross_refs'"
+            )
+            if not cursor.fetchone():
+                conn.close()
+                return 0.0
+
+            trade_date_str = str(trade_date)
+            cursor.execute("""
+                SELECT award_amount, awarding_agency, signal_type, days_before_trade
+                FROM contract_cross_refs
+                WHERE ticker = ? AND ABS(days_before_trade) <= 90
+            """, (ticker,))
+            rows = cursor.fetchall()
+            conn.close()
+
+            if not rows:
+                return 0.0
+
+            # 取最高分的合約
+            best_score = 0.0
+            for row in rows:
+                score = 0.0
+                signal_type = row["signal_type"] or ""
+                if "BUY" in signal_type:
+                    score += 0.3
+                award_amount = row["award_amount"] or 0
+                if award_amount >= 100_000_000:
+                    score += 0.3
+                elif award_amount >= 10_000_000:
+                    score += 0.1
+                agency = row["awarding_agency"] or ""
+                if "Department of Defense" in agency:
+                    score += 0.1
+                days_diff = abs(row["days_before_trade"] or 90)
+                time_proximity = max(0.0, 1.0 - days_diff / 90.0)
+                score += 0.3 * time_proximity
+                best_score = max(best_score, score)
+
+            return min(best_score, 1.0)
+
+        except Exception as e:
+            logger.debug(f"合約近接查詢失敗 ({ticker}): {e}")
+            return 0.0
+
     def _calc_score(self, politician_count: int, chambers: List[str],
-                    span_days: int, trades: List[dict]) -> Tuple[float, dict]:
+                    span_days: int, trades: List[dict],
+                    contract_proximity: float = 0.0) -> Tuple[float, dict]:
         """計算匯聚事件的綜合評分。
+
+        Args:
+            contract_proximity: 合約近接分數 (0-1)，來自 _get_contract_proximity
 
         Returns:
             (total_score, breakdown_dict)
@@ -337,8 +406,11 @@ class ConvergenceDetector:
         # 5. 爆發式收斂加分: 7 天內的密集收斂 (Quant validation: +36% EA20d)
         burst_bonus = BURST_BONUS if span_days <= BURST_WINDOW_DAYS else 0.0
 
-        # 綜合評分 = 基礎分 + 跨院加分 + 時間密度 * 0.5 + 金額加權 * 0.5 + burst
-        total = base + cross_chamber + (time_density * 0.5) + (amount_weight * 0.5) + burst_bonus
+        # 6. 合約近接加分 (RB-009): 有政府合約交叉比對時的額外加分
+        score_contract = round(contract_proximity * 0.5, 3)
+
+        # 綜合評分 = 基礎分 + 跨院加分 + 時間密度 * 0.5 + 金額加權 * 0.5 + burst + contract
+        total = base + cross_chamber + (time_density * 0.5) + (amount_weight * 0.5) + burst_bonus + score_contract
 
         breakdown = {
             "base": round(base, 3),
@@ -346,6 +418,7 @@ class ConvergenceDetector:
             "time_density": round(time_density, 3),
             "amount_weight": round(amount_weight, 3),
             "burst_bonus": round(burst_bonus, 3),
+            "score_contract": score_contract,
         }
 
         return total, breakdown
@@ -378,10 +451,17 @@ class ConvergenceDetector:
                 score_cross_chamber REAL,
                 score_time_density REAL,
                 score_amount_weight REAL,
+                score_contract REAL DEFAULT 0,
                 detected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(ticker, direction, window_start, window_end)
             )
         """)
+
+        # 確保舊表有 score_contract 欄位 (向後相容)
+        try:
+            cursor.execute("ALTER TABLE convergence_signals ADD COLUMN score_contract REAL DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass  # 欄位已存在
 
         inserted = 0
         updated = 0
@@ -400,8 +480,8 @@ class ConvergenceDetector:
                         (id, ticker, direction, politician_count, politicians, chambers,
                          window_start, window_end, span_days, score,
                          score_base, score_cross_chamber, score_time_density,
-                         score_amount_weight)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                         score_amount_weight, score_contract)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     signal_id,
                     event["ticker"],
@@ -417,6 +497,7 @@ class ConvergenceDetector:
                     breakdown["cross_chamber"],
                     breakdown["time_density"],
                     breakdown["amount_weight"],
+                    breakdown.get("score_contract", 0),
                 ))
                 inserted += 1
             except sqlite3.IntegrityError:
@@ -427,6 +508,7 @@ class ConvergenceDetector:
                         span_days = ?, score = ?,
                         score_base = ?, score_cross_chamber = ?,
                         score_time_density = ?, score_amount_weight = ?,
+                        score_contract = ?,
                         detected_at = CURRENT_TIMESTAMP
                     WHERE ticker = ? AND direction = ?
                       AND window_start = ? AND window_end = ?
@@ -440,6 +522,7 @@ class ConvergenceDetector:
                     breakdown["cross_chamber"],
                     breakdown["time_density"],
                     breakdown["amount_weight"],
+                    breakdown.get("score_contract", 0),
                     event["ticker"],
                     event["direction"],
                     event["window_start"],
@@ -518,6 +601,9 @@ def print_summary(events: List[dict]):
         print(f"    跨院加分:              {bd['cross_chamber']:.3f}")
         print(f"    時間密度 (×0.5):       {bd['time_density']:.3f}")
         print(f"    金額加權 (×0.5):       {bd['amount_weight']:.3f}")
+        contract_score = bd.get("score_contract", 0)
+        if contract_score > 0:
+            print(f"    合約近接 (RB-009):     {contract_score:.3f}")
         print(f"    總分:                  {top['score']:.3f}")
 
     print(f"\n{'='*70}")
