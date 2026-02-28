@@ -442,6 +442,24 @@ class SignalEnhancer:
 
             enhanced_strength += social_bonus
 
+            # 信號衰減: filing_date + 20d 後線性衰減 (RB-004: 20d 為最佳持有期)
+            decay_factor = 1.0
+            filing_date_str = sig.get("filing_date")
+            if filing_date_str:
+                try:
+                    from datetime import datetime, date
+                    if isinstance(filing_date_str, str):
+                        f_date = datetime.strptime(filing_date_str.strip(), "%Y-%m-%d").date()
+                    else:
+                        f_date = filing_date_str
+                    days_since_filing = (date.today() - f_date).days
+                    if days_since_filing > 20:
+                        # Linear decay: 100% at day 20, 0% at day 40
+                        decay_factor = max(0.0, 1.0 - (days_since_filing - 20) / 20.0)
+                        enhanced_strength *= decay_factor
+                except (ValueError, TypeError):
+                    pass  # If date parsing fails, no decay applied
+
             # 建構增強信號
             enhanced_sig = {
                 # 原始欄位
@@ -476,6 +494,7 @@ class SignalEnhancer:
                 "options_signal_type": opts.get("signal_type") if opts else None,
                 "social_alignment": social_alignment,
                 "social_bonus": social_bonus,
+                "decay_factor": round(decay_factor, 4),
                 "has_convergence": sig.get("has_convergence", False),
                 "politician_grade": sig.get("politician_grade"),
                 "filing_lag_days": sig.get("filing_lag_days"),
