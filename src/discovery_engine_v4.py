@@ -63,25 +63,49 @@ class DiscoveryEngineV4:
             return ""
 
     def _extract_json(self, text):
-        """Enhanced JSON extraction robust to Markdown and formatting issues."""
-        if not text: return None
-        
-        # Remove Markdown code blocks
-        text = re.sub(r'```json\s*', '', text)
-        text = re.sub(r'```\s*', '', text)
-        
-        # Search for JSON object or list
-        json_match = re.search(r'(\{.*\}|\[.*\])', text, re.DOTALL)
+        """Enhanced JSON extraction with multi-layer fallback.
+
+        Layer 1: Direct parse (full text)
+        Layer 2: Strip markdown fences + regex extract
+        Layer 3: Trailing comma cleanup
+        Logs warning on fallback, error on total failure.
+        """
+        if not text:
+            return None
+
+        # Layer 1: Try direct parse (works if LLM returns clean JSON)
+        stripped = text.strip()
+        if stripped.startswith(("{", "[")):
+            try:
+                return json.loads(stripped)
+            except json.JSONDecodeError:
+                pass
+
+        # Layer 2: Remove Markdown code blocks + regex
+        cleaned = re.sub(r'```json\s*', '', text)
+        cleaned = re.sub(r'```\s*', '', cleaned)
+
+        json_match = re.search(r'(\{.*\}|\[.*\])', cleaned, re.DOTALL)
         if json_match:
             try:
                 return json.loads(json_match.group(0))
             except json.JSONDecodeError:
-                # Try to clean up common trailing comma issues or similar
+                # Layer 3: Fix trailing commas
                 try:
-                    cleaned_text = re.sub(r',\s*([\]}])', r'\1', json_match.group(0))
-                    return json.loads(cleaned_text)
-                except:
-                    return None
+                    fixed = re.sub(r',\s*([\]}])', r'\1', json_match.group(0))
+                    result = json.loads(fixed)
+                    self.logger.warning(
+                        "JSON extraction required trailing-comma fix (input length=%d)",
+                        len(text),
+                    )
+                    return result
+                except json.JSONDecodeError:
+                    pass
+
+        self.logger.error(
+            "JSON extraction failed after all fallbacks (input length=%d, preview=%s)",
+            len(text), text[:200],
+        )
         return None
 
     def _save_signal(self, source_type, source_name, signal_data):

@@ -1,9 +1,34 @@
 import sqlite3
 import hashlib
+import logging
+from contextlib import contextmanager
 from datetime import datetime
 import os
 
 from src.config import DB_PATH
+
+logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def get_connection(db_path=None):
+    """統一 DB 連線管理 — context manager with auto commit/rollback.
+
+    Usage:
+        with get_connection() as conn:
+            conn.execute("SELECT ...")
+    """
+    conn = sqlite3.connect(db_path or DB_PATH)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.row_factory = sqlite3.Row
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 def init_db():
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
