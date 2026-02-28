@@ -53,6 +53,10 @@ BUY_CAR_20D = 0.0110   # Buy 方向 20 日 CAR (59.2% WR)
 SALE_CAR_5D = 0.0       # Sale: 不給正 alpha (RB-004: -3.21% 20d, 有害)
 # 歷史值: SALE_CAR_5D = 0.0050 (contrarian hypothesis, 已被 RB-004 否定)
 
+# 量化驗證: 5K-0K 甜蜜點 alpha 比 K-5K 高 93% (Quant validation, RB-001)
+SWEET_SPOT_AMOUNT_RANGE = "$15,001 - $50,000"
+SWEET_SPOT_BONUS = 5.0  # 在 amount_score (15分) 基礎上的額外加分
+
 logger = logging.getLogger("PortfolioOptimizer")
 
 
@@ -316,6 +320,13 @@ class TickerScorer:
         avg_amount_mult = sum(amount_multipliers) / len(amount_multipliers)
         amount_score = (avg_amount_mult / 1.5) * 15.0  # 1.5 為最大倍率
 
+        # ── 5b. $15K-$50K 甜蜜點加分 (RB-001 + Quant validation: 93% higher alpha) ──
+        # 若任一筆交易落在最佳金額區間，額外給 SWEET_SPOT_BONUS 分
+        has_sweet_spot = any(
+            t.get("amount_range", "") == SWEET_SPOT_AMOUNT_RANGE for t in trades
+        )
+        sweet_spot_bonus = SWEET_SPOT_BONUS if has_sweet_spot else 0.0
+
         # ── 6. 院別加權: Senate >> House (RB-004) ──
         # RB-004: Senate 20d +1.39% (69.2% WR) vs House -1.27%
         senate_count = sum(1 for t in trades if t["chamber"] == "Senate")
@@ -341,10 +352,11 @@ class TickerScorer:
         else:
             politician_score = 0.0
 
-        # ── 綜合分數 (滿分 100) ──
+        # ── 綜合分數 (滿分 100，含 sweet spot bonus 後 cap) ──
         conviction = (breadth_score + direction_score + buy_ratio_score
                       + sqs_score + conv_score + amount_score + chamber_score
-                      + politician_score)
+                      + politician_score + sweet_spot_bonus)
+        conviction = min(conviction, 100.0)  # 加上 bonus 後不超過滿分
 
         # 預期 alpha 估算 (Buy-Only, RB-004)
         base_alpha = buy_alpha / total  # Sale 不貢獻正 alpha
@@ -369,6 +381,8 @@ class TickerScorer:
             reasons.append(f"收斂訊號(分數{convergence['score']:.2f})")
         if avg_amount_mult > 1.0:
             reasons.append("高金額交易")
+        if has_sweet_spot:
+            reasons.append("甜蜜點金額(5K-0K)")
         if senate_ratio > 0.5:
             reasons.append("Senate 為主(RB-004)")
         elif house_ratio > 0.5:
@@ -403,6 +417,7 @@ class TickerScorer:
             "_sqs": round(sqs_score, 2),
             "_convergence": round(conv_score, 2),
             "_amount": round(amount_score, 2),
+            "_sweet_spot": round(sweet_spot_bonus, 2),
             "_chamber": round(chamber_score, 2),
             "_politician": round(politician_score, 2),
         }
