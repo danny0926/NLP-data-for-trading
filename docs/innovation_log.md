@@ -24,7 +24,7 @@ Innovation explorations organized chronologically.
 ## 2026-02-28 Innovation: USASpending Government Contracts (RB-009)
 
 **Direction**: DISCOVER
-**Verdict**: GO
+**Verdict**: INTEGRATE (升級自 GO)
 **Score**: 7.9/10
 
 ### Key Findings
@@ -33,8 +33,24 @@ Innovation explorations organized chronologically.
 - Risk: DoD contracts have 90-day public disclosure delay
 - Need: Contractor→ticker 3-layer mapping (static + SEC + yfinance)
 
+### POC Results (2026-02-28)
+- **API confirmed**: POST endpoint, 1.25~2.81s/req, no rate limit issues
+- **Top contract tickers**: ORCL ($6.5B), AVAV ($1.7B), MSFT ($1.6B), AMZN ($1.2B)
+- **Cross-reference**: 5 trade-contract convergence pairs found in T±90d window
+- **Best signal**: Cisneros BUY AVAV (2025-12-15) + DoD $62.3M contract — drone manufacturer, committee-informed trading model
+- **Coverage**: 31/356 trades (8.7%) match contractors; expected 15-20% with Top 100 mapping
+- **Note**: `recipient_uei` is null in search endpoint, use `recipient_parent_name` for fuzzy match
+
+### Integration Plan (5-8 days)
+- Phase 1 (1-2d): `usaspending_fetcher.py` + `data/contractor_tickers.json` (Top 30)
+- Phase 2 (2-3d): `convergence_detector.py` contract_proximity_score + `signal_enhancer.py` contract_award_bonus
+- Phase 3 (2-3d): Historical backtest validation
+
 ### Next Steps
-- [ ] POC: usaspending_fetcher.py + Top100 contractor mapping + cross-reference
+- [ ] Complete usaspending_fetcher.py (skeleton exists at src/etl/)
+- [ ] Build contractor_tickers.json static mapping (Top 30 tickers)
+- [ ] Add contract_proximity_score to convergence_detector
+- [ ] Backtest: BUY + contract convergence vs BUY-only alpha
 
 ---
 
@@ -50,14 +66,20 @@ Innovation explorations organized chronologically.
 - 30-day convergence window: 0 matches (zero convergence trades)
 - Root cause: SEC Form 4 data volume critically insufficient
 
-### Blockers
-- Need to run `run_sec_form4.py --days 90` to expand Form 4 dataset from 52 to 500+ trades
-- Re-evaluate after data expansion
+### Detailed Findings
+- Form 4 DB has **zero P (Purchase) codes** — only S/M/A/F transactions
+- Only overlapping ticker: DASH — Cisneros BUY vs COO Adarkar SELL (contradictory, not convergent)
+- Sample n=5, far below t-test threshold (>=20)
+
+### Root Cause
+- `run_sec_form4.py` uses random/specific company fetching strategy
+- Needs to be modified to fetch Form 4 by congress_trades' 264 tickers
 
 ### Next Steps
-- [ ] Expand SEC Form 4 data (--days 90)
-- [ ] Re-run convergence analysis with expanded dataset
-- [ ] If convergence found: design proper A/B test vs random baseline
+- [ ] Modify run_sec_form4.py: fetch by congress tickers (not random companies)
+- [ ] Verify P (Purchase) transaction codes are not being filtered out
+- [ ] Fetch 12-month historical data for congress-traded tickers
+- [ ] Re-run convergence analysis with targeted dataset
 
 ---
 
