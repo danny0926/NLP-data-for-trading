@@ -1,0 +1,16 @@
+{
+  "topic": null,
+  "rb_id": null,
+  "status": "idle",
+  "current_phase": null,
+  "started_at": null,
+  "last_completed_rb": "RB-007",
+  "next_rb_number": "RB-010",
+  "phases": {
+    "scope": {"status": "pending"},
+    "design": {"status": "pending"},
+    "run": {"status": "pending"},
+    "analyze": {"status": "pending"},
+    "log": {"status": "pending"}
+  }
+}

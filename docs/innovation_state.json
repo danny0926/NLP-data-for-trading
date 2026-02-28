@@ -1,0 +1,12 @@
+{
+  "topic": null,
+  "quadrant": null,
+  "status": "idle",
+  "started_at": null,
+  "phases": {
+    "scan": {"status": "pending"},
+    "map": {"status": "pending"},
+    "poc": {"status": "pending"},
+    "verdict": {"status": "pending"}
+  }
+}
