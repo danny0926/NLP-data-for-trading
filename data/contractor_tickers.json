@@ -1,0 +1,795 @@
+{
+  "_meta": {
+    "description": "Top government contractors -> stock ticker mapping for USASpending cross-reference",
+    "version": "2.0",
+    "created": "2026-02-28",
+    "updated": "2026-02-28",
+    "source": "USASpending.gov Top 100 Contractors + PAM congress_trades DB + RB-009 expansion"
+  },
+  "tickers": {
+    "LMT": {
+      "company": "Lockheed Martin Corporation",
+      "search_terms": ["Lockheed Martin", "LOCKHEED MARTIN"],
+      "sector": "Industrials",
+      "naics": "336414",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 70
+    },
+    "RTX": {
+      "company": "RTX Corporation",
+      "search_terms": ["Raytheon", "RTX Corporation", "RAYTHEON TECHNOLOGIES"],
+      "sector": "Industrials",
+      "naics": "336414",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 60
+    },
+    "BA": {
+      "company": "The Boeing Company",
+      "search_terms": ["Boeing", "THE BOEING COMPANY"],
+      "sector": "Industrials",
+      "naics": "336411",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 55
+    },
+    "GD": {
+      "company": "General Dynamics Corporation",
+      "search_terms": ["General Dynamics", "GENERAL DYNAMICS"],
+      "sector": "Industrials",
+      "naics": "336414",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 80
+    },
+    "NOC": {
+      "company": "Northrop Grumman Corporation",
+      "search_terms": ["Northrop Grumman", "NORTHROP GRUMMAN"],
+      "sector": "Industrials",
+      "naics": "336414",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 85
+    },
+    "HII": {
+      "company": "Huntington Ingalls Industries",
+      "search_terms": ["Huntington Ingalls", "HII"],
+      "sector": "Industrials",
+      "naics": "336611",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 95
+    },
+    "LHX": {
+      "company": "L3Harris Technologies Inc",
+      "search_terms": ["L3Harris", "L3HARRIS TECHNOLOGIES", "Harris Corporation"],
+      "sector": "Industrials",
+      "naics": "334511",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 75
+    },
+    "LDOS": {
+      "company": "Leidos Holdings Inc",
+      "search_terms": ["Leidos", "LEIDOS"],
+      "sector": "Industrials",
+      "naics": "541512",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 95
+    },
+    "SAIC": {
+      "company": "Science Applications International Corporation",
+      "search_terms": ["SAIC", "Science Applications International"],
+      "sector": "Industrials",
+      "naics": "541511",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 99
+    },
+    "BAH": {
+      "company": "Booz Allen Hamilton Holding Corp",
+      "search_terms": ["Booz Allen Hamilton", "BOOZ ALLEN"],
+      "sector": "Industrials",
+      "naics": "541611",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 97
+    },
+    "AVAV": {
+      "company": "AeroVironment Inc",
+      "search_terms": ["AeroVironment", "AEROVIRONMENT"],
+      "sector": "Industrials",
+      "naics": "336411",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 90
+    },
+    "KTOS": {
+      "company": "Kratos Defense & Security Solutions",
+      "search_terms": ["Kratos Defense", "KRATOS DEFENSE"],
+      "sector": "Industrials",
+      "naics": "336414",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 70
+    },
+    "MRCY": {
+      "company": "Mercury Systems Inc",
+      "search_terms": ["Mercury Systems", "MERCURY SYSTEMS"],
+      "sector": "Industrials",
+      "naics": "334511",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 95
+    },
+    "TXT": {
+      "company": "Textron Inc",
+      "search_terms": ["Textron", "TEXTRON INC", "Bell Helicopter"],
+      "sector": "Industrials",
+      "naics": "336411",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 30
+    },
+    "HWM": {
+      "company": "Howmet Aerospace Inc",
+      "search_terms": ["Howmet Aerospace", "HOWMET AEROSPACE"],
+      "sector": "Industrials",
+      "naics": "336412",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 25
+    },
+    "CACI": {
+      "company": "CACI International Inc",
+      "search_terms": ["CACI International", "CACI"],
+      "sector": "Industrials",
+      "naics": "541512",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 90
+    },
+    "MSFT": {
+      "company": "Microsoft Corporation",
+      "search_terms": ["Microsoft", "MICROSOFT CORPORATION"],
+      "sector": "Technology",
+      "naics": "511210",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 15
+    },
+    "AMZN": {
+      "company": "Amazon.com Inc",
+      "search_terms": ["Amazon", "Amazon Web Services", "AWS ELEMENTAL"],
+      "sector": "Technology",
+      "naics": "518210",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 10
+    },
+    "ORCL": {
+      "company": "Oracle Corporation",
+      "search_terms": ["Oracle", "ORACLE CORPORATION", "ORACLE AMERICA"],
+      "sector": "Technology",
+      "naics": "511210",
+      "primary_agency": "Department of Veterans Affairs",
+      "gov_revenue_pct": 20
+    },
+    "IBM": {
+      "company": "International Business Machines",
+      "search_terms": ["IBM", "International Business Machines"],
+      "sector": "Technology",
+      "naics": "541512",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 25
+    },
+    "CSCO": {
+      "company": "Cisco Systems Inc",
+      "search_terms": ["Cisco Systems", "CISCO SYSTEMS"],
+      "sector": "Technology",
+      "naics": "334210",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 15
+    },
+    "ANET": {
+      "company": "Arista Networks Inc",
+      "search_terms": ["Arista Networks", "ARISTA NETWORKS"],
+      "sector": "Technology",
+      "naics": "334210",
+      "primary_agency": "Department of State",
+      "gov_revenue_pct": 8
+    },
+    "PANW": {
+      "company": "Palo Alto Networks Inc",
+      "search_terms": ["Palo Alto Networks", "PALO ALTO NETWORKS"],
+      "sector": "Technology",
+      "naics": "541519",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 12
+    },
+    "GOOGL": {
+      "company": "Alphabet Inc",
+      "search_terms": ["Google", "Alphabet", "GOOGLE LLC"],
+      "sector": "Technology",
+      "naics": "518210",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 5
+    },
+    "AAPL": {
+      "company": "Apple Inc",
+      "search_terms": ["Apple Inc", "APPLE INC"],
+      "sector": "Technology",
+      "naics": "334111",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 3
+    },
+    "ACN": {
+      "company": "Accenture PLC",
+      "search_terms": ["Accenture", "ACCENTURE FEDERAL"],
+      "sector": "Technology",
+      "naics": "541611",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 30
+    },
+    "CRM": {
+      "company": "Salesforce Inc",
+      "search_terms": ["Salesforce", "SALESFORCE INC", "SALESFORCE.COM"],
+      "sector": "Technology",
+      "naics": "511210",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 8
+    },
+    "PLTR": {
+      "company": "Palantir Technologies Inc",
+      "search_terms": ["Palantir", "PALANTIR TECHNOLOGIES"],
+      "sector": "Technology",
+      "naics": "511210",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 55
+    },
+    "NVDA": {
+      "company": "NVIDIA Corporation",
+      "search_terms": ["NVIDIA", "NVIDIA CORPORATION"],
+      "sector": "Technology",
+      "naics": "334413",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 5
+    },
+    "PTC": {
+      "company": "PTC Inc",
+      "search_terms": ["PTC Inc", "PTC INC", "PARAMETRIC TECHNOLOGY"],
+      "sector": "Technology",
+      "naics": "511210",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 20
+    },
+    "DELL": {
+      "company": "Dell Technologies Inc",
+      "search_terms": ["Dell Technologies", "DELL TECHNOLOGIES", "DELL INC"],
+      "sector": "Technology",
+      "naics": "334111",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 15
+    },
+    "HPE": {
+      "company": "Hewlett Packard Enterprise",
+      "search_terms": ["Hewlett Packard Enterprise", "HEWLETT PACKARD ENTERPRISE"],
+      "sector": "Technology",
+      "naics": "334111",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 18
+    },
+    "HPQ": {
+      "company": "HP Inc",
+      "search_terms": ["HP Inc", "HEWLETT-PACKARD"],
+      "sector": "Technology",
+      "naics": "334111",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 10
+    },
+    "CRWD": {
+      "company": "CrowdStrike Holdings Inc",
+      "search_terms": ["CrowdStrike", "CROWDSTRIKE"],
+      "sector": "Technology",
+      "naics": "541519",
+      "primary_agency": "Department of Homeland Security",
+      "gov_revenue_pct": 15
+    },
+    "FTNT": {
+      "company": "Fortinet Inc",
+      "search_terms": ["Fortinet", "FORTINET INC"],
+      "sector": "Technology",
+      "naics": "541519",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 12
+    },
+    "NET": {
+      "company": "Cloudflare Inc",
+      "search_terms": ["Cloudflare", "CLOUDFLARE INC"],
+      "sector": "Technology",
+      "naics": "518210",
+      "primary_agency": "Department of Homeland Security",
+      "gov_revenue_pct": 5
+    },
+    "SNOW": {
+      "company": "Snowflake Inc",
+      "search_terms": ["Snowflake", "SNOWFLAKE INC"],
+      "sector": "Technology",
+      "naics": "511210",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 8
+    },
+    "NOW": {
+      "company": "ServiceNow Inc",
+      "search_terms": ["ServiceNow", "SERVICENOW INC"],
+      "sector": "Technology",
+      "naics": "511210",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 10
+    },
+    "INTU": {
+      "company": "Intuit Inc",
+      "search_terms": ["Intuit", "INTUIT INC"],
+      "sector": "Technology",
+      "naics": "511210",
+      "primary_agency": "Internal Revenue Service",
+      "gov_revenue_pct": 3
+    },
+    "TECH": {
+      "company": "Bio-Techne Corporation",
+      "search_terms": ["Bio-Techne", "BIO-TECHNE"],
+      "sector": "Healthcare",
+      "naics": "325414",
+      "primary_agency": "National Institutes of Health",
+      "gov_revenue_pct": 10
+    },
+    "UNH": {
+      "company": "UnitedHealth Group Inc",
+      "search_terms": ["UnitedHealth", "UNITEDHEALTH GROUP", "UNITED HEALTH"],
+      "sector": "Healthcare",
+      "naics": "524114",
+      "primary_agency": "Centers for Medicare & Medicaid Services",
+      "gov_revenue_pct": 40
+    },
+    "HUM": {
+      "company": "Humana Inc",
+      "search_terms": ["Humana", "HUMANA INC"],
+      "sector": "Healthcare",
+      "naics": "524114",
+      "primary_agency": "Centers for Medicare & Medicaid Services",
+      "gov_revenue_pct": 75
+    },
+    "CI": {
+      "company": "The Cigna Group",
+      "search_terms": ["Cigna", "THE CIGNA GROUP", "CIGNA CORPORATION"],
+      "sector": "Healthcare",
+      "naics": "524114",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 15
+    },
+    "CVS": {
+      "company": "CVS Health Corporation",
+      "search_terms": ["CVS Health", "CVS PHARMACY", "CVS CAREMARK"],
+      "sector": "Healthcare",
+      "naics": "446110",
+      "primary_agency": "Department of Veterans Affairs",
+      "gov_revenue_pct": 20
+    },
+    "HCA": {
+      "company": "HCA Healthcare Inc",
+      "search_terms": ["HCA Healthcare", "HCA HEALTHCARE"],
+      "sector": "Healthcare",
+      "naics": "622110",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 15
+    },
+    "CAH": {
+      "company": "Cardinal Health Inc",
+      "search_terms": ["Cardinal Health", "CARDINAL HEALTH"],
+      "sector": "Healthcare",
+      "naics": "424210",
+      "primary_agency": "Department of Veterans Affairs",
+      "gov_revenue_pct": 25
+    },
+    "MCK": {
+      "company": "McKesson Corporation",
+      "search_terms": ["McKesson", "MCKESSON CORPORATION"],
+      "sector": "Healthcare",
+      "naics": "424210",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 20
+    },
+    "ABC": {
+      "company": "Cencora Inc",
+      "search_terms": ["Cencora", "AmerisourceBergen", "AMERISOURCEBERGEN"],
+      "sector": "Healthcare",
+      "naics": "424210",
+      "primary_agency": "Department of Veterans Affairs",
+      "gov_revenue_pct": 20
+    },
+    "JNJ": {
+      "company": "Johnson & Johnson",
+      "search_terms": ["Johnson & Johnson", "JOHNSON AND JOHNSON"],
+      "sector": "Healthcare",
+      "naics": "325412",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 5
+    },
+    "PFE": {
+      "company": "Pfizer Inc",
+      "search_terms": ["Pfizer", "PFIZER INC"],
+      "sector": "Healthcare",
+      "naics": "325412",
+      "primary_agency": "Department of Health and Human Services",
+      "gov_revenue_pct": 10
+    },
+    "MRK": {
+      "company": "Merck & Co Inc",
+      "search_terms": ["Merck", "MERCK AND CO", "MERCK SHARP"],
+      "sector": "Healthcare",
+      "naics": "325412",
+      "primary_agency": "Department of Health and Human Services",
+      "gov_revenue_pct": 8
+    },
+    "ABT": {
+      "company": "Abbott Laboratories",
+      "search_terms": ["Abbott Laboratories", "ABBOTT LABORATORIES"],
+      "sector": "Healthcare",
+      "naics": "339112",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 5
+    },
+    "TMO": {
+      "company": "Thermo Fisher Scientific",
+      "search_terms": ["Thermo Fisher", "THERMO FISHER SCIENTIFIC"],
+      "sector": "Healthcare",
+      "naics": "334516",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 10
+    },
+    "ELV": {
+      "company": "Elevance Health Inc",
+      "search_terms": ["Elevance Health", "ELEVANCE HEALTH", "Anthem"],
+      "sector": "Healthcare",
+      "naics": "524114",
+      "primary_agency": "Centers for Medicare & Medicaid Services",
+      "gov_revenue_pct": 35
+    },
+    "MOH": {
+      "company": "Molina Healthcare Inc",
+      "search_terms": ["Molina Healthcare", "MOLINA HEALTHCARE"],
+      "sector": "Healthcare",
+      "naics": "524114",
+      "primary_agency": "Centers for Medicare & Medicaid Services",
+      "gov_revenue_pct": 95
+    },
+    "CVX": {
+      "company": "Chevron Corporation",
+      "search_terms": ["Chevron", "CHEVRON CORPORATION"],
+      "sector": "Energy",
+      "naics": "211120",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 8
+    },
+    "HAL": {
+      "company": "Halliburton Company",
+      "search_terms": ["Halliburton", "HALLIBURTON COMPANY"],
+      "sector": "Energy",
+      "naics": "213112",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 5
+    },
+    "SLB": {
+      "company": "Schlumberger Limited",
+      "search_terms": ["Schlumberger", "SLB", "SCHLUMBERGER LIMITED"],
+      "sector": "Energy",
+      "naics": "213112",
+      "primary_agency": "Department of Energy",
+      "gov_revenue_pct": 3
+    },
+    "BKR": {
+      "company": "Baker Hughes Company",
+      "search_terms": ["Baker Hughes", "BAKER HUGHES"],
+      "sector": "Energy",
+      "naics": "213112",
+      "primary_agency": "Department of Energy",
+      "gov_revenue_pct": 3
+    },
+    "XOM": {
+      "company": "Exxon Mobil Corporation",
+      "search_terms": ["Exxon Mobil", "EXXON MOBIL", "EXXONMOBIL"],
+      "sector": "Energy",
+      "naics": "211120",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 5
+    },
+    "COP": {
+      "company": "ConocoPhillips",
+      "search_terms": ["ConocoPhillips", "CONOCOPHILLIPS"],
+      "sector": "Energy",
+      "naics": "211120",
+      "primary_agency": "Department of Energy",
+      "gov_revenue_pct": 2
+    },
+    "ETN": {
+      "company": "Eaton Corporation",
+      "search_terms": ["Eaton Corporation", "EATON CORPORATION"],
+      "sector": "Industrials",
+      "naics": "335999",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 12
+    },
+    "PWR": {
+      "company": "Quanta Services Inc",
+      "search_terms": ["Quanta Services", "QUANTA SERVICES"],
+      "sector": "Industrials",
+      "naics": "237130",
+      "primary_agency": "Department of Energy",
+      "gov_revenue_pct": 15
+    },
+    "WAB": {
+      "company": "Wabtec Corporation",
+      "search_terms": ["Wabtec", "WABTEC CORPORATION"],
+      "sector": "Industrials",
+      "naics": "333612",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 10
+    },
+    "HON": {
+      "company": "Honeywell International Inc",
+      "search_terms": ["Honeywell", "HONEYWELL INTERNATIONAL"],
+      "sector": "Industrials",
+      "naics": "334511",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 20
+    },
+    "GE": {
+      "company": "GE Aerospace",
+      "search_terms": ["GE Aerospace", "GENERAL ELECTRIC", "GE AVIATION"],
+      "sector": "Industrials",
+      "naics": "336412",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 25
+    },
+    "CAT": {
+      "company": "Caterpillar Inc",
+      "search_terms": ["Caterpillar", "CATERPILLAR INC"],
+      "sector": "Industrials",
+      "naics": "333120",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 5
+    },
+    "DE": {
+      "company": "Deere & Company",
+      "search_terms": ["Deere", "DEERE AND COMPANY", "John Deere"],
+      "sector": "Industrials",
+      "naics": "333111",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 3
+    },
+    "UPS": {
+      "company": "United Parcel Service Inc",
+      "search_terms": ["United Parcel Service", "UPS", "UNITED PARCEL"],
+      "sector": "Industrials",
+      "naics": "492110",
+      "primary_agency": "United States Postal Service",
+      "gov_revenue_pct": 5
+    },
+    "FDX": {
+      "company": "FedEx Corporation",
+      "search_terms": ["FedEx", "FEDEX CORPORATION"],
+      "sector": "Industrials",
+      "naics": "492110",
+      "primary_agency": "United States Postal Service",
+      "gov_revenue_pct": 8
+    },
+    "FLIR": {
+      "company": "Teledyne FLIR LLC",
+      "search_terms": ["Teledyne FLIR", "TELEDYNE FLIR", "FLIR Systems"],
+      "sector": "Industrials",
+      "naics": "334511",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 45
+    },
+    "TDY": {
+      "company": "Teledyne Technologies Inc",
+      "search_terms": ["Teledyne Technologies", "TELEDYNE TECHNOLOGIES"],
+      "sector": "Industrials",
+      "naics": "334511",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 25
+    },
+    "GS": {
+      "company": "Goldman Sachs Group Inc",
+      "search_terms": ["Goldman Sachs", "GOLDMAN SACHS"],
+      "sector": "Financials",
+      "naics": "523110",
+      "primary_agency": "Pension Benefit Guaranty Corporation",
+      "gov_revenue_pct": 5
+    },
+    "JPM": {
+      "company": "JPMorgan Chase & Co",
+      "search_terms": ["JPMorgan", "JPMORGAN CHASE"],
+      "sector": "Financials",
+      "naics": "522110",
+      "primary_agency": "Department of the Treasury",
+      "gov_revenue_pct": 8
+    },
+    "BAC": {
+      "company": "Bank of America Corporation",
+      "search_terms": ["Bank of America", "BANK OF AMERICA"],
+      "sector": "Financials",
+      "naics": "522110",
+      "primary_agency": "Department of the Treasury",
+      "gov_revenue_pct": 5
+    },
+    "C": {
+      "company": "Citigroup Inc",
+      "search_terms": ["Citigroup", "CITIGROUP INC", "Citibank"],
+      "sector": "Financials",
+      "naics": "522110",
+      "primary_agency": "Department of the Treasury",
+      "gov_revenue_pct": 5
+    },
+    "BLK": {
+      "company": "BlackRock Inc",
+      "search_terms": ["BlackRock", "BLACKROCK INC"],
+      "sector": "Financials",
+      "naics": "523920",
+      "primary_agency": "Federal Reserve System",
+      "gov_revenue_pct": 3
+    },
+    "COIN": {
+      "company": "Coinbase Global Inc",
+      "search_terms": ["Coinbase", "COINBASE GLOBAL"],
+      "sector": "Financials",
+      "naics": "523999",
+      "primary_agency": "N/A",
+      "gov_revenue_pct": 1
+    },
+    "BRO": {
+      "company": "Brown & Brown Inc",
+      "search_terms": ["Brown and Brown", "BROWN AND BROWN"],
+      "sector": "Financials",
+      "naics": "524210",
+      "primary_agency": "N/A",
+      "gov_revenue_pct": 3
+    },
+    "NFLX": {
+      "company": "Netflix Inc",
+      "search_terms": ["Netflix", "NETFLIX INC"],
+      "sector": "Communication",
+      "naics": "512110",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 2
+    },
+    "DASH": {
+      "company": "DoorDash Inc",
+      "search_terms": ["DoorDash", "DOORDASH INC"],
+      "sector": "Communication",
+      "naics": "492210",
+      "primary_agency": "N/A",
+      "gov_revenue_pct": 1
+    },
+    "META": {
+      "company": "Meta Platforms Inc",
+      "search_terms": ["Meta Platforms", "META PLATFORMS", "Facebook"],
+      "sector": "Communication",
+      "naics": "519130",
+      "primary_agency": "N/A",
+      "gov_revenue_pct": 2
+    },
+    "TMUS": {
+      "company": "T-Mobile US Inc",
+      "search_terms": ["T-Mobile", "T-MOBILE US"],
+      "sector": "Communication",
+      "naics": "517312",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 5
+    },
+    "VZ": {
+      "company": "Verizon Communications Inc",
+      "search_terms": ["Verizon", "VERIZON COMMUNICATIONS"],
+      "sector": "Communication",
+      "naics": "517311",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 10
+    },
+    "T": {
+      "company": "AT&T Inc",
+      "search_terms": ["AT&T", "AT AND T"],
+      "sector": "Communication",
+      "naics": "517311",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 10
+    },
+    "SBAC": {
+      "company": "SBA Communications Corporation",
+      "search_terms": ["SBA Communications", "SBA COMMUNICATIONS"],
+      "sector": "Real Estate",
+      "naics": "237130",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 5
+    },
+    "AMT": {
+      "company": "American Tower Corporation",
+      "search_terms": ["American Tower", "AMERICAN TOWER"],
+      "sector": "Real Estate",
+      "naics": "237130",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 5
+    },
+    "PSA": {
+      "company": "Public Storage",
+      "search_terms": ["Public Storage", "PUBLIC STORAGE"],
+      "sector": "Real Estate",
+      "naics": "531130",
+      "primary_agency": "General Services Administration",
+      "gov_revenue_pct": 3
+    },
+    "DLR": {
+      "company": "Digital Realty Trust Inc",
+      "search_terms": ["Digital Realty", "DIGITAL REALTY TRUST"],
+      "sector": "Real Estate",
+      "naics": "531120",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 8
+    },
+    "WM": {
+      "company": "Waste Management Inc",
+      "search_terms": ["Waste Management", "WASTE MANAGEMENT"],
+      "sector": "Utilities",
+      "naics": "562111",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 5
+    },
+    "NEE": {
+      "company": "NextEra Energy Inc",
+      "search_terms": ["NextEra Energy", "NEXTERA ENERGY"],
+      "sector": "Utilities",
+      "naics": "221118",
+      "primary_agency": "Department of Energy",
+      "gov_revenue_pct": 3
+    },
+    "DUK": {
+      "company": "Duke Energy Corporation",
+      "search_terms": ["Duke Energy", "DUKE ENERGY"],
+      "sector": "Utilities",
+      "naics": "221112",
+      "primary_agency": "Department of Energy",
+      "gov_revenue_pct": 3
+    },
+    "WMT": {
+      "company": "Walmart Inc",
+      "search_terms": ["Walmart", "WAL-MART", "WALMART INC"],
+      "sector": "Consumer",
+      "naics": "452210",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 2
+    },
+    "COST": {
+      "company": "Costco Wholesale Corporation",
+      "search_terms": ["Costco", "COSTCO WHOLESALE"],
+      "sector": "Consumer",
+      "naics": "452910",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 1
+    },
+    "KR": {
+      "company": "The Kroger Co",
+      "search_terms": ["Kroger", "THE KROGER CO"],
+      "sector": "Consumer",
+      "naics": "445110",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 2
+    },
+    "TSLA": {
+      "company": "Tesla Inc",
+      "search_terms": ["Tesla", "TESLA INC"],
+      "sector": "Consumer",
+      "naics": "336111",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 1
+    },
+    "F": {
+      "company": "Ford Motor Company",
+      "search_terms": ["Ford Motor", "FORD MOTOR COMPANY"],
+      "sector": "Consumer",
+      "naics": "336111",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 3
+    },
+    "GM": {
+      "company": "General Motors Company",
+      "search_terms": ["General Motors", "GENERAL MOTORS"],
+      "sector": "Consumer",
+      "naics": "336111",
+      "primary_agency": "Department of Defense",
+      "gov_revenue_pct": 3
+    }
+  }
+}
