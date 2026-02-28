@@ -31,6 +31,10 @@ logger = logging.getLogger("Convergence.Detector")
 # 匯聚視窗天數
 CONVERGENCE_WINDOW_DAYS = 30
 
+# 爆發式收斂子視窗 (Quant validation: convergence +36% EA20d premium)
+BURST_WINDOW_DAYS = 7
+BURST_BONUS = 0.5  # 7 天內多議員同向交易的額外加分
+
 # 交易方向映射（transaction_type → Buy/Sale）
 DIRECTION_MAP = {
     "Buy": "Buy",
@@ -330,14 +334,18 @@ class ConvergenceDetector:
         avg_amount = sum(amounts) / len(amounts) if amounts else 0
         amount_weight = min(1.0, avg_amount / MAX_AMOUNT)
 
-        # 綜合評分 = 基礎分 + 跨院加分 + 時間密度 * 0.5 + 金額加權 * 0.5
-        total = base + cross_chamber + (time_density * 0.5) + (amount_weight * 0.5)
+        # 5. 爆發式收斂加分: 7 天內的密集收斂 (Quant validation: +36% EA20d)
+        burst_bonus = BURST_BONUS if span_days <= BURST_WINDOW_DAYS else 0.0
+
+        # 綜合評分 = 基礎分 + 跨院加分 + 時間密度 * 0.5 + 金額加權 * 0.5 + burst
+        total = base + cross_chamber + (time_density * 0.5) + (amount_weight * 0.5) + burst_bonus
 
         breakdown = {
             "base": round(base, 3),
             "cross_chamber": round(cross_chamber, 3),
             "time_density": round(time_density, 3),
             "amount_weight": round(amount_weight, 3),
+            "burst_bonus": round(burst_bonus, 3),
         }
 
         return total, breakdown

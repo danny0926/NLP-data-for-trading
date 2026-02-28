@@ -801,6 +801,7 @@ def generate_report(positions: List[dict], budget: float = 0) -> str:
     lines.append("| SQS 品質 | 5 | 降權: SQS conviction 與 alpha r=-0.50 | RB-006 |")
     lines.append("| 收斂訊號 | 20 | 多位議員同方向交易加分 (提權) | RB-006 |")
     lines.append("| 金額權重 | 15 | $15K-$50K 最強訊號 (提權) | RB-001 |")
+    lines.append("| 甜蜜點加分 | +5 | $15K-$50K 額外加分 (alpha+93%, Quant validation) | RB-001 |")
     lines.append("| 院別加權 | 10 | Senate 20d +1.39% >> House -1.27% | RB-004 |")
     lines.append("| 議員品質 | 5 | Top PIS 議員交易加分 | RB-005 |")
     lines.append("")

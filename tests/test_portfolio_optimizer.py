@@ -8,6 +8,7 @@ tests/test_portfolio_optimizer.py — 投組最佳化器單元測試
 4. Buy-Only：SALE 不貢獻正 alpha（sale-only ticker 被排除）
 5. Senate > House 加分（院別權重翻轉）
 6. SQS 降權（RB-006）
+7. $15K-$50K 甜蜜點加分（RB-001 Quant validation）
 """
 
 import pytest
@@ -18,6 +19,8 @@ from src.portfolio_optimizer import (
     BUY_CAR_5D,
     SALE_CAR_5D,
     AMOUNT_ALPHA,
+    SWEET_SPOT_AMOUNT_RANGE,
+    SWEET_SPOT_BONUS,
 )
 
 
@@ -284,3 +287,105 @@ class TestTickerScorerAmountMultiplier:
         """所有金額區間的乘數都應為正數。"""
         for rng, mult in AMOUNT_ALPHA.items():
             assert mult > 0, f"AMOUNT_ALPHA['{rng}']={mult} 應為正數"
+
+
+class TestSweetSpotBonus:
+    """測試 $15K-$50K 甜蜜點加分（RB-001 + Quant validation: 93% higher alpha）。"""
+
+    @pytest.fixture
+    def sector_map(self):
+        return {
+            "AAPL": {"sector": "Technology", "industry": "", "name": "Apple Inc."},
+        }
+
+    def _make_trade(self, amount_range, ticker="AAPL"):
+        return {
+            "id": "test",
+            "chamber": "Senate",
+            "politician_name": "Test Senator",
+            "transaction_date": "2025-01-10",
+            "filing_date": "2025-01-20",
+            "ticker": ticker,
+            "transaction_type": "Buy",
+            "amount_range": amount_range,
+        }
+
+    def test_sweet_spot_constant_value(self):
+        """SWEET_SPOT_BONUS 應為 5.0 分。"""
+        assert SWEET_SPOT_BONUS == 5.0, (
+            f"SWEET_SPOT_BONUS={SWEET_SPOT_BONUS}，應為 5.0"
+        )
+
+    def test_sweet_spot_amount_range_matches_best_alpha(self):
+        """SWEET_SPOT_AMOUNT_RANGE 應對應 AMOUNT_ALPHA 最高乘數的金額區間。"""
+        best_range = max(AMOUNT_ALPHA, key=AMOUNT_ALPHA.get)
+        assert SWEET_SPOT_AMOUNT_RANGE == best_range, (
+            f"甜蜜點金額範圍應為 AMOUNT_ALPHA 最高乘數的區間: {best_range}"
+        )
+
+    def test_sweet_spot_trade_scores_higher(self, sector_map):
+        """有 $15K-$50K 交易的標的應比其他金額區間得更高分。"""
+        scorer_sweet = TickerScorer(
+            trades=[self._make_trade("$15,001 - $50,000")],
+            sqs_map={}, convergence_map={}, sector_map=sector_map,
+        )
+        scorer_small = TickerScorer(
+            trades=[self._make_trade("$1,001 - $15,000")],
+            sqs_map={}, convergence_map={}, sector_map=sector_map,
+        )
+        sweet_score = scorer_sweet.score_all()[0]["conviction_score"]
+        small_score = scorer_small.score_all()[0]["conviction_score"]
+        assert sweet_score > small_score, (
+            f"$15K-$50K (score={sweet_score:.2f}) 應高於 $1K-$15K (score={small_score:.2f})"
+        )
+
+    def test_sweet_spot_bonus_in_debug_keys(self, sector_map):
+        """結果中應包含 _sweet_spot 分項（debug key）。"""
+        scorer = TickerScorer(
+            trades=[self._make_trade("$15,001 - $50,000")],
+            sqs_map={}, convergence_map={}, sector_map=sector_map,
+        )
+        result = scorer.score_all()[0]
+        assert "_sweet_spot" in result, "_sweet_spot 應出現在結果的 debug 分項中"
+        assert result["_sweet_spot"] == SWEET_SPOT_BONUS, (
+            f"_sweet_spot 應為 {SWEET_SPOT_BONUS}，實際={result['_sweet_spot']}"
+        )
+
+    def test_non_sweet_spot_gets_zero_bonus(self, sector_map):
+        """非甜蜜點金額的交易，_sweet_spot 應為 0。"""
+        scorer = TickerScorer(
+            trades=[self._make_trade("$100,001 - $250,000")],
+            sqs_map={}, convergence_map={}, sector_map=sector_map,
+        )
+        result = scorer.score_all()[0]
+        assert result["_sweet_spot"] == 0.0, (
+            f"$100K-$250K 不是甜蜜點，_sweet_spot 應為 0，實際={result['_sweet_spot']}"
+        )
+
+    def test_score_does_not_exceed_100_with_bonus(self, sector_map):
+        """加上甜蜜點 bonus 後，conviction_score 不應超過 100。"""
+        # 建立多項加成都滿分的情境
+        trades = [
+            {
+                "id": str(i),
+                "chamber": "Senate",
+                "politician_name": f"Senator {i}",
+                "transaction_date": "2025-01-10",
+                "filing_date": "2025-01-20",
+                "ticker": "AAPL",
+                "transaction_type": "Buy",
+                "amount_range": "$15,001 - $50,000",
+            }
+            for i in range(3)
+        ]
+        convergence_map = {"AAPL": {"ticker": "AAPL", "direction": "Buy", "score": 2.0}}
+        scorer = TickerScorer(
+            trades=trades,
+            sqs_map={},
+            convergence_map=convergence_map,
+            sector_map=sector_map,
+        )
+        result = scorer.score_all()[0]
+        assert result["conviction_score"] <= 100.0, (
+            f"conviction_score={result['conviction_score']} 不應超過 100"
+        )
