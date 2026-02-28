@@ -11,6 +11,8 @@ import re
 import sqlite3
 from typing import Optional, Dict, List, Set
 
+from src.config import DB_PATH
+
 
 # ── 標準名字 → 所有已知別名的映射 ──
 # canonical_name 採用 ETL (congress_trades) 中的格式作為主鍵，
@@ -214,7 +216,7 @@ def normalize_name(name: str) -> str:
 
 def find_politician_in_trades(
     source_name: str,
-    db_path: str = "data/data.db",
+    db_path: str = None,
 ) -> Optional[str]:
     """在 congress_trades 中查找與 source_name 匹配的議員。
 
@@ -225,6 +227,7 @@ def find_politician_in_trades(
     Returns:
         匹配到的 congress_trades.politician_name，或 None
     """
+    db_path = db_path or DB_PATH
     canonical = normalize_name(source_name)
 
     conn = sqlite3.connect(db_path)
@@ -273,12 +276,13 @@ def get_aliases(canonical_name: str) -> List[str]:
     return POLITICIAN_ALIASES.get(canonical_name, [])
 
 
-def find_cross_table_matches(db_path: str = "data/data.db") -> Dict[str, Optional[str]]:
+def find_cross_table_matches(db_path: str = None) -> Dict[str, Optional[str]]:
     """找出 ai_intelligence_signals 中所有 source_name 與 congress_trades 的對應關係。
 
     Returns:
         Dict[ai_source_name, matched_etl_name_or_None]
     """
+    db_path = db_path or DB_PATH
     conn = sqlite3.connect(db_path)
     cur = conn.cursor()
 

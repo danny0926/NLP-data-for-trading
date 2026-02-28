@@ -11,6 +11,8 @@ import logging
 import re
 import sqlite3
 import time
+
+from src.config import DB_PATH
 from typing import Optional, Tuple
 
 logger = logging.getLogger("TickerEnricher")
@@ -302,7 +304,7 @@ def resolve_ticker(asset_name: str) -> Tuple[Optional[str], str]:
     return None, "unresolved"
 
 
-def enrich_missing_tickers(db_path: str = "data/data.db", dry_run: bool = False) -> dict:
+def enrich_missing_tickers(db_path: str = None, dry_run: bool = False) -> dict:
     """掃描 congress_trades 中所有 ticker 為 NULL 的紀錄，嘗試補全。
 
     Args:
@@ -312,6 +314,7 @@ def enrich_missing_tickers(db_path: str = "data/data.db", dry_run: bool = False)
     Returns:
         統計資訊 {"total_missing", "enriched", "non_tickerable", "unresolved", "details"}
     """
+    db_path = db_path or DB_PATH
     conn = sqlite3.connect(db_path)
     cur = conn.cursor()
 
@@ -408,7 +411,7 @@ if __name__ == "__main__":
     import sys
     logging.basicConfig(level=logging.INFO, format="%(name)s | %(message)s")
 
-    db = "data/data.db"
+    db = DB_PATH
     dry = "--dry-run" in sys.argv
 
     if dry:
