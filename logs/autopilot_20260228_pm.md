@@ -94,19 +94,39 @@ With expanded Form4 data (52→336 trades, 1→28 ticker overlap):
 
 ---
 
-## Track C: RB-010 Earnings Calendar (rb010-researcher)
+## Track C: RB-010 Earnings Calendar (rb010-researcher + team-lead)
 
-**Status**: IN PROGRESS
+**Status**: COMPLETE | **Verdict**: REJECT (p=0.83)
 
-Research script created (`rb010_temp.py`, 190 lines), testing whether congress members trade disproportionately before earnings announcements.
-
-Methodology:
-- yfinance `earnings_dates` for all 264 unique tickers
-- Cross-reference: days_to_next_earnings for each trade
-- Binomial test: observed pre-earnings rate vs expected 15.6% (14/91 days)
+### Methodology
+- yfinance `earnings_dates` for 264 unique tickers (168 covered, 63.6%)
+- Cross-reference: days_to_next_earnings for each of 232 testable trades
+- Binomial test: observed pre-earnings (≤14d) rate vs expected 15.4% (14/91 days)
 - Alpha comparison: pre-earnings trades vs non-pre-earnings trades
 
-Results pending.
+### Key Results
+| Metric | Value |
+|--------|-------|
+| Testable trades | 232 |
+| Pre-earnings trades | 31 (13.4%) |
+| Expected (random) | 15.4% |
+| Binomial p-value | **0.8272** (not significant) |
+| Effect size h | -0.058 (negligible) |
+
+### Buy vs Sale
+- **Buy**: 19.2% pre-earnings (p=0.15) — slightly elevated, not significant
+- **Sale**: 7.1% pre-earnings (p=0.997) — below random, sales avoid pre-earnings
+
+### Alpha (Suggestive but N too small)
+- Pre-earnings Buys (N=16): **CAR20 +2.51%, WR 68.8%**
+- Non-pre-earnings Buys (N=86): CAR20 +1.30%, WR 53.5%
+- t-test p=0.72 — NOT significant
+
+### Concentration Issue
+- Cisneros: 22/31 pre-earnings trades (71%) — single politician dominates
+
+### Conclusion
+Congress members do NOT trade disproportionately before earnings. The observed rate is actually below random. Buy trades show a weak suggestive signal but N=16 with extreme Cisneros concentration makes it unreliable. **REJECT** at current data volume.
 
 ---
 

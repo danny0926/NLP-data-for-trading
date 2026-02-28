@@ -153,7 +153,7 @@
 | **RB-008** Committee Assignments | **SHELVE** (p=0.33) | 7.2/10 | Leaders +0.20% 5d, not significant | `Spike_RB-008_Congress_Committee_API.md` |
 | **RB-009** USASpending Contracts | **INTEGRATED** (Phase 2 done) | 7.9/10 | 議員+合約收斂 +3-5% | `Spike_RB-009_USASpending_API.md` |
 | **RB-011** SEC Form4+Congress 收斂 | **CONDITIONAL SHELVE** | 4.0→3.5/10 | 結構性分歧: congress買+insider賣 | Innovation Sprint PM |
-| **RB-010** Earnings Calendar Cross-ref | 研究中 | - | Medium | PM Sprint |
+| **RB-010** Earnings Calendar Cross-ref | **REJECT** (p=0.83) | 3.0/10 | 13.4% vs 15.4% expected, below random | PM Sprint |
 
 **RB-008 更新 (2026-02-28 POC)**: 下載 119th Congress 委員會 YAML，匹配 222 chairs 到 DB。Leaders +0.20% 5d alpha premium，但 **p=0.33 不顯著**。樣本不平衡 (305 vs 50)。**SHELVE** — 需累積 2000+ trades 後重新驗證。
 
@@ -175,9 +175,9 @@
 
 ### 研究提案 (更新 2026-02-28)
 - **RB-008**: ~~委員會 Alpha~~ → **POC 完成, SHELVE** (p=0.33, 樣本不足)。需 2000+ trades 後重驗。
-- **RB-009**: ~~政府合約 Alpha~~ → **API POC 完成, PILOT**。下一步：建立 usaspending_fetcher.py。
-- **RB-010**: 財報時機 Alpha — 議員是否在財報前交易？
-- **RB-011**: ~~SEC Form4+Congress 收斂~~ → **INCONCLUSIVE** (52 trades, 0 convergence)。需 --days 90 擴充後重評。
+- **RB-009**: ~~政府合約 Alpha~~ → **Phase 2 整合完成**。下一步：Phase 3 回測驗證。
+- **RB-010**: ~~財報時機 Alpha~~ → **REJECT** (p=0.83，觀察 13.4% < 預期 15.4%)。Buy 子集有弱信號 (19.2%, p=0.15) 但 N=16 且 Cisneros 占 71%。
+- **RB-011**: ~~SEC Form4+Congress 收斂~~ → **CONDITIONAL SHELVE** (結構性分歧: congress買+insider賣)。
 - **RB-012**: 遊說-交易相關性 — 被遊說議員是否交易遊說公司股票？
 
 ---
@@ -226,7 +226,7 @@
 |-------|------|------|
 | RB-009 Phase 2 | **INTEGRATED** — 4 commits, 98 tickers, 20 tests | 合約收斂評分已上線 |
 | RB-011 Re-analysis | **CONDITIONAL SHELVE** — 結構性分歧 | 新研究方向: 反向指標 |
-| RB-010 Earnings | 研究中 | 待定 |
+| RB-010 Earnings Calendar | **REJECT** (p=0.83) | 議員不在財報前集中交易 |
 
 ### DB 變化
 - sec_form4_trades: 52→336 (+284)

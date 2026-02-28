@@ -143,3 +143,49 @@ After fixing both the fetcher and analysis pipeline:
 
 ### Conclusion
 System signals perform consistently with historical backtest expectations (RB-001)
+
+---
+
+## 2026-02-28 RB-010: Earnings Calendar Cross-Reference
+
+**Direction**: TIMING
+**Verdict**: REJECT
+**Score**: 3.0/10
+
+### Hypothesis
+- **H1**: Congress members trade disproportionately within 14 days before earnings announcements
+- **H0**: Trading timing is independent of earnings calendar
+
+### Data
+- 356 trades, 264 tickers; yfinance earnings coverage: 168/264 (63.6%)
+- Testable: 232 trades with earnings dates; Pre-earnings (≤14d): 31 trades
+
+### Statistical Results
+- **Observed pre-earnings rate: 13.4%** vs expected 15.4% (14/91 days)
+- **Binomial test p=0.8272** — NOT significant (actually below random!)
+- Effect size h=-0.058 (negligible, negative direction)
+- 95% CI: [9.6%, 18.3%]
+
+### Buy vs Sale Breakdown
+- **Buy**: 19.2% pre-earnings (p=0.1534) — slightly elevated but not significant
+- **Sale**: 7.1% pre-earnings (p=0.9973) — significantly LOWER than random
+
+### Alpha Comparison (Suggestive but N too small)
+- Pre-earnings Buys (N=16): CAR20 +2.51%, WR 68.8%
+- Non-pre-earnings Buys (N=86): CAR20 +1.30%, WR 53.5%
+- t-test p=0.7173 — NOT significant
+
+### Concentration Issue
+- Gilbert Cisneros: 22/31 pre-earnings trades (71%) — extreme concentration
+- Only 4 politicians have any pre-earnings trades
+
+### Days-to-Earnings Distribution
+- 1-7d: 5.2%, 8-14d: 8.2%, 15-30d: 22.8%, 31-60d: 36.2%, 61-91d: 23.7%
+- Slightly front-loaded but well within random variation
+
+### Verdict
+**REJECT** — Congress members do NOT trade more before earnings. The overall rate (13.4%) is actually below random (15.4%). Buy trades show a weak suggestive signal (19.2%, p=0.15) but N=16 with 71% Cisneros concentration makes this unreliable.
+
+### Next Steps
+- [ ] Re-evaluate when DB reaches 2000+ trades (larger sample may reveal signal in Buy subset)
+- [ ] Not recommended for implementation at current data volume
