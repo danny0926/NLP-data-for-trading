@@ -257,6 +257,29 @@ class SignalEnhancer:
         conn.close()
         return convergence
 
+    def _load_contract_data(self) -> Dict[str, dict]:
+        """載入政府合約資料 (RB-009)。回傳 ticker → 最大合約資訊。"""
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+
+        contracts = {}
+        try:
+            cursor = conn.execute("""
+                SELECT ticker, MAX(award_amount) as max_amount,
+                       COUNT(*) as contract_count
+                FROM government_contracts
+                WHERE ticker IS NOT NULL
+                GROUP BY ticker
+            """)
+            for row in cursor.fetchall():
+                contracts[row["ticker"]] = dict(row)
+        except sqlite3.OperationalError:
+            logger.info("government_contracts 表不存在，跳過合約資料")
+
+        conn.close()
+        logger.info(f"載入 {len(contracts)} 檔合約資料")
+        return contracts
+
     # ── PACS 計算核心 ──────────────────────────────────────────────
 
     def _calc_pacs_score(
@@ -264,6 +287,7 @@ class SignalEnhancer:
         signal: dict,
         options_data: Optional[dict],
         convergence_data: Optional[dict],
+        contract_data: Optional[dict] = None,
     ) -> Tuple[float, dict]:
         """計算 PACS (Political Alpha Composite Score)。
 
@@ -271,6 +295,7 @@ class SignalEnhancer:
                    + 25% * filing_lag_inverse_norm
                    + 15% * options_sentiment_norm
                    + 10% * convergence_norm
+                   + contract_bonus (additive, 0 / 0.1 / 0.2)
 
         Returns:
             (pacs_score, component_details)
@@ -304,12 +329,22 @@ class SignalEnhancer:
         else:
             convergence_norm = 0.0
 
+        # 5. Contract Award Bonus (RB-009): additive bonus
+        contract_bonus = 0.0
+        if contract_data is not None:
+            max_amount = contract_data.get("max_amount", 0) or 0
+            if max_amount >= 100_000_000:
+                contract_bonus = 0.2   # 大額合約 ($100M+)
+            elif max_amount > 0:
+                contract_bonus = 0.1   # 一般合約
+
         # 加權合計
         pacs = (
             PACS_WEIGHT_SIGNAL_STRENGTH * strength_norm
             + PACS_WEIGHT_FILING_LAG_INV * lag_inv
             + PACS_WEIGHT_OPTIONS_SENTIMENT * options_norm
             + PACS_WEIGHT_CONVERGENCE * convergence_norm
+            + contract_bonus
         )
 
         components = {
@@ -317,6 +352,7 @@ class SignalEnhancer:
             "filing_lag_inv": round(lag_inv, 4),
             "options_sentiment_norm": round(options_norm, 4),
             "convergence_norm": round(convergence_norm, 4),
+            "contract_bonus": round(contract_bonus, 4),
             "pacs_raw": round(pacs, 4),
         }
 
@@ -396,10 +432,11 @@ class SignalEnhancer:
         vix_mult = vix_regime["multiplier"]
         logger.info(f"VIX 體制: {vix_regime['label']} (multiplier={vix_mult})")
 
-        # Step 3-5: 載入輔助資料
+        # Step 3-6: 載入輔助資料
         options_sentiment = self._load_options_sentiment()
         social_sentiment = self._load_social_sentiment()
         convergence_data = self._load_convergence_data()
+        contract_data = self._load_contract_data()
 
         # Step 6: 逐筆增強
         enhanced = []
@@ -419,9 +456,10 @@ class SignalEnhancer:
             opts = options_sentiment.get(ticker)
             conv = convergence_data.get(ticker)
             social = social_sentiment.get(politician)
+            contract = contract_data.get(ticker)
 
             # PACS 分數
-            pacs, pacs_components = self._calc_pacs_score(sig, opts, conv)
+            pacs, pacs_components = self._calc_pacs_score(sig, opts, conv, contract)
 
             # 修正信心度
             confidence_v2 = self._calc_confidence_v2(sig)
@@ -489,6 +527,7 @@ class SignalEnhancer:
                 "pacs_lag_component": pacs_components["filing_lag_inv"],
                 "pacs_options_component": pacs_components["options_sentiment_norm"],
                 "pacs_convergence_component": pacs_components["convergence_norm"],
+                "pacs_contract_component": pacs_components.get("contract_bonus", 0),
                 # 輔助資訊
                 "options_sentiment": opts.get("sentiment") if opts else None,
                 "options_signal_type": opts.get("signal_type") if opts else None,
@@ -543,6 +582,7 @@ class SignalEnhancer:
                 pacs_lag_component REAL,
                 pacs_options_component REAL,
                 pacs_convergence_component REAL,
+                pacs_contract_component REAL DEFAULT 0,
                 options_sentiment REAL,
                 options_signal_type TEXT,
                 social_alignment TEXT,
@@ -555,6 +595,12 @@ class SignalEnhancer:
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+
+        # 確保舊表有 pacs_contract_component 欄位 (向後相容)
+        try:
+            cursor.execute("ALTER TABLE enhanced_signals ADD COLUMN pacs_contract_component REAL DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass  # 欄位已存在
 
         inserted = 0
         updated = 0
@@ -571,11 +617,12 @@ class SignalEnhancer:
                         vix_zone, vix_multiplier,
                         pacs_signal_component, pacs_lag_component,
                         pacs_options_component, pacs_convergence_component,
+                        pacs_contract_component,
                         options_sentiment, options_signal_type,
                         social_alignment, social_bonus,
                         has_convergence, politician_grade,
                         filing_lag_days, sqs_score, decay_factor
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     trade_id, sig["ticker"], sig["politician_name"],
                     sig["chamber"], sig["transaction_type"], sig["direction"],
@@ -584,6 +631,7 @@ class SignalEnhancer:
                     sig["vix_zone"], sig["vix_multiplier"],
                     sig["pacs_signal_component"], sig["pacs_lag_component"],
                     sig["pacs_options_component"], sig["pacs_convergence_component"],
+                    sig.get("pacs_contract_component", 0),
                     sig["options_sentiment"], sig["options_signal_type"],
                     sig["social_alignment"], sig["social_bonus"],
                     1 if sig["has_convergence"] else 0,
@@ -598,6 +646,7 @@ class SignalEnhancer:
                         vix_zone = ?, vix_multiplier = ?,
                         pacs_signal_component = ?, pacs_lag_component = ?,
                         pacs_options_component = ?, pacs_convergence_component = ?,
+                        pacs_contract_component = ?,
                         options_sentiment = ?, options_signal_type = ?,
                         social_alignment = ?, social_bonus = ?,
                         has_convergence = ?, decay_factor = ?, updated_at = CURRENT_TIMESTAMP
@@ -607,6 +656,7 @@ class SignalEnhancer:
                     sig["vix_zone"], sig["vix_multiplier"],
                     sig["pacs_signal_component"], sig["pacs_lag_component"],
                     sig["pacs_options_component"], sig["pacs_convergence_component"],
+                    sig.get("pacs_contract_component", 0),
                     sig["options_sentiment"], sig["options_signal_type"],
                     sig["social_alignment"], sig["social_bonus"],
                     1 if sig["has_convergence"] else 0, sig.get("decay_factor", 1.0),
