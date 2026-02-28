@@ -26,17 +26,39 @@
 
 ## 2. 量化研究驗證 (Quant Researcher)
 
-### 關鍵發現
-- **RB-006 確認**: SQS 確實為負預測因子 (conviction r=-0.50)
-- **FF3 20d 全空**: 全部 355 筆 ff3_car_20d = NULL (已修正: 加入 daily pipeline re-run)
-- **Alpha 信號分布**: 355 筆信號, LONG 為主 (Buy-Only 策略生效)
-- **收斂信號**: 6 個 ticker 出現多議員收斂
-- **議員排名**: 17 位議員有 PIS 排名
+### 關鍵發現 (量化實證)
 
-### 建議改善
-1. 定期重跑 FF3 回測 (已整合到 run_daily.py)
-2. 收斂信號需要更多數據驗證
-3. Signal Tracker 需要啟動以追蹤實際績效
+| 研究項目 | 結論 | 數據 |
+|----------|------|------|
+| **RB-006 SQS 負預測因子** | 已確認 | conviction r=-0.5136 (預測 -0.50) |
+| **收斂信號 alpha 溢價** | 強正預測 | has_convergence=True → EA20d 高 36% |
+| **金額最佳區間** | $15K-$50K 最強 | 比 $1K-$15K 高 93% alpha |
+| **PACS 分層效果** | Q4 >> Q1 | Q4/Q1 = 3.04x alpha 差距 |
+| **議員等級梯度** | B > C > D 明確 | Grade B avg EA20d 顯著領先 |
+| **Filing lag 門檻** | <15d 極關鍵 | <15d alpha 為 >=15d 的 4.6x |
+| **FF3 20d/60d NULL** | 時間不足 (非 bug) | 355/355 = 100% NULL，需 2026-03 後重跑 |
+| **SQS 時效性瓶頸** | Timeliness 維度偏低 | 平均 15.5/100 (5 維度最低) |
+| **Alpha 信號分布** | Buy-Only 生效 | 355 筆信號, 100% LONG 方向 |
+| **收斂信號覆蓋** | 6 tickers 多議員收斂 | 17 位議員有 PIS 排名 |
+
+### 可執行改善建議 (按 Impact 排序)
+
+| # | 建議 | 預估 Impact | 難度 | 目標模組 |
+|---|------|------------|------|----------|
+| 1 | **$15K-$50K 額外加分 +5pts** | High | Low | `portfolio_optimizer.py` |
+| 2 | **7 天 burst convergence 子信號** | High | Medium | `convergence_detector.py` |
+| 3 | **Signal decay 機制** (filing_date+20d 後衰減) | Medium | Medium | `signal_enhancer.py` |
+| 4 | **VIX adaptive Goldilocks** (VIX_90d_mean ± 0.5σ) | Medium | Medium | `signal_enhancer.py` |
+| 5 | **Filing lag <15d 即時監控** | Medium | Low | `smart_alerts.py` |
+| 6 | **SQS Timeliness 重新校準** | Low-Med | Low | `signal_scorer.py` |
+| 7 | **Politician grade A/B 專屬加分** | Low | Low | `alpha_signal_generator.py` |
+| 8 | **FF3 月度重跑排程** | Low | Low | `run_daily.py` (已整合) |
+
+### 已修正項目
+- [x] FF3 re-run 已加入 daily pipeline (`run_daily.py`)
+- [x] SQS conviction 權重已降至 10% (`signal_enhancer.py`)
+- [x] Buy-Only 策略已全面啟用 (`portfolio_optimizer.py`, `signal_enhancer.py`)
+- [ ] Signal Tracker 需首次執行以開始追蹤實際績效
 
 ---
 
