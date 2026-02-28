@@ -76,26 +76,42 @@ class SignalPerformanceTracker:
         conn.close()
 
     def get_pending_signals(self, days: Optional[int] = None,
-                            ticker: Optional[str] = None) -> List[Dict]:
-        """取得尚未評估的信號。"""
+                            ticker: Optional[str] = None,
+                            force_reevaluate: bool = False) -> List[Dict]:
+        """取得尚未評估（或需要重新評估）的信號。
+
+        使用 congress_trades.filing_date 作為事件日期，
+        而非 alpha_signals.created_at（所有信號可能同一天建立）。
+        """
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
 
+        if force_reevaluate:
+            # 清除 actual_return 全為 NULL 的舊記錄，讓它們重新評估
+            conn.execute('''
+                DELETE FROM signal_performance
+                WHERE actual_return_5d IS NULL AND actual_return_20d IS NULL
+            ''')
+            conn.commit()
+
         sql = '''
-            SELECT a.id, a.ticker, a.direction, a.created_at,
+            SELECT a.id, a.ticker, a.direction,
+                   ct.filing_date AS filing_date,
                    a.expected_alpha_5d, a.expected_alpha_20d,
                    a.signal_strength, a.confidence
             FROM alpha_signals a
+            JOIN congress_trades ct ON a.trade_id = ct.id
             LEFT JOIN signal_performance sp ON a.id = sp.signal_id
             WHERE sp.id IS NULL
               AND a.ticker IS NOT NULL
               AND a.ticker != ''
+              AND ct.filing_date IS NOT NULL
         '''
         params = []
 
         if days:
             cutoff = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
-            sql += ' AND a.created_at >= ?'
+            sql += ' AND ct.filing_date >= ?'
             params.append(cutoff)
 
         if ticker:
@@ -107,6 +123,14 @@ class SignalPerformanceTracker:
         rows = conn.execute(sql, tuple(params)).fetchall()
         conn.close()
         return [dict(r) for r in rows]
+
+    @staticmethod
+    def _flatten_columns(df):
+        """處理 yfinance 可能回傳的 MultiIndex columns。"""
+        import pandas as pd
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
+        return df
 
     def fetch_prices(self, ticker: str, start_date: str,
                      lookback_days: int = 30) -> Optional[Dict]:
@@ -137,6 +161,10 @@ class SignalPerformanceTracker:
             if stock.empty or spy.empty:
                 return None
 
+            # 處理 yfinance MultiIndex columns
+            stock = self._flatten_columns(stock)
+            spy = self._flatten_columns(spy)
+
             return {
                 'stock': stock,
                 'spy': spy,
@@ -165,13 +193,7 @@ class SignalPerformanceTracker:
             base_date = valid_dates[0]
             base_idx = list(stock_dates).index(base_date)
 
-            # Handle MultiIndex columns from yfinance
             close_col = 'Close'
-            if hasattr(stock.columns, 'levels'):
-                stock = stock.droplevel(level=1, axis=1) if stock.columns.nlevels > 1 else stock
-            if hasattr(spy.columns, 'levels'):
-                spy = spy.droplevel(level=1, axis=1) if spy.columns.nlevels > 1 else spy
-
             base_price = float(stock[close_col].iloc[base_idx])
 
             results = {}
@@ -263,7 +285,8 @@ class SignalPerformanceTracker:
                 continue
             tickers_seen.add(ticker)
 
-            signal_date = signal.get('created_at', '')
+            # 使用 filing_date 作為事件日期（而非 created_at）
+            signal_date = signal.get('filing_date', '')
             if not signal_date:
                 continue
 
@@ -429,6 +452,8 @@ def main():
                         help="Track specific ticker only")
     parser.add_argument("--limit", type=int, default=20,
                         help="Max signals to evaluate (default 20)")
+    parser.add_argument("--force-reevaluate", action="store_true",
+                        help="Clear NULL results and re-evaluate")
     parser.add_argument("--db", type=str, default=DB_PATH,
                         help="Database path")
     args = parser.parse_args()
@@ -447,7 +472,10 @@ def main():
     tracker = SignalPerformanceTracker(db_path=args.db)
 
     # Get pending signals
-    signals = tracker.get_pending_signals(days=args.days, ticker=args.ticker)
+    signals = tracker.get_pending_signals(
+        days=args.days, ticker=args.ticker,
+        force_reevaluate=args.force_reevaluate
+    )
     _safe_print(f"  Found {len(signals)} pending signals")
 
     if not signals:
