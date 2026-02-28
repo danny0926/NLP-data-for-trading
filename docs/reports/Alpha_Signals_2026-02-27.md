@@ -1,5 +1,5 @@
 # Alpha Trading Signals Report
-**Generated**: 2026-02-27 18:29:02
+**Generated**: 2026-02-27 21:21:34
 **Total Signals**: 20
 
 ## Methodology
@@ -20,55 +20,55 @@
 
 | 指標 | 數值 |
 |------|------|
-| Buy 訊號 | 14 |
-| Sale 訊號 (反向做多) | 6 |
-| 匯聚訊號 | 13 |
-| 平均預期 alpha (5d) | +1.14% |
-| 平均信心度 | 0.58 |
+| Buy 訊號 | 18 |
+| Sale 訊號 (反向做多) | 2 |
+| 匯聚訊號 | 9 |
+| 平均預期 alpha (5d) | +1.29% |
+| 平均信心度 | 0.57 |
 
 ### Top 標的 (出現頻率)
 
 | Ticker | 訊號數 |
 |--------|--------|
-| GS | 3 |
-| PWR | 3 |
 | ETN | 2 |
 | AAPL | 2 |
 | DIS | 2 |
-| NFLX | 1 |
 | FNV | 1 |
 | WPM | 1 |
-| SPGI | 1 |
 | STT | 1 |
+| SPGI | 1 |
+| NFLX | 1 |
+| PWR | 1 |
+| GS | 1 |
 
 ## Top 20 Alpha Signals
 
 | # | Ticker | Direction | Alpha(5d) | Alpha(20d) | Confidence | Strength | Politician | Chamber | Filing Lag | Grade | Convergence |
 |---|--------|-----------|-----------|------------|------------|----------|------------|---------|-----------|-------|-------------|
-| 1 | **ETN** | LONG | +1.42% | +1.45% | 0.68 | 0.963 | Gilbert Cisneros | House | 28天 | unknown | Y |
-| 2 | **AAPL** | LONG | +1.42% | +1.45% | 0.65 | 0.925 | Nancy Pelosi | House | 17天 | unknown | Y |
-| 3 | **ETN** | LONG | +1.30% | +1.32% | 0.65 | 0.845 | John Boozman | Senate | 17天 | A | Y |
-| 4 | **NFLX** | LONG | +1.30% | +1.32% | 0.63 | 0.819 | John Boozman | Senate | 38天 | A | Y |
-| 5 | **DIS** | LONG | +1.30% | +1.32% | 0.63 | 0.819 | John Boozman | Senate | 38天 | A | Y |
-| 6 | **AAPL** | LONG | +1.30% | +1.32% | 0.63 | 0.819 | John Boozman | Senate | 31天 | A | Y |
-| 7 | **GS** | LONG | +1.12% | +2.35% | 0.67 | 0.750 | David H McCormick | Senate | 30天 | B | Y |
-| 8 | **FNV** | LONG | +1.39% | +1.42% | 0.51 | 0.711 | Gilbert Cisneros | House | 31天 | unknown |  |
-| 9 | **WPM** | LONG | +1.39% | +1.42% | 0.51 | 0.711 | Gilbert Cisneros | House | 31天 | unknown |  |
-| 10 | **SPGI** | LONG | +1.39% | +1.42% | 0.50 | 0.690 | Richard W. Allen | House | 44天 | unknown |  |
-| 11 | **STT** | LONG | +1.26% | +3.73% | 0.52 | 0.655 | Jake Auchincloss | House | 10天 | unknown |  |
-| 12 | **PWR** | LONG | +0.96% | +0.97% | 0.59 | 0.568 | Gilbert Cisneros | House | 49天 | unknown | Y |
-| 13 | **DIS** | LONG | +0.96% | +0.97% | 0.59 | 0.568 | Gilbert Cisneros | House | 49天 | unknown | Y |
-| 14 | **GS** | LONG | +0.95% | +1.83% | 0.59 | 0.559 | Donald Sternoff Jr.. | House | 71天 | unknown | Y |
-| 15 | **GS** | LONG | +0.95% | +1.83% | 0.58 | 0.550 | Steve Cohen | House | 72天 | unknown | Y |
-| 16 | **PWR** | LONG | +0.80% | +1.39% | 0.57 | 0.459 | Gilbert Cisneros | House | 79天 | unknown | Y |
-| 17 | **PWR** | LONG | +0.80% | +1.39% | 0.57 | 0.459 | Gilbert Cisneros | House | 65天 | unknown | Y |
-| 18 | **CSGP** | LONG | +0.92% | +0.95% | 0.50 | 0.459 | Gilbert Cisneros | House | 30天 | unknown |  |
-| 19 | **DASH** | LONG | +0.92% | +0.95% | 0.50 | 0.459 | Gilbert Cisneros | House | 30天 | unknown |  |
-| 20 | **ISRG** | LONG | +0.92% | +0.95% | 0.50 | 0.459 | Gilbert Cisneros | House | 28天 | unknown |  |
+| 1 | **ETN** | LONG | +1.70% | +1.73% | 0.70 | 1.198 | Gilbert Cisneros | House | 28天 | B | Y |
+| 2 | **FNV** | LONG | +1.80% | +1.85% | 0.55 | 0.999 | Gilbert Cisneros | House | 31天 | B |  |
+| 3 | **WPM** | LONG | +1.80% | +1.85% | 0.55 | 0.999 | Gilbert Cisneros | House | 31天 | B |  |
+| 4 | **AAPL** | LONG | +1.42% | +1.45% | 0.65 | 0.925 | Nancy Pelosi | House | 17天 | C | Y |
+| 5 | **STT** | LONG | +1.64% | +4.85% | 0.56 | 0.914 | Jake Auchincloss | House | 10天 | B |  |
+| 6 | **ETN** | LONG | +1.12% | +1.13% | 0.63 | 0.704 | John Boozman | Senate | 17天 | C | Y |
+| 7 | **SPGI** | LONG | +1.39% | +1.42% | 0.50 | 0.690 | Richard W. Allen | House | 44天 | C |  |
+| 8 | **NFLX** | LONG | +1.12% | +1.13% | 0.61 | 0.682 | John Boozman | Senate | 38天 | C | Y |
+| 9 | **DIS** | LONG | +1.12% | +1.13% | 0.61 | 0.682 | John Boozman | Senate | 38天 | C | Y |
+| 10 | **AAPL** | LONG | +1.12% | +1.13% | 0.61 | 0.682 | John Boozman | Senate | 31天 | C | Y |
+| 11 | **PWR** | LONG | +1.10% | +1.12% | 0.60 | 0.665 | Gilbert Cisneros | House | 49天 | B | Y |
+| 12 | **DIS** | LONG | +1.10% | +1.12% | 0.60 | 0.665 | Gilbert Cisneros | House | 49天 | B | Y |
+| 13 | **GS** | LONG | +0.98% | +1.92% | 0.65 | 0.639 | David H McCormick | Senate | 30天 | C | Y |
+| 14 | **CSGP** | LONG | +1.20% | +1.23% | 0.52 | 0.630 | Gilbert Cisneros | House | 30天 | B |  |
+| 15 | **ISRG** | LONG | +1.20% | +1.23% | 0.52 | 0.630 | Gilbert Cisneros | House | 28天 | B |  |
+| 16 | **WDAY** | LONG | +1.20% | +1.23% | 0.52 | 0.630 | Gilbert Cisneros | House | 30天 | B |  |
+| 17 | **AVAV** | LONG | +1.20% | +1.23% | 0.50 | 0.606 | Gilbert Cisneros | House | 31天 | B |  |
+| 18 | **AJINF** | LONG | +1.20% | +1.23% | 0.50 | 0.606 | Gilbert Cisneros | House | 24天 | B |  |
+| 19 | **BABAF** | LONG | +1.20% | +1.23% | 0.50 | 0.606 | Gilbert Cisneros | House | 24天 | B |  |
+| 20 | **AMZN** | LONG | +1.20% | +1.23% | 0.50 | 0.606 | Gilbert Cisneros | House | 28天 | B |  |
 
 ## Disclaimer
 
 本報告基於歷史統計模型生成，不構成投資建議。過去的統計顯著性不保證未來表現。國會交易資訊具有資訊延遲(filing lag)風險。
 
 ---
-*Generated by Political Alpha Monitor — Alpha Signal Generator v1.0 — 2026-02-27 18:29*
+*Generated by Political Alpha Monitor — Alpha Signal Generator v1.0 — 2026-02-27 21:21*
