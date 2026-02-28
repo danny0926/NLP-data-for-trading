@@ -551,6 +551,7 @@ class SignalEnhancer:
                 politician_grade TEXT,
                 filing_lag_days INTEGER,
                 sqs_score REAL,
+                decay_factor REAL DEFAULT 1.0,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -573,8 +574,8 @@ class SignalEnhancer:
                         options_sentiment, options_signal_type,
                         social_alignment, social_bonus,
                         has_convergence, politician_grade,
-                        filing_lag_days, sqs_score
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        filing_lag_days, sqs_score, decay_factor
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     trade_id, sig["ticker"], sig["politician_name"],
                     sig["chamber"], sig["transaction_type"], sig["direction"],
@@ -587,7 +588,7 @@ class SignalEnhancer:
                     sig["social_alignment"], sig["social_bonus"],
                     1 if sig["has_convergence"] else 0,
                     sig["politician_grade"], sig["filing_lag_days"],
-                    sig["sqs_score"],
+                    sig["sqs_score"], sig.get("decay_factor", 1.0),
                 ))
                 inserted += 1
             except sqlite3.IntegrityError:
@@ -599,7 +600,7 @@ class SignalEnhancer:
                         pacs_options_component = ?, pacs_convergence_component = ?,
                         options_sentiment = ?, options_signal_type = ?,
                         social_alignment = ?, social_bonus = ?,
-                        has_convergence = ?, updated_at = CURRENT_TIMESTAMP
+                        has_convergence = ?, decay_factor = ?, updated_at = CURRENT_TIMESTAMP
                     WHERE trade_id = ?
                 """, (
                     sig["pacs_score"], sig["confidence_v2"], sig["enhanced_strength"],
@@ -608,7 +609,7 @@ class SignalEnhancer:
                     sig["pacs_options_component"], sig["pacs_convergence_component"],
                     sig["options_sentiment"], sig["options_signal_type"],
                     sig["social_alignment"], sig["social_bonus"],
-                    1 if sig["has_convergence"] else 0,
+                    1 if sig["has_convergence"] else 0, sig.get("decay_factor", 1.0),
                     trade_id,
                 ))
                 updated += 1
