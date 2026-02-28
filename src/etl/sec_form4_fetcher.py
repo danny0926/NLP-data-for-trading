@@ -114,6 +114,70 @@ class SECForm4Fetcher:
         logger.info(f"[SECForm4] 找到 {len(filing_entries)} 筆 Form 4 filing")
 
         # Step 2: 逐一下載並解析 XML
+        all_trades = self._download_and_parse(filing_entries)
+
+        logger.info(
+            f"[SECForm4] 完成: 共解析 {len(all_trades)} 筆交易 "
+            f"(來自 {len(filing_entries)} 筆 filing)"
+        )
+        return all_trades
+
+    def fetch_by_tickers(self, tickers: list, days: int = 30,
+                         max_filings_per_ticker: int = 10) -> list:
+        """
+        針對特定 tickers 抓取 Form 4 insider trading 資料。
+
+        使用 EDGAR EFTS search-index API，以公司 ticker 作為搜尋關鍵字。
+        這能大幅提高與 congress_trades 的重疊率。
+
+        Args:
+            tickers: 要搜尋的 ticker 列表
+            days: 回溯天數
+            max_filings_per_ticker: 每個 ticker 最多抓取幾筆 filing
+
+        Returns:
+            list[Form4Trade]: 解析後的交易紀錄
+        """
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days)
+        start_str = start_date.strftime("%Y-%m-%d")
+        end_str = end_date.strftime("%Y-%m-%d")
+
+        logger.info(
+            f"[SECForm4] 針對 {len(tickers)} 個 tickers 抓取 Form 4，"
+            f"範圍: {start_str} ~ {end_str}"
+        )
+
+        all_trades = []
+        for i, ticker in enumerate(tickers):
+            logger.info(
+                f"[SECForm4] ({i+1}/{len(tickers)}) 搜尋 {ticker} 的 Form 4..."
+            )
+            filing_entries = self._search_filings_by_ticker(
+                ticker=ticker,
+                start_date=start_str,
+                end_date=end_str,
+                max_results=max_filings_per_ticker,
+            )
+
+            if not filing_entries:
+                logger.info(f"[SECForm4] {ticker}: 無 Form 4 filing")
+                continue
+
+            logger.info(
+                f"[SECForm4] {ticker}: 找到 {len(filing_entries)} 筆 filing"
+            )
+            trades = self._download_and_parse(filing_entries)
+            all_trades.extend(trades)
+
+        logger.info(
+            f"[SECForm4] 完成: 共解析 {len(all_trades)} 筆交易 "
+            f"(來自 {len(tickers)} 個 tickers)"
+        )
+        return all_trades
+
+    def _download_and_parse(self, filing_entries: list) -> list:
+        """下載並解析 filing entries 為交易紀錄。"""
         all_trades = []
         for i, entry in enumerate(filing_entries):
             accession = entry["accession"]
@@ -128,12 +192,48 @@ class SECForm4Fetcher:
             except Exception as e:
                 logger.error(f"[SECForm4] 解析失敗 {accession}: {e}")
                 continue
-
-        logger.info(
-            f"[SECForm4] 完成: 共解析 {len(all_trades)} 筆交易 "
-            f"(來自 {len(filing_entries)} 筆 filing)"
-        )
         return all_trades
+
+    def _search_filings_by_ticker(self, ticker: str, start_date: str,
+                                   end_date: str,
+                                   max_results: int = 10) -> list:
+        """
+        使用 EDGAR EFTS search-index 搜尋特定公司的 Form 4 filings。
+
+        以 ticker 作為搜尋關鍵字，EDGAR 會匹配 issuerTradingSymbol。
+        """
+        self._rate_limit()
+
+        url = "https://efts.sec.gov/LATEST/search-index"
+        params = {
+            "q": f'"{ticker}"',
+            "forms": "4",
+            "dateRange": "custom",
+            "startdt": start_date,
+            "enddt": end_date,
+            "from": 0,
+            "size": min(max_results, self.EFTS_PAGE_SIZE),
+        }
+
+        try:
+            resp = self.session.get(url, params=params, timeout=30)
+            if resp.status_code != 200:
+                logger.warning(
+                    f"[SECForm4] EFTS 搜尋 {ticker} 回傳 {resp.status_code}"
+                )
+                return []
+
+            data = resp.json()
+            hits = data.get("hits", {}).get("hits", [])
+
+            if not hits:
+                return []
+
+            return self._parse_efts_hits(hits, max_results)
+
+        except Exception as e:
+            logger.warning(f"[SECForm4] EFTS 搜尋 {ticker} 失敗: {e}")
+            return []
 
     def _search_filings(self, start_date: str, end_date: str,
                         max_results: int = 50) -> list:

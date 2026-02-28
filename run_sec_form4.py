@@ -9,6 +9,8 @@ SEC Form 4 Insider Trading 抓取入口點
     python run_sec_form4.py --max 100        # 最多 100 筆
     python run_sec_form4.py --cross-ref      # 執行國會交易交叉比對
     python run_sec_form4.py --days 7 --cross-ref  # 抓取 + 交叉比對
+    python run_sec_form4.py --congress-tickers     # 只抓國會交易中出現的 tickers
+    python run_sec_form4.py --congress-tickers --max-tickers 10  # 限制 ticker 數量
 """
 
 import argparse
@@ -230,6 +232,36 @@ def _print_record(r: dict):
     print()
 
 
+def _get_congress_tickers(limit: int = 50) -> list:
+    """從 congress_trades 讀取 unique tickers，按交易次數排序。"""
+    conn = sqlite3.connect(DB_PATH)
+    rows = conn.execute('''
+        SELECT ticker, COUNT(*) as cnt
+        FROM congress_trades
+        WHERE ticker IS NOT NULL AND ticker != ''
+        GROUP BY ticker
+        ORDER BY cnt DESC
+        LIMIT ?
+    ''', (limit,)).fetchall()
+    conn.close()
+    return [r[0] for r in rows]
+
+
+def _print_transaction_summary(trades: list):
+    """印出交易類型摘要（確認 Purchase 是否有被抓到）。"""
+    from collections import Counter
+    type_counts = Counter(t.transaction_type for t in trades)
+    print(f"\n  交易類型分布:")
+    type_labels = {
+        'P': 'Purchase (買入)', 'S': 'Sale (賣出)',
+        'A': 'Grant/Award', 'M': 'Exercise',
+        'F': 'Tax Withholding', 'G': 'Gift',
+    }
+    for code, count in type_counts.most_common():
+        label = type_labels.get(code.rstrip('(D)'), code)
+        print(f"    {code}: {count} ({label})")
+
+
 def main():
     setup_logging()
 
@@ -244,25 +276,54 @@ def main():
                         help="只執行交叉比對（不抓取新資料）")
     parser.add_argument("--window", type=int, default=30,
                         help="交叉比對時間窗口天數 (預設 30)")
+    parser.add_argument("--congress-tickers", action="store_true",
+                        help="只抓取國會交易中出現的 tickers 的 Form 4")
+    parser.add_argument("--max-tickers", type=int, default=50,
+                        help="--congress-tickers 模式下最多處理幾個 ticker (預設 50)")
     args = parser.parse_args()
 
     # 初始化資料庫（確保表存在）
     init_db()
 
     if not args.cross_ref_only:
-        # 抓取 Form 4 資料
-        print(f"\n開始抓取 SEC Form 4 insider trading 資料...")
-        print(f"回溯 {args.days} 天，最多 {args.max} 筆 filing\n")
-
         fetcher = SECForm4Fetcher()
-        trades = fetcher.fetch(days=args.days, max_filings=args.max)
 
-        if trades:
-            stats = save_trades_to_db(trades)
-            print(f"\n抓取完成: 新增 {stats['new']} 筆，跳過(重複) {stats['skipped']} 筆")
+        if args.congress_tickers:
+            # 從 congress_trades 讀取 unique tickers
+            tickers = _get_congress_tickers(limit=args.max_tickers)
+            if not tickers:
+                print("\n[WARN] congress_trades 中無有效 tickers")
+            else:
+                print(f"\n開始抓取 SEC Form 4 insider trading 資料...")
+                print(f"目標: {len(tickers)} 個國會交易 tickers, 回溯 {args.days} 天")
+                print(f"Tickers: {', '.join(tickers[:20])}"
+                      f"{'...' if len(tickers) > 20 else ''}\n")
+
+                trades = fetcher.fetch_by_tickers(
+                    tickers=tickers,
+                    days=args.days,
+                    max_filings_per_ticker=max(args.max // len(tickers), 5),
+                )
+
+                if trades:
+                    stats = save_trades_to_db(trades)
+                    print(f"\n抓取完成: 新增 {stats['new']} 筆，跳過(重複) {stats['skipped']} 筆")
+                    _print_transaction_summary(trades)
+                else:
+                    print("\n未抓取到任何交易資料。")
         else:
-            print("\n未抓取到任何交易資料。")
-            print("可能原因: SEC EDGAR API 暫時不可用或日期範圍內無 filing")
+            # 原有的通用抓取邏輯
+            print(f"\n開始抓取 SEC Form 4 insider trading 資料...")
+            print(f"回溯 {args.days} 天，最多 {args.max} 筆 filing\n")
+
+            trades = fetcher.fetch(days=args.days, max_filings=args.max)
+
+            if trades:
+                stats = save_trades_to_db(trades)
+                print(f"\n抓取完成: 新增 {stats['new']} 筆，跳過(重複) {stats['skipped']} 筆")
+            else:
+                print("\n未抓取到任何交易資料。")
+                print("可能原因: SEC EDGAR API 暫時不可用或日期範圍內無 filing")
 
     # 交叉比對
     if args.cross_ref or args.cross_ref_only:
