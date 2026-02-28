@@ -46,11 +46,17 @@ Innovation explorations organized chronologically.
 - Phase 2 (2-3d): `convergence_detector.py` contract_proximity_score + `signal_enhancer.py` contract_award_bonus
 - Phase 3 (2-3d): Historical backtest validation
 
+### Phase 2 Integration (2026-02-28 PM Sprint)
+- [x] **contractor_tickers.json** expanded: 38→98 tickers (9 sectors: Industrials 27, Tech 23, Healthcare 16, Financials 7, Energy 6, Communication 6, Consumer 6, Real Estate 4, Utilities 3)
+- [x] **convergence_detector.py** +91 lines: `_get_contract_proximity()` — BUY direction +0.3, $100M+ +0.3, DoD +0.1, time proximity +0.3, `score_contract` component (×0.5)
+- [x] **signal_enhancer.py** +53 lines: `_load_contract_data()` + `pacs_contract_component` — +0.1 any contract, +0.2 for $100M+
+- [x] **20 new tests**: `tests/test_rb009_integration.py` — 8 format, 6 proximity, 6 bonus tests (310 total pass)
+- Commits: 9ec6e2c, c798a42, 656c9f9, 020732c
+
 ### Next Steps
-- [ ] Complete usaspending_fetcher.py (skeleton exists at src/etl/)
-- [ ] Build contractor_tickers.json static mapping (Top 30 tickers)
-- [ ] Add contract_proximity_score to convergence_detector
-- [ ] Backtest: BUY + contract convergence vs BUY-only alpha
+- [ ] Backtest: BUY + contract convergence vs BUY-only alpha (requires more contract data)
+- [ ] Automate USASpending daily fetch in run_daily.py
+- [ ] Historical contract data backfill (2024-2025)
 
 ---
 
@@ -75,11 +81,25 @@ Innovation explorations organized chronologically.
 - `run_sec_form4.py` uses random/specific company fetching strategy
 - Needs to be modified to fetch Form 4 by congress_trades' 264 tickers
 
+### Re-Analysis (2026-02-28 PM Sprint)
+
+After fixing both the fetcher and analysis pipeline:
+- **Fixes applied**: `--congress-tickers` mode added to `run_sec_form4.py` (commit 6aac906), `signal_tracker.py` filing_date fix (commit 3d4f44a)
+- **Expanded data**: 52→336 Form 4 trades, 10→53 unique tickers, 1→28 overlap with congress_trades
+- **Purchase codes confirmed**: 13 P (Purchase) transactions found — original fetcher's generic search was the root cause, NOT a filter bug
+
+#### Structural Divergence Finding
+- **53 divergent records**: Congress members BUY while insiders SELL the same stocks
+- **3 aligned records**: Both sell (far below threshold for alpha testing)
+- **0 aligned BUY records**: No case where congress and insiders both bought
+- **Root cause**: Insiders predominantly sell (compensation liquidation, 10b5-1 plans), while congress predominantly buys
+
+**Updated Verdict**: CONDITIONAL SHELVE (N=3 aligned too small)
+**New Research Lead**: The divergence pattern itself (congress buys what insiders sell) may be a contrarian indicator — worth a dedicated study if data accumulates to N>=30 aligned.
+
 ### Next Steps
-- [ ] Modify run_sec_form4.py: fetch by congress tickers (not random companies)
-- [ ] Verify P (Purchase) transaction codes are not being filtered out
-- [ ] Fetch 12-month historical data for congress-traded tickers
-- [ ] Re-run convergence analysis with targeted dataset
+- [ ] Monitor aligned convergence count; re-evaluate when N≥30
+- [ ] New hypothesis: Congress-insider DIVERGENCE as contrarian signal (requires dedicated RB)
 
 ---
 
