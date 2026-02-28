@@ -276,6 +276,48 @@ class DailyRunner:
             sub_results.append(f"portfolio:FAIL({e})")
             self.logger.warning(f"投資組合優化失敗: {e}")
 
+        # Signal Enhancer (PACS + VIX)
+        try:
+            from src.signal_enhancer import SignalEnhancer
+            enhancer = SignalEnhancer(buy_only=True)
+            enhanced = enhancer.enhance_all()
+            sub_results.append(f"enhanced={len(enhanced)}")
+        except Exception as e:
+            sub_results.append(f"enhanced:FAIL({e})")
+            self.logger.warning(f"Signal Enhancer 失敗: {e}")
+
+        # Sector Rotation
+        try:
+            from src.sector_rotation import SectorRotationDetector
+            detector = SectorRotationDetector()
+            signals = detector.detect()
+            sub_results.append(f"sector_rotation={len(signals)}")
+        except Exception as e:
+            sub_results.append(f"sector_rotation:FAIL({e})")
+            self.logger.warning(f"Sector Rotation 失敗: {e}")
+
+        # Rebalance Advisor
+        try:
+            from src.rebalance_advisor import RebalanceAdvisor
+            advisor = RebalanceAdvisor()
+            actions = advisor.analyze()
+            sub_results.append(f"rebalance={len(actions)}")
+        except Exception as e:
+            sub_results.append(f"rebalance:FAIL({e})")
+            self.logger.warning(f"Rebalance Advisor 失敗: {e}")
+
+        # Fama-French Re-run (fills in CARs as more price data becomes available)
+        try:
+            result = subprocess.run(
+                [sys.executable, "run_fama_french_backtest.py"],
+                capture_output=True, text=True, timeout=300,
+                cwd=PROJECT_DIR
+            )
+            sub_results.append("ff3=OK" if result.returncode == 0 else f"ff3:FAIL(rc={result.returncode})")
+        except Exception as e:
+            sub_results.append(f"ff3:FAIL({e})")
+            self.logger.warning(f"Fama-French 回測失敗: {e}")
+
         # Smart Alerts
         try:
             from src.smart_alerts import SmartAlertSystem
