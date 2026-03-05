@@ -1144,7 +1144,7 @@ def page_social_intelligence():
                 color_discrete_map={"Bullish": COLORS["green"], "Bearish": COLORS["red"], "Neutral": "#64748b"},
                 hole=0.5,
             )
-            fig.update_layout(height=250, margin=dict(t=10, b=10), **PLOTLY_TEMPLATE["layout"])
+            fig.update_layout(height=250, margin=dict(t=10, b=10), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
             fig.update_traces(textinfo="label+percent", textfont_size=12)
             st.plotly_chart(fig, use_container_width=True)
         else:
@@ -1162,7 +1162,7 @@ def page_social_intelligence():
                 color_discrete_sequence=PLOTLY_COLORS,
                 labels={"platform": "Platform", "cnt": "Posts"},
             )
-            fig2.update_layout(height=200, margin=dict(t=10, b=30), showlegend=False, **PLOTLY_TEMPLATE["layout"])
+            fig2.update_layout(height=200, margin=dict(t=10, b=30), showlegend=False, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
             st.plotly_chart(fig2, use_container_width=True)
 
         # Social alpha signals
