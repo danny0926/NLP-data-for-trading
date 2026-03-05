@@ -8,6 +8,32 @@ Congressional Trading Intelligence System ("Political Alpha Monitor") — an AI-
 
 Primary language in code comments and UI output is **Traditional Chinese (繁體中文)**.
 
+## North Star Metric（北極星指標）
+
+> **核心價值：提供傳統技術分析做不到的、更快速準確的文本情報優勢。**
+
+PAM 屬於 **Productivity Game** — 讓投資者更高效地取得「非價量」的情報。
+
+### 兩大支柱
+
+| 支柱 | 資訊來源 | 用戶價值 |
+|------|----------|----------|
+| **國會交易情報** | 議員交易揭露、SEC Form 4、政府合約 | 「聰明錢」在買什麼、insider 同步動作 |
+| **社群紅人解讀** | Trump、Musk、Cramer 等 KOL 推文 | 推文背後暗示的政策/市場方向信號 |
+
+### NSM：每週產出的可行動文本信號數 (Actionable Text Signals / Week)
+
+Input Metrics:
+1. 資料來源覆蓋率（目前 9 個源）
+2. ETL 成功率 & 頻率
+3. 信號通過率（品質門檻）
+4. Filing/推文 → Signal 延遲（小時）
+5. 交叉比對命中率（議員言行一致/矛盾）
+
+### 決策原則
+
+所有功能開發、數據源評估、Marketing 內容，都應該問：**「這能增加每週的可行動文本信號數嗎？」**
+
 ## Setup & Running
 
 ```bash
