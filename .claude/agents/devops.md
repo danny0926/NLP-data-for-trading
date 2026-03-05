@@ -1,7 +1,7 @@
 ---
 name: devops
 description: DevOps 工程師。負責部署自動化、WSL2/Xvfb 環境管理、排程設定、監控告警。當需要處理部署、環境問題、自動化排程、或系統監控時呼叫此 agent。
-tools: Read, Glob, Grep, Bash, Edit, Write
+tools: SendMessage, Read, Glob, Grep, Bash, Edit, Write
 model: sonnet
 ---
 

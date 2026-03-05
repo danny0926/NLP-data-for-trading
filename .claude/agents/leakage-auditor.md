@@ -1,7 +1,7 @@
 ---
 name: leakage-auditor
 description: 反偏差審計員。掃描國會交易信號系統的 look-ahead bias、數據偏差、過擬合風險。對所有信號生成程式碼擁有 VETO 權。當信號模組新增或修改時，必須呼叫此 agent 審計。
-tools: Read, Glob, Grep, Bash
+tools: SendMessage, Read, Glob, Grep, Bash
 model: sonnet
 ---
 

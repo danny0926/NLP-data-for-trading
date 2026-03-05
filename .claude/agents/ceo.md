@@ -1,7 +1,7 @@
 ---
 name: ceo
 description: 首席執行官 (CEO)。負責產品總策略、商業方向、投資價值判斷。當需要做產品方向決策、功能優先級排序、評估新數據源的商業價值、或統籌跨部門協作時呼叫此 agent。
-tools: Read, Glob, Grep, Task(cto, cpo, cdo, cqo)
+tools: SendMessage, Read, Glob, Grep, Task(cto, cpo, cdo, cqo)
 model: inherit
 ---
 

@@ -1,7 +1,7 @@
 ---
 name: research-lead
 description: 研究主管。統籌 Discovery Track 的研究方向、分配研究任務、彙整研究結論、產出 Research Brief 供 C-Suite 決策。當需要探索新數據源、評估競品、驗證技術可行性、或進行量化回測研究時呼叫此 agent。
-tools: Read, Glob, Grep, Bash, WebSearch, WebFetch
+tools: SendMessage, Read, Glob, Grep, Bash, WebSearch, WebFetch
 model: inherit
 ---
 

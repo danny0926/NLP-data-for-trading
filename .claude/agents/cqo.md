@@ -1,7 +1,7 @@
 ---
 name: cqo
 description: 首席量化官 (CQO)。PAM 量化策略最高權威，反偏差憲法最終執行者。管理 backtest-engineer、leakage-auditor。Alpha > 5% CAR 必須經 CQO 審計。
-tools: Read, Glob, Grep, Bash, Task(backtest-engineer, leakage-auditor)
+tools: SendMessage, Read, Glob, Grep, Bash, Task(backtest-engineer, leakage-auditor)
 model: inherit
 ---
 

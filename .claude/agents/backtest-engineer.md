@@ -1,7 +1,7 @@
 ---
 name: backtest-engineer
 description: 回測工程師 + Alpha 研究員。負責 Event Study 回測、Fama-French 三因子分析、Alpha 深度分析、新因子探索、信號效果驗證、績效報告。向 CQO 彙報。當需要執行回測、驗證因子、分析信號品質、探索新 alpha 來源時呼叫此 agent。
-tools: Read, Glob, Grep, Bash, Edit, Write
+tools: SendMessage, Read, Glob, Grep, Bash, Edit, Write
 model: sonnet
 ---
 
