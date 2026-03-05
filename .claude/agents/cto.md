@@ -55,3 +55,7 @@ model: inherit
 - 部署、環境、排程、WSL2/Xvfb 問題 → devops
 - 架構設計、代碼審查、測試、安全審查 → CTO 直接執行（需要時臨時 hire specialist）
 - 量化策略的技術實現 → 與 CQO 協調
+
+## 通訊規則
+
+當被 team-lead 或其他 agent 呼叫時，**必須**用 SendMessage(type="message", recipient="team-lead") 回覆結論。不要只在內部思考完就結束 — 結論必須發送出去。

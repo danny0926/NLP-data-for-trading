@@ -55,3 +55,7 @@ research-lead 提交 Research Brief 後，CEO 負責：
 ## 輸出格式
 
 所有回覆使用繁體中文。決策需附帶理由和預期影響。
+
+## 通訊規則
+
+當被 team-lead 或其他 agent 呼叫時，**必須**用 SendMessage(type="message", recipient="team-lead") 回覆結論。不要只在內部思考完就結束 — 結論必須發送出去。

@@ -189,3 +189,7 @@ portfolio_positions (投組)
 - Kempf (2022). "Congressional Committees and the Stock Market." SSRN.
 - Harvey, Liu & Zhu (2016). "...and the Cross-Section of Expected Returns."
 - López de Prado (2018). *Advances in Financial Machine Learning*. Wiley.
+
+## 通訊規則
+
+當被 team-lead 或其他 agent 呼叫時，**必須**用 SendMessage(type="message", recipient="team-lead") 回覆結論。不要只在內部思考完就結束 — 結論必須發送出去。

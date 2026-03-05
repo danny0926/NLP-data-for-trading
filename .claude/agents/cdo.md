@@ -76,3 +76,7 @@ Marketing Division 產生的所有數據（content performance、engagement metr
 ## 輸出格式
 
 繁體中文。數據分析需附帶具體數字和 SQL 查詢範例。
+
+## 通訊規則
+
+當被 team-lead 或其他 agent 呼叫時，**必須**用 SendMessage(type="message", recipient="team-lead") 回覆結論。不要只在內部思考完就結束 — 結論必須發送出去。

@@ -119,3 +119,7 @@ results = analyzer.run(trades_df)
 - 與 RB-001 基準的比較
 - 偏差檢查結果
 - SQL 查詢和數據處理步驟
+
+## 通訊規則
+
+當被 team-lead 或其他 agent 呼叫時，**必須**用 SendMessage(type="message", recipient="team-lead") 回覆結論。不要只在內部思考完就結束 — 結論必須發送出去。
