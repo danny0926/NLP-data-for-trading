@@ -7,26 +7,46 @@
     uvicorn api_server:app --reload --port 8000
 """
 
+import logging
 import os
 import sqlite3
+import time
+from collections import defaultdict
 from datetime import datetime
 from typing import Optional, List, Any, Dict
 
-from fastapi import FastAPI, Query, Path, HTTPException, Depends, Security
+from fastapi import FastAPI, Query, Path, HTTPException, Depends, Security, Request
+from fastapi.responses import JSONResponse
 from fastapi.security import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
 load_dotenv()
 
+logger = logging.getLogger("PAM.API")
+
 # ── 設定 ──
 DB_PATH = os.getenv("DATABASE_URL", os.path.join(os.path.dirname(__file__), "data", "data.db"))
 API_KEY = os.getenv("API_SERVER_KEY", "")
+RATE_LIMIT = int(os.getenv("API_RATE_LIMIT", "60"))  # requests per minute
+_START_TIME = time.time()
 
 app = FastAPI(
     title="Political Alpha Monitor API",
-    description="國會交易情報系統 REST API — 提供 Alpha 訊號、政治人物排名、交易資料等",
-    version="1.0.0",
+    description=(
+        "國會交易情報系統 REST API — 提供 Alpha 訊號、PACS 增強訊號、"
+        "政治人物排名、國會交易、SEC Form 4 內部人交易、"
+        "收斂訊號、板塊輪動、投資組合等端點。\n\n"
+        "認證：設定 `X-API-Key` header（若伺服器啟用 API_SERVER_KEY）"
+    ),
+    version="2.0.0",
+    openapi_tags=[
+        {"name": "Signals", "description": "Alpha 訊號與增強訊號"},
+        {"name": "Portfolio", "description": "投資組合與板塊輪動"},
+        {"name": "Politicians", "description": "政治人物排名與交易"},
+        {"name": "Trades", "description": "國會交易與 SEC Form 4"},
+        {"name": "System", "description": "系統狀態與健康檢查"},
+    ],
 )
 
 # ── CORS ──
@@ -37,6 +57,34 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ── Rate Limiter (in-memory, per-IP) ──
+_rate_buckets: Dict[str, list] = defaultdict(list)
+
+
+async def rate_limit(request: Request):
+    """Simple per-IP rate limiter: RATE_LIMIT requests/minute."""
+    if not RATE_LIMIT:
+        return
+    client_ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    bucket = _rate_buckets[client_ip]
+    # Remove entries older than 60s
+    _rate_buckets[client_ip] = [t for t in bucket if now - t < 60]
+    if len(_rate_buckets[client_ip]) >= RATE_LIMIT:
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Try again later.")
+    _rate_buckets[client_ip].append(now)
+
+
+# ── Global exception handler ──
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled error on {request.url.path}: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+    )
 
 # ── API Key 認證 (可選) ──
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
@@ -71,7 +119,7 @@ def rows_to_dicts(rows) -> List[dict]:
 
 
 # ── 1. GET /api/signals — Alpha 訊號 ──
-@app.get("/api/signals", dependencies=[Depends(verify_api_key)])
+@app.get("/api/signals", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Signals"])
 def list_signals(
     ticker: Optional[str] = Query(None, description="篩選股票代號"),
     direction: Optional[str] = Query(None, description="方向 (LONG/SHORT)"),
@@ -109,7 +157,7 @@ def list_signals(
 
 
 # ── 2. GET /api/signals/{id} — 單一訊號 ──
-@app.get("/api/signals/{signal_id}", dependencies=[Depends(verify_api_key)])
+@app.get("/api/signals/{signal_id}", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Signals"])
 def get_signal(signal_id: str = Path(..., description="訊號 ID")):
     conn = get_db()
     try:
@@ -122,7 +170,7 @@ def get_signal(signal_id: str = Path(..., description="訊號 ID")):
 
 
 # ── 3. GET /api/portfolio — 投資組合 ──
-@app.get("/api/portfolio", dependencies=[Depends(verify_api_key)])
+@app.get("/api/portfolio", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Portfolio"])
 def list_portfolio(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
@@ -140,7 +188,7 @@ def list_portfolio(
 
 
 # ── 4. GET /api/politicians — 政治人物排名 ──
-@app.get("/api/politicians", dependencies=[Depends(verify_api_key)])
+@app.get("/api/politicians", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Politicians"])
 def list_politicians(
     chamber: Optional[str] = Query(None, description="院別 (Senate/House)"),
     limit: int = Query(50, ge=1, le=200),
@@ -166,7 +214,7 @@ def list_politicians(
 
 
 # ── 5. GET /api/politicians/{name}/trades — 特定政治人物交易 ──
-@app.get("/api/politicians/{name}/trades", dependencies=[Depends(verify_api_key)])
+@app.get("/api/politicians/{name}/trades", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Politicians"])
 def get_politician_trades(
     name: str = Path(..., description="政治人物姓名"),
     limit: int = Query(50, ge=1, le=200),
@@ -189,7 +237,7 @@ def get_politician_trades(
 
 
 # ── 6. GET /api/convergence — 收斂訊號 ──
-@app.get("/api/convergence", dependencies=[Depends(verify_api_key)])
+@app.get("/api/convergence", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Signals"])
 def list_convergence(
     ticker: Optional[str] = Query(None, description="篩選股票代號"),
     min_score: Optional[float] = Query(None, description="最低收斂分數"),
@@ -219,7 +267,7 @@ def list_convergence(
 
 
 # ── 7. GET /api/trades — 國會交易 ──
-@app.get("/api/trades", dependencies=[Depends(verify_api_key)])
+@app.get("/api/trades", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Trades"])
 def list_trades(
     date_from: Optional[str] = Query(None, description="起始日期 (YYYY-MM-DD)"),
     date_to: Optional[str] = Query(None, description="結束日期 (YYYY-MM-DD)"),
@@ -261,7 +309,7 @@ def list_trades(
 
 
 # ── 8. GET /api/insider — SEC Form 4 內部人交易 ──
-@app.get("/api/insider", dependencies=[Depends(verify_api_key)])
+@app.get("/api/insider", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Trades"])
 def list_insider_trades(
     ticker: Optional[str] = Query(None, description="篩選股票代號"),
     date_from: Optional[str] = Query(None, description="起始日期 (YYYY-MM-DD)"),
@@ -295,7 +343,7 @@ def list_insider_trades(
 
 
 # ── 9. GET /api/cross-ref — 國會 + 內部人交叉比對 ──
-@app.get("/api/cross-ref", dependencies=[Depends(verify_api_key)])
+@app.get("/api/cross-ref", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Trades"])
 def cross_reference(
     ticker: Optional[str] = Query(None, description="篩選股票代號"),
     days: int = Query(30, ge=1, le=365, description="交叉比對時間窗口 (天)"),
@@ -347,7 +395,7 @@ def cross_reference(
 
 
 # ── 10. GET /api/stats — 系統統計 ──
-@app.get("/api/stats", dependencies=[Depends(verify_api_key)])
+@app.get("/api/stats", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["System"])
 def system_stats():
     conn = get_db()
     try:
@@ -398,7 +446,7 @@ def system_stats():
 
 
 # ── 11. GET /api/health — 健康檢查 ──
-@app.get("/api/health")
+@app.get("/api/health", tags=["System"])
 def health_check():
     db_ok = False
     try:
@@ -409,11 +457,126 @@ def health_check():
     except Exception:
         pass
 
+    uptime_s = int(time.time() - _START_TIME)
     return {
         "status": "ok" if db_ok else "degraded",
         "timestamp": datetime.utcnow().isoformat() + "Z",
         "database": "connected" if db_ok else "disconnected",
+        "version": app.version,
+        "uptime_seconds": uptime_s,
     }
+
+
+# ── 12. GET /api/enhanced-signals — PACS 增強訊號 ──
+@app.get("/api/enhanced-signals", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Signals"])
+def list_enhanced_signals(
+    ticker: Optional[str] = Query(None, description="篩選股票代號"),
+    min_pacs: Optional[float] = Query(None, description="最低 PACS 分數"),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+):
+    """PACS + VIX 增強後的訊號（Signal Enhancer v2 輸出）"""
+    conn = get_db()
+    try:
+        where, params = [], []
+        if ticker:
+            where.append("ticker = ?")
+            params.append(ticker.upper())
+        if min_pacs is not None:
+            where.append("pacs_score >= ?")
+            params.append(min_pacs)
+
+        clause = (" WHERE " + " AND ".join(where)) if where else ""
+
+        total = conn.execute(f"SELECT COUNT(*) FROM enhanced_signals{clause}", params).fetchone()[0]
+        rows = conn.execute(
+            f"SELECT * FROM enhanced_signals{clause} ORDER BY enhanced_strength DESC LIMIT ? OFFSET ?",
+            params + [clamp_limit(limit), offset],
+        ).fetchall()
+        return paginated_response(rows_to_dicts(rows), total, clamp_limit(limit), offset)
+    finally:
+        conn.close()
+
+
+# ── 13. GET /api/sectors — 板塊輪動訊號 ──
+@app.get("/api/sectors", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Portfolio"])
+def list_sector_rotation(
+    direction: Optional[str] = Query(None, description="方向 (BUY/SELL)"),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+):
+    """國會交易板塊輪動訊號（Sector Rotation Detector 輸出）"""
+    conn = get_db()
+    try:
+        where, params = [], []
+        if direction:
+            where.append("direction = ?")
+            params.append(direction.upper())
+
+        clause = (" WHERE " + " AND ".join(where)) if where else ""
+
+        total = conn.execute(f"SELECT COUNT(*) FROM sector_rotation_signals{clause}", params).fetchone()[0]
+        rows = conn.execute(
+            f"SELECT * FROM sector_rotation_signals{clause} ORDER BY momentum_score DESC LIMIT ? OFFSET ?",
+            params + [clamp_limit(limit), offset],
+        ).fetchall()
+        return paginated_response(rows_to_dicts(rows), total, clamp_limit(limit), offset)
+    finally:
+        conn.close()
+
+
+# ── 14. GET /api/performance — 訊號績效追蹤 ──
+@app.get("/api/performance", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Signals"])
+def list_signal_performance(
+    ticker: Optional[str] = Query(None, description="篩選股票代號"),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+):
+    """訊號的實際績效追蹤（hit rate、actual alpha、MAE/MFE）"""
+    conn = get_db()
+    try:
+        where, params = [], []
+        if ticker:
+            where.append("ticker = ?")
+            params.append(ticker.upper())
+
+        clause = (" WHERE " + " AND ".join(where)) if where else ""
+
+        total = conn.execute(f"SELECT COUNT(*) FROM signal_performance{clause}", params).fetchone()[0]
+        rows = conn.execute(
+            f"SELECT * FROM signal_performance{clause} ORDER BY evaluated_at DESC LIMIT ? OFFSET ?",
+            params + [clamp_limit(limit), offset],
+        ).fetchall()
+        return paginated_response(rows_to_dicts(rows), total, clamp_limit(limit), offset)
+    finally:
+        conn.close()
+
+
+# ── 15. GET /api/rebalance — 再平衡建議歷史 ──
+@app.get("/api/rebalance", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Portfolio"])
+def list_rebalance_history(
+    action: Optional[str] = Query(None, description="動作 (BUY/SELL/INCREASE/DECREASE/HOLD)"),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+):
+    """再平衡建議歷史"""
+    conn = get_db()
+    try:
+        where, params = [], []
+        if action:
+            where.append("action = ?")
+            params.append(action.upper())
+
+        clause = (" WHERE " + " AND ".join(where)) if where else ""
+
+        total = conn.execute(f"SELECT COUNT(*) FROM rebalance_history{clause}", params).fetchone()[0]
+        rows = conn.execute(
+            f"SELECT * FROM rebalance_history{clause} ORDER BY created_at DESC LIMIT ? OFFSET ?",
+            params + [clamp_limit(limit), offset],
+        ).fetchall()
+        return paginated_response(rows_to_dicts(rows), total, clamp_limit(limit), offset)
+    finally:
+        conn.close()
 
 
 # ── 主程式入口 ──

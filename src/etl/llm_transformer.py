@@ -188,7 +188,10 @@ class LLMTransformer:
         api_key = os.getenv("GOOGLE_API_KEY")
         if not api_key:
             raise ValueError("GOOGLE_API_KEY 環境變數未設定")
-        self.client = genai.Client(api_key=api_key)
+        self.client = genai.Client(
+            api_key=api_key,
+            http_options={"timeout": 120_000},  # 120s timeout for LLM calls
+        )
         self.model_name = model_name
 
     def transform(self, fetch_result: FetchResult) -> ExtractionResult:

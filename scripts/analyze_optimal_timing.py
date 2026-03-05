@@ -111,7 +111,7 @@ def download_prices(tickers, start_date, end_date):
             spy_close.index = spy_close.index.get_level_values(0)
         spy_close = spy_close[~spy_close.index.duplicated(keep='first')]
         all_prices['SPY'] = spy_close
-    except:
+    except Exception:
         pass
 
     print(f"  成功取得 {len(all_prices)} 檔")

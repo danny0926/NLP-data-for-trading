@@ -68,7 +68,7 @@ class CongressSectorRadar:
                 return val, val * 1.5
             else:
                 return 0, 0
-        except: return 0, 0
+        except (ValueError, IndexError): return 0, 0
 
     def enrich_sectors(self):
         """
@@ -95,7 +95,7 @@ class CongressSectorRadar:
                     'sector': info.get('sector', 'Unknown'),
                     'industry': info.get('industry', 'Unknown')
                 }
-            except: ticker_info[ticker] = {'sector': 'Unknown', 'industry': 'Unknown'}
+            except Exception: ticker_info[ticker] = {'sector': 'Unknown', 'industry': 'Unknown'}
         
         # Map back to DataFrame
         self.merged_df['sector'] = self.merged_df['ticker'].map(lambda x: ticker_info.get(x, {}).get('sector', 'Unknown'))

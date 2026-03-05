@@ -21,7 +21,10 @@ class DiscoveryEngineV4:
         if model_name is None:
             model_name = GEMINI_MODEL
         self.api_key = GOOGLE_API_KEY
-        self.client = genai.Client(api_key=self.api_key)
+        self.client = genai.Client(
+            api_key=self.api_key,
+            http_options={"timeout": 120_000},  # 120s timeout for LLM calls
+        )
         self.db_path = db_path
         self.model_name = model_name
         self.logger = logging.getLogger(self.__class__.__name__)
