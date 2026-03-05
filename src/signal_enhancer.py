@@ -596,11 +596,15 @@ class SignalEnhancer:
             )
         """)
 
-        # 確保舊表有 pacs_contract_component 欄位 (向後相容)
-        try:
-            cursor.execute("ALTER TABLE enhanced_signals ADD COLUMN pacs_contract_component REAL DEFAULT 0")
-        except sqlite3.OperationalError:
-            pass  # 欄位已存在
+        # 確保舊表有新增欄位 (向後相容)
+        for col_def in [
+            "pacs_contract_component REAL DEFAULT 0",
+            "decay_factor REAL DEFAULT 1.0",
+        ]:
+            try:
+                cursor.execute(f"ALTER TABLE enhanced_signals ADD COLUMN {col_def}")
+            except sqlite3.OperationalError:
+                pass  # 欄位已存在
 
         inserted = 0
         updated = 0
