@@ -1,20 +1,23 @@
 """
 Extract 層 — Social Media Fetcher
-統一社群媒體抓取：Twitter/X (Apify) + Truth Social (Apify) + Reddit (PRAW)。
+統一社群媒體抓取：Gemini Search (Twitter/Truth Social) + Apify (fallback) + Reddit (PRAW)。
 
-支援三個平台的批次抓取，正規化為統一格式後寫入 social_posts 表。
+主要抓取方式為 Gemini + google_search tool，免費且無額外 API key。
+Apify 作為可選 fallback（需付費 subscription）。
 缺少 API 憑證時優雅降級（跳過該平台，不會崩潰）。
 """
 
 import hashlib
+import json
 import logging
 import os
+import re
 import sqlite3
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
-from src.config import DB_PATH
+from src.config import DB_PATH, GOOGLE_API_KEY, GEMINI_MODEL
 from src.social_targets import (
     POLITICIAN_SOCIAL_TARGETS,
     KOL_SOCIAL_TARGETS,
@@ -24,36 +27,62 @@ from src.social_targets import (
 
 logger = logging.getLogger("ETL.SocialFetcher")
 
-# ── Apify Actor IDs ──
-# Twitter/X 搜尋 actor（依使用者搜尋關鍵字抓取推文）
-TWITTER_ACTOR_ID = "apify/twitter-scraper"
-# Truth Social scraper（搜尋帳號貼文）
-TRUTH_SOCIAL_ACTOR_ID = "trudax/truth-social-scraper"
+# ── Apify Actor IDs (fallback, 需付費) ──
+TWITTER_ACTOR_ID = "apidojo/tweet-scraper"
+TRUTH_SOCIAL_ACTOR_ID = "muhammetakkurtt/truth-social-scraper"
 
 # ── Reddit 預設監控子版 ──
 DEFAULT_SUBREDDITS = ["wallstreetbets", "stocks", "investing", "options"]
 
+# ── Gemini Search Prompt ──
+GEMINI_SEARCH_PROMPT = """You are a social media monitoring tool. Search for {name}'s (@{handle}) most recent posts on {platform_label} from the last {hours} hours.
+
+Find the actual content of their tweets/posts. Include any that mention stocks, companies, politics, technology, policy, markets, or notable opinions.
+
+You MUST respond with ONLY a JSON array. No explanation, no markdown. Format:
+[{{"text": "actual post content here", "post_time": "2026-03-05T12:00:00Z", "likes": 50000, "retweets": 5000, "replies": 2000, "url": ""}}]
+
+If you found posts but cannot determine exact engagement numbers, use 0.
+If you found no posts at all, respond with: []
+Important: Only include real posts you find via search. Do NOT fabricate content."""
+
 
 class SocialFetcher:
-    """統一社群媒體抓取器 — Apify (Twitter/Truth Social) + PRAW (Reddit)"""
+    """統一社群媒體抓取器 — Gemini Search (主要) + Apify (fallback) + PRAW (Reddit)"""
 
     def __init__(self, db_path: Optional[str] = None):
         self.db_path = db_path or DB_PATH
 
-        # ── Apify 初始化 ──
+        # ── Gemini Search 初始化 (主要方式) ──
+        self._gemini_client = None
+        api_key = GOOGLE_API_KEY or os.getenv("GOOGLE_API_KEY", "")
+        if api_key:
+            try:
+                from google import genai
+                self._gemini_client = genai.Client(
+                    api_key=api_key,
+                    http_options={"timeout": 120_000},
+                )
+                logger.info("Gemini Search client 初始化成功 (主要社群抓取方式)")
+            except ImportError:
+                logger.warning("google-genai 未安裝，Gemini Search 不可用")
+            except Exception as e:
+                logger.warning(f"Gemini client 初始化失敗: {e}")
+        else:
+            logger.warning("GOOGLE_API_KEY 未設定，Gemini Search 不可用")
+
+        # ── Apify 初始化 (fallback) ──
         self._apify_client = None
         apify_token = os.getenv("APIFY_API_TOKEN", "")
         if apify_token:
             try:
                 from apify_client import ApifyClient
                 self._apify_client = ApifyClient(token=apify_token)
-                logger.info("Apify client 初始化成功")
+                logger.info("Apify client 初始化成功 (fallback)")
             except ImportError:
-                logger.warning("apify-client 未安裝，跳過 Twitter/Truth Social 抓取")
+                logger.warning("apify-client 未安裝，Apify fallback 不可用")
             except Exception as e:
                 logger.warning(f"Apify client 初始化失敗: {e}")
-        else:
-            logger.warning("APIFY_API_TOKEN 未設定，跳過 Twitter/Truth Social 抓取")
 
         # ── PRAW (Reddit) 初始化 ──
         self._reddit = None
@@ -89,6 +118,8 @@ class SocialFetcher:
         """
         抓取所有平台、所有追蹤目標的貼文。
 
+        優先順序：Gemini Search (免費) → Apify (付費 fallback)
+
         Args:
             hours: 回溯時間窗口（小時）
             dry_run: True 時只抓取不寫入 DB
@@ -100,23 +131,39 @@ class SocialFetcher:
 
         # ── Twitter/X ──
         twitter_handles = get_all_twitter_handles()
-        if twitter_handles and self._apify_client:
-            logger.info(f"開始抓取 Twitter/X ({len(twitter_handles)} 個帳號)...")
-            twitter_posts = self._fetch_twitter(twitter_handles, hours)
-            all_posts.extend(twitter_posts)
-            logger.info(f"Twitter/X 抓取完成: {len(twitter_posts)} 則貼文")
-        else:
-            logger.info("跳過 Twitter/X 抓取（無帳號或無 Apify client）")
+        if twitter_handles:
+            if self._gemini_client:
+                logger.info(f"[Gemini Search] 開始搜尋 Twitter/X ({len(twitter_handles)} 個帳號)...")
+                twitter_posts = self._fetch_via_gemini_search(
+                    twitter_handles, hours, platform="twitter", platform_label="Twitter/X"
+                )
+                all_posts.extend(twitter_posts)
+                logger.info(f"Twitter/X 搜尋完成: {len(twitter_posts)} 則貼文")
+            elif self._apify_client:
+                logger.info(f"[Apify fallback] 開始抓取 Twitter/X...")
+                twitter_posts = self._fetch_twitter(twitter_handles, hours)
+                all_posts.extend(twitter_posts)
+                logger.info(f"Twitter/X 抓取完成: {len(twitter_posts)} 則貼文")
+            else:
+                logger.info("跳過 Twitter/X（無 Gemini 或 Apify client）")
 
         # ── Truth Social ──
         truth_handles = get_all_truth_social_handles()
-        if truth_handles and self._apify_client:
-            logger.info(f"開始抓取 Truth Social ({len(truth_handles)} 個帳號)...")
-            truth_posts = self._fetch_truth_social(truth_handles, hours)
-            all_posts.extend(truth_posts)
-            logger.info(f"Truth Social 抓取完成: {len(truth_posts)} 則貼文")
-        else:
-            logger.info("跳過 Truth Social 抓取（無帳號或無 Apify client）")
+        if truth_handles:
+            if self._gemini_client:
+                logger.info(f"[Gemini Search] 開始搜尋 Truth Social ({len(truth_handles)} 個帳號)...")
+                truth_posts = self._fetch_via_gemini_search(
+                    truth_handles, hours, platform="truth_social", platform_label="Truth Social"
+                )
+                all_posts.extend(truth_posts)
+                logger.info(f"Truth Social 搜尋完成: {len(truth_posts)} 則貼文")
+            elif self._apify_client:
+                logger.info(f"[Apify fallback] 開始抓取 Truth Social...")
+                truth_posts = self._fetch_truth_social(truth_handles, hours)
+                all_posts.extend(truth_posts)
+                logger.info(f"Truth Social 抓取完成: {len(truth_posts)} 則貼文")
+            else:
+                logger.info("跳過 Truth Social（無 Gemini 或 Apify client）")
 
         # ── Reddit ──
         reddit_config = self._build_reddit_config()
@@ -125,8 +172,14 @@ class SocialFetcher:
             reddit_posts = self._fetch_reddit(reddit_config, hours)
             all_posts.extend(reddit_posts)
             logger.info(f"Reddit 抓取完成: {len(reddit_posts)} 則貼文")
+        elif reddit_config and self._gemini_client:
+            # Reddit 也可以用 Gemini Search fallback
+            logger.info("[Gemini Search] 搜尋 Reddit 熱門貼文...")
+            reddit_posts = self._fetch_reddit_via_gemini(hours)
+            all_posts.extend(reddit_posts)
+            logger.info(f"Reddit 搜尋完成: {len(reddit_posts)} 則貼文")
         else:
-            logger.info("跳過 Reddit 抓取（無設定或無 PRAW client）")
+            logger.info("跳過 Reddit 抓取（無 PRAW client 或 Gemini）")
 
         logger.info(f"全平台共抓取 {len(all_posts)} 則貼文")
 
@@ -140,40 +193,260 @@ class SocialFetcher:
         return all_posts
 
     def fetch_twitter_only(self, hours: int = 24, dry_run: bool = False) -> List[Dict[str, Any]]:
-        """只抓取 Twitter/X 貼文。"""
-        if not self._apify_client:
-            logger.warning("Apify client 未初始化，無法抓取 Twitter")
-            return []
+        """只抓取 Twitter/X 貼文。優先 Gemini Search，fallback Apify。"""
         handles = get_all_twitter_handles()
-        posts = self._fetch_twitter(handles, hours)
+        if not handles:
+            return []
+        if self._gemini_client:
+            posts = self._fetch_via_gemini_search(handles, hours, "twitter", "Twitter/X")
+        elif self._apify_client:
+            posts = self._fetch_twitter(handles, hours)
+        else:
+            logger.warning("無可用 client（需 GOOGLE_API_KEY 或 APIFY_API_TOKEN）")
+            return []
         if not dry_run and posts:
             self._save_posts(posts)
         return posts
 
     def fetch_truth_only(self, hours: int = 24, dry_run: bool = False) -> List[Dict[str, Any]]:
-        """只抓取 Truth Social 貼文。"""
-        if not self._apify_client:
-            logger.warning("Apify client 未初始化，無法抓取 Truth Social")
-            return []
+        """只抓取 Truth Social 貼文。優先 Gemini Search，fallback Apify。"""
         handles = get_all_truth_social_handles()
-        posts = self._fetch_truth_social(handles, hours)
+        if not handles:
+            return []
+        if self._gemini_client:
+            posts = self._fetch_via_gemini_search(handles, hours, "truth_social", "Truth Social")
+        elif self._apify_client:
+            posts = self._fetch_truth_social(handles, hours)
+        else:
+            logger.warning("無可用 client（需 GOOGLE_API_KEY 或 APIFY_API_TOKEN）")
+            return []
         if not dry_run and posts:
             self._save_posts(posts)
         return posts
 
     def fetch_reddit_only(self, hours: int = 24, dry_run: bool = False) -> List[Dict[str, Any]]:
         """只抓取 Reddit 貼文。"""
-        if not self._reddit:
-            logger.warning("PRAW client 未初始化，無法抓取 Reddit")
+        if self._reddit:
+            config = self._build_reddit_config()
+            posts = self._fetch_reddit(config, hours)
+        elif self._gemini_client:
+            posts = self._fetch_reddit_via_gemini(hours)
+        else:
+            logger.warning("PRAW client 和 Gemini 均不可用")
             return []
-        config = self._build_reddit_config()
-        posts = self._fetch_reddit(config, hours)
         if not dry_run and posts:
             self._save_posts(posts)
         return posts
 
     # ================================================================
-    # Twitter/X (via Apify)
+    # Gemini Search (主要抓取方式 — 免費，使用 google_search tool)
+    # ================================================================
+
+    def _fetch_via_gemini_search(
+        self,
+        handles: List[str],
+        hours: int,
+        platform: str,
+        platform_label: str,
+    ) -> List[Dict[str, Any]]:
+        """
+        透過 Gemini + google_search tool 搜尋社群帳號的近期貼文。
+
+        逐帳號搜尋以提高精確度。Gemini 使用 google search grounding
+        搜尋推文內容，回傳結構化 JSON。
+
+        Args:
+            handles: 帳號列表 (e.g., ["@elonmusk", "@realDonaldTrump"])
+            hours: 回溯時間窗口
+            platform: 平台識別碼 (twitter/truth_social)
+            platform_label: 顯示名稱 (Twitter/X, Truth Social)
+
+        Returns:
+            正規化後的貼文列表
+        """
+        all_posts: List[Dict[str, Any]] = []
+        model = GEMINI_MODEL or "gemini-2.5-flash"
+
+        for handle in handles:
+            clean_handle = handle.lstrip("@")
+            # 查找對應的顯示名稱
+            display_name = self._resolve_display_name(clean_handle)
+
+            prompt = GEMINI_SEARCH_PROMPT.format(
+                platform_label=platform_label,
+                handle=clean_handle,
+                name=display_name,
+                hours=hours,
+            )
+
+            try:
+                response = self._gemini_client.models.generate_content(
+                    model=model,
+                    contents=prompt,
+                    config={"tools": [{"google_search": {}}]},
+                )
+
+                raw_text = response.text or ""
+                items = self._extract_json_array(raw_text)
+
+                if not items:
+                    logger.info(f"  {clean_handle}: 未找到近期貼文")
+                    continue
+
+                for item in items:
+                    if not isinstance(item, dict):
+                        continue
+                    text = (item.get("text") or "").strip()
+                    if not text:
+                        continue
+
+                    post = self._normalize_post(
+                        raw={
+                            "text": text,
+                            "id": hashlib.md5(text[:100].encode()).hexdigest()[:12],
+                            "url": item.get("url") or "",
+                            "created_at": item.get("post_time") or "",
+                            "likes": item.get("likes") or 0,
+                            "retweets": item.get("retweets") or 0,
+                            "replies": item.get("replies") or 0,
+                            "author_name": display_name,
+                            "author_handle": clean_handle,
+                        },
+                        platform=platform,
+                        author_type=self._resolve_author_type(clean_handle),
+                    )
+                    if post["post_text"]:
+                        all_posts.append(post)
+
+                logger.info(f"  {clean_handle}: {len(items)} 則貼文")
+
+            except Exception as e:
+                logger.error(f"Gemini Search 失敗 ({clean_handle}): {e}")
+
+            # 避免 Gemini API rate limit
+            time.sleep(2)
+
+        return all_posts
+
+    def _fetch_reddit_via_gemini(self, hours: int) -> List[Dict[str, Any]]:
+        """
+        透過 Gemini Search 搜尋 Reddit 上的市場相關熱門貼文。
+        用於 PRAW 不可用時的 fallback。
+        """
+        posts: List[Dict[str, Any]] = []
+        model = GEMINI_MODEL or "gemini-2.5-flash"
+
+        prompt = (
+            f"Search Reddit for the hottest posts in the last {hours} hours from "
+            f"subreddits: wallstreetbets, stocks, investing, options. "
+            f"Focus on posts about specific stocks, congressional trading, or major market moves. "
+            f"Return a JSON array of up to 20 posts:\n"
+            f'[{{"author": "username", "subreddit": "wallstreetbets", "title": "...", '
+            f'"text": "...", "url": "https://reddit.com/...", '
+            f'"post_time": "2026-03-05T12:00:00Z", "score": 100, "comments": 50}}]\n'
+            f"Return ONLY valid JSON. If nothing found, return []."
+        )
+
+        try:
+            response = self._gemini_client.models.generate_content(
+                model=model,
+                contents=prompt,
+                config={"tools": [{"google_search": {}}]},
+            )
+
+            raw_text = response.text or ""
+            items = self._extract_json_array(raw_text)
+
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                title = item.get("title") or ""
+                body = item.get("text") or ""
+                text = f"{title}\n\n{body}".strip() if body else title
+
+                if not text:
+                    continue
+
+                author = item.get("author") or "unknown"
+                post = self._normalize_post(
+                    raw={
+                        "text": text,
+                        "id": hashlib.md5(text[:100].encode()).hexdigest()[:12],
+                        "url": item.get("url") or "",
+                        "created_at": item.get("post_time") or "",
+                        "likes": item.get("score") or 0,
+                        "retweets": 0,
+                        "replies": item.get("comments") or 0,
+                        "author_name": author,
+                        "author_handle": f"u/{author}",
+                    },
+                    platform="reddit",
+                    author_type="community",
+                )
+                if post["post_text"]:
+                    posts.append(post)
+
+        except Exception as e:
+            logger.error(f"Gemini Reddit Search 失敗: {e}")
+
+        return posts
+
+    def _resolve_display_name(self, handle: str) -> str:
+        """從追蹤清單中查找帳號對應的顯示名稱。"""
+        handle_lower = handle.lower()
+
+        for p in POLITICIAN_SOCIAL_TARGETS:
+            p_handle = (p.get("twitter") or "").lower().lstrip("@")
+            if p_handle == handle_lower:
+                return p["name"]
+
+        for k in KOL_SOCIAL_TARGETS:
+            for plat_handle in k.get("platforms", {}).values():
+                if plat_handle and plat_handle.lower().lstrip("@") == handle_lower:
+                    return k["name"]
+
+        return handle
+
+    @staticmethod
+    def _extract_json_array(text: str) -> List[Dict]:
+        """從 LLM 輸出中萃取 JSON array。"""
+        if not text:
+            return []
+        # 移除 markdown fences
+        text = re.sub(r'```json\s*', '', text)
+        text = re.sub(r'```\s*', '', text)
+
+        # 嘗試找 JSON array
+        match = re.search(r'(\[.*\])', text, re.DOTALL)
+        if match:
+            try:
+                result = json.loads(match.group(0))
+                if isinstance(result, list):
+                    return result
+            except json.JSONDecodeError:
+                # 清理 trailing comma
+                try:
+                    cleaned = re.sub(r',\s*([\]}])', r'\1', match.group(0))
+                    result = json.loads(cleaned)
+                    if isinstance(result, list):
+                        return result
+                except json.JSONDecodeError:
+                    pass
+
+        # 嘗試找單一 JSON object
+        match = re.search(r'(\{.*\})', text, re.DOTALL)
+        if match:
+            try:
+                result = json.loads(match.group(0))
+                if isinstance(result, dict):
+                    return [result]
+            except json.JSONDecodeError:
+                pass
+
+        return []
+
+    # ================================================================
+    # Twitter/X (via Apify — fallback)
     # ================================================================
 
     def _fetch_twitter(self, handles: List[str], hours: int) -> List[Dict[str, Any]]:
