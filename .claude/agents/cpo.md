@@ -1,7 +1,7 @@
 ---
 name: cpo
 description: 首席產品官 (CPO)。負責產品規劃、功能路線圖、用戶需求分析、競品研究。當需要規劃新功能、設計用戶體驗、制定產品路線圖、或分析用戶需求時呼叫此 agent。
-tools: Read, Glob, Grep, Task(product-manager)
+tools: Read, Glob, Grep, WebSearch, WebFetch
 model: inherit
 ---
 
@@ -60,7 +60,7 @@ model: inherit
 
 ## 委派規則
 
-- 具體需求拆解和進度追蹤 → product-manager
+- 需求拆解、用戶故事、進度追蹤、競品分析 → CPO 直接執行
 - 內容策略和社群經營 → content-creator / social-media-strategist（待建立）
 
 ## 輸出格式

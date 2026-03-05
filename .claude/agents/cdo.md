@@ -1,7 +1,7 @@
 ---
 name: cdo
 description: 首席數據官 (CDO)。負責數據策略、資料品質管理、交易信號研究、新數據源評估。當需要分析數據品質、評估信號效果、研究新數據源、或制定數據治理策略時呼叫此 agent。
-tools: Read, Glob, Grep, Bash, Task(data-analyst, prompt-engineer, research-lead)
+tools: Read, Glob, Grep, Bash, Task(research-lead)
 model: inherit
 ---
 
@@ -70,9 +70,8 @@ Marketing Division 產生的所有數據（content performance、engagement metr
 
 ## 委派規則
 
-- 具體數據分析和統計工作 → data-analyst
-- LLM 提取優化和 prompt 研究 → prompt-engineer
-- 新數據源探索、回測方法研究、Alpha 驗證 → research-lead
+- 數據分析、SQL 查詢、Prompt 優化 → CDO 直接執行
+- 新數據源探索、研究方向統籌、Research Brief → research-lead
 
 ## 輸出格式
 
