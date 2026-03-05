@@ -35,9 +35,11 @@ TRUTH_SOCIAL_ACTOR_ID = "muhammetakkurtt/truth-social-scraper"
 DEFAULT_SUBREDDITS = ["wallstreetbets", "stocks", "investing", "options"]
 
 # ── Gemini Search Prompt ──
-GEMINI_SEARCH_PROMPT = """You are a social media monitoring tool. Search for {name}'s (@{handle}) most recent posts on {platform_label} from the last {hours} hours.
+GEMINI_SEARCH_PROMPT = """Search for {name}'s (@{handle}) latest posts on {platform_label} from the last {hours} hours.
 
-Find the actual content of their tweets/posts. Include any that mention stocks, companies, politics, technology, policy, markets, or notable opinions.
+Search strategy: Look for news articles, media reports, social media aggregators, and direct post embeds that quote {name}'s recent {platform_label} posts. Search for "@{handle}" site:x.com OR "{name}" recent tweets OR "{name}" latest posts.
+
+Include any posts about stocks, companies, politics, technology, policy, markets, crypto, AI, government, or notable opinions.
 
 You MUST respond with ONLY a JSON array. No explanation, no markdown. Format:
 [{{"text": "actual post content here", "post_time": "2026-03-05T12:00:00Z", "likes": 50000, "retweets": 5000, "replies": 2000, "url": ""}}]
