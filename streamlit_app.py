@@ -1,8 +1,8 @@
 """
 Political Alpha Monitor — Interactive Dashboard (Streamlit)
-國會交易智慧分析系統 — 互動式儀表板
+Congressional Trading Intelligence System
 
-使用方式:
+Usage:
     pip install -r requirements_dashboard.txt
     streamlit run streamlit_app.py
 """
@@ -20,7 +20,7 @@ import streamlit as st
 # ── 設定 ──
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "data.db")
 
-# ── 色彩主題 ──
+# ── 色彩主題 (Dark Premium) ──
 COLORS = {
     "primary": "#38bdf8",
     "green": "#4ade80",
@@ -30,17 +30,30 @@ COLORS = {
     "orange": "#fb923c",
     "teal": "#2dd4bf",
     "pink": "#f472b6",
+    "gold": "#eab308",
+    "bg_card": "#1e293b",
 }
 PLOTLY_COLORS = [
     "#38bdf8", "#4ade80", "#fbbf24", "#a78bfa", "#f87171",
     "#fb923c", "#2dd4bf", "#e879f9", "#818cf8", "#34d399",
 ]
 
+# ── Plotly Template (dark premium) ──
+PLOTLY_TEMPLATE = dict(
+    layout=dict(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="#e2e8f0", family="Segoe UI, system-ui, sans-serif"),
+        xaxis=dict(gridcolor="rgba(148,163,184,0.1)"),
+        yaxis=dict(gridcolor="rgba(148,163,184,0.1)"),
+        margin=dict(t=30, b=40, l=50, r=20),
+    )
+)
+
 
 # ── 資料庫工具 ──
 @st.cache_data(ttl=300)
 def query_db(sql: str, params: tuple = ()) -> pd.DataFrame:
-    """查詢 SQLite，回傳 DataFrame。"""
     conn = sqlite3.connect(DB_PATH)
     df = pd.read_sql_query(sql, conn, params=params)
     conn.close()
@@ -48,7 +61,6 @@ def query_db(sql: str, params: tuple = ()) -> pd.DataFrame:
 
 
 def get_table_count(table: str) -> int:
-    """取得表格列數。"""
     try:
         df = query_db(f"SELECT COUNT(*) as cnt FROM {table}")
         return int(df.iloc[0]["cnt"])
@@ -57,7 +69,6 @@ def get_table_count(table: str) -> int:
 
 
 def get_db_size_mb() -> float:
-    """取得 DB 檔案大小 (MB)。"""
     try:
         return os.path.getsize(DB_PATH) / (1024 * 1024)
     except Exception:
@@ -65,47 +76,140 @@ def get_db_size_mb() -> float:
 
 
 def get_last_etl_time() -> str:
-    """取得最後一次 ETL 執行時間。"""
     try:
         df = query_db("SELECT MAX(created_at) as last_run FROM extraction_log")
         val = df.iloc[0]["last_run"]
-        return str(val) if val else "尚無記錄"
+        return str(val) if val else "N/A"
     except Exception:
-        return "尚無記錄"
+        return "N/A"
+
+
+# ── Custom CSS ──
+CUSTOM_CSS = """
+<style>
+/* Dark premium theme */
+[data-testid="stAppViewContainer"] {
+    background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+}
+[data-testid="stSidebar"] {
+    background: #0f172a;
+    border-right: 1px solid #334155;
+}
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h1 {
+    background: linear-gradient(90deg, #38bdf8, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-size: 1.4rem;
+}
+
+/* KPI metric cards */
+[data-testid="stMetric"] {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 12px 16px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
+}
+[data-testid="stMetricValue"] {
+    font-weight: 700;
+}
+
+/* Hero banner styling */
+.hero-banner {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 50%, #1e1b4b 100%);
+    border: 1px solid #334155;
+    border-radius: 16px;
+    padding: 2rem 2.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+.hero-banner h1 {
+    font-size: 2rem;
+    background: linear-gradient(90deg, #38bdf8, #a78bfa, #f472b6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.3rem;
+}
+.hero-banner p {
+    color: #94a3b8;
+    font-size: 1rem;
+    margin: 0;
+}
+.hero-tagline {
+    color: #4ade80;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+}
+
+/* Signal badge */
+.signal-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+.badge-long { background: rgba(74,222,128,0.15); color: #4ade80; }
+.badge-short { background: rgba(248,113,113,0.15); color: #f87171; }
+.badge-bullish { background: rgba(74,222,128,0.15); color: #4ade80; }
+.badge-bearish { background: rgba(248,113,113,0.15); color: #f87171; }
+
+/* Section divider */
+.section-divider {
+    border: none;
+    border-top: 1px solid #334155;
+    margin: 1.5rem 0;
+}
+
+/* Footer */
+.footer-text {
+    text-align: center;
+    color: #475569;
+    font-size: 0.75rem;
+    padding: 2rem 0 1rem 0;
+    border-top: 1px solid #1e293b;
+}
+</style>
+"""
 
 
 # ── 頁面配置 ──
 st.set_page_config(
-    page_title="Political Alpha Monitor",
-    page_icon="📊",
+    page_title="PAM | Political Alpha Monitor",
+    page_icon="https://raw.githubusercontent.com/danny0926/NLP-data-for-trading/main/docs/favicon.ico",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
+st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+
 
 # ── 側邊欄 ──
 def render_sidebar():
-    """渲染側邊欄：導覽、全域篩選、系統狀態。"""
     st.sidebar.title("Political Alpha Monitor")
-    st.sidebar.caption("國會交易智慧分析系統")
+    st.sidebar.caption("Congressional Trading Intelligence")
 
     page = st.sidebar.radio(
-        "導覽",
+        "Navigation",
         [
-            "總覽儀表板",
-            "Alpha 訊號",
-            "投資組合",
-            "政治人物排名",
-            "匯聚訊號",
-            "交易瀏覽器",
-            "訊號品質分析",
-            "訊號績效追蹤",
-            "板塊輪動",
+            "Executive Dashboard",
+            "Alpha Signals",
+            "Portfolio",
+            "Politician Ranking",
+            "Convergence",
+            "Trade Explorer",
+            "Signal Quality",
+            "Performance",
+            "Sector Rotation",
+            "Social Intelligence",
         ],
     )
 
     st.sidebar.markdown("---")
-    st.sidebar.subheader("全域篩選")
+    st.sidebar.subheader("Filters")
 
     # Date range
     try:
@@ -123,34 +227,41 @@ def render_sidebar():
         max_date = datetime.now()
 
     date_range = st.sidebar.date_input(
-        "日期範圍",
+        "Date Range",
         value=(min_date.date(), max_date.date()),
         min_value=min_date.date(),
         max_value=max_date.date(),
     )
 
     chamber_filter = st.sidebar.multiselect(
-        "院別", ["House", "Senate"], default=["House", "Senate"]
+        "Chamber", ["House", "Senate"], default=["House", "Senate"]
     )
 
     st.sidebar.markdown("---")
-    st.sidebar.subheader("系統狀態")
+    st.sidebar.subheader("System Status")
 
     col1, col2 = st.sidebar.columns(2)
-    col1.metric("交易數", get_table_count("congress_trades"))
-    col2.metric("訊號數", get_table_count("alpha_signals"))
+    col1.metric("Trades", f"{get_table_count('congress_trades'):,}")
+    col2.metric("Signals", f"{get_table_count('alpha_signals'):,}")
 
     col3, col4 = st.sidebar.columns(2)
-    col3.metric("持倉數", get_table_count("portfolio_positions"))
-    col4.metric("DB 大小", f"{get_db_size_mb():.1f} MB")
+    col3.metric("Holdings", get_table_count("portfolio_positions"))
+    col4.metric("DB Size", f"{get_db_size_mb():.1f} MB")
 
-    st.sidebar.caption(f"最後 ETL: {get_last_etl_time()}")
+    social_count = get_table_count("social_posts")
+    st.sidebar.caption(f"Social Posts: {social_count} | Last ETL: {get_last_etl_time()}")
 
-    if st.sidebar.button("重新整理資料"):
+    if st.sidebar.button("Refresh Data"):
         st.cache_data.clear()
         st.rerun()
 
-    # Ensure date_range is a tuple of two
+    st.sidebar.markdown("---")
+    st.sidebar.markdown(
+        '<div style="text-align:center;color:#475569;font-size:0.7rem;">'
+        'PAM v2.1 | Research Use Only<br>Not Investment Advice</div>',
+        unsafe_allow_html=True,
+    )
+
     if isinstance(date_range, tuple) and len(date_range) == 2:
         start_date, end_date = date_range
     else:
@@ -161,24 +272,41 @@ def render_sidebar():
 
 
 # ══════════════════════════════════════════════
-# Page 1: 總覽儀表板
+# Page 1: Executive Dashboard
 # ══════════════════════════════════════════════
 def page_overview(start_date: str, end_date: str, chambers: List[str]):
-    st.header("總覽儀表板")
+    # Hero banner
+    st.markdown(
+        '<div class="hero-banner">'
+        '<div class="hero-tagline">Congressional Trading Intelligence</div>'
+        '<h1>Political Alpha Monitor</h1>'
+        '<p>AI-powered signal extraction from U.S. congressional trading disclosures, '
+        'SEC Form 4 filings, and social media intelligence. '
+        'Powered by Gemini 2.5 Flash + Fama-French 3-Factor validation.</p>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
 
     # KPI cards
     total_trades = get_table_count("congress_trades")
     active_signals = get_table_count("alpha_signals")
+    enhanced = get_table_count("enhanced_signals")
     portfolio_pos = get_table_count("portfolio_positions")
+    convergence = get_table_count("convergence_signals")
+    social_posts = get_table_count("social_posts")
 
-    sqs_df = query_db("SELECT AVG(sqs) as avg_sqs FROM signal_quality_scores")
-    avg_sqs = sqs_df.iloc[0]["avg_sqs"] or 0
+    # Performance stats
+    perf_df = query_db("SELECT AVG(hit_5d) as hr5, AVG(actual_alpha_5d) as aa5 FROM signal_performance WHERE hit_5d IS NOT NULL")
+    hr5 = perf_df.iloc[0]["hr5"]
+    aa5 = perf_df.iloc[0]["aa5"]
 
-    k1, k2, k3, k4 = st.columns(4)
-    k1.metric("總交易數", f"{total_trades:,}")
-    k2.metric("活躍訊號", f"{active_signals:,}")
-    k3.metric("投資組合持倉", f"{portfolio_pos}")
-    k4.metric("平均 SQS 分數", f"{avg_sqs:.1f}")
+    k1, k2, k3, k4, k5, k6 = st.columns(6)
+    k1.metric("Trades Tracked", f"{total_trades:,}")
+    k2.metric("Alpha Signals", f"{active_signals:,}")
+    k3.metric("Enhanced (PACS)", f"{enhanced:,}")
+    k4.metric("Portfolio", f"{portfolio_pos} holdings")
+    k5.metric("5d Hit Rate", f"{hr5*100:.0f}%" if hr5 else "N/A")
+    k6.metric("Social Intel", f"{social_posts} posts")
 
     st.markdown("---")
 
@@ -223,8 +351,25 @@ def page_overview(start_date: str, end_date: str, chambers: List[str]):
         else:
             st.info("尚無訊號資料")
 
+    # Data sources overview
+    st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
+    st.subheader("Data Sources & Coverage")
+    src1, src2, src3, src4 = st.columns(4)
+    with src1:
+        sec_count = get_table_count("sec_form4_trades")
+        st.metric("SEC Form 4 Trades", f"{sec_count:,}")
+    with src2:
+        contract_count = get_table_count("government_contracts")
+        st.metric("Gov Contracts", f"{contract_count:,}")
+    with src3:
+        ff3_count = get_table_count("fama_french_results")
+        st.metric("FF3 Backtests", f"{ff3_count:,}")
+    with src4:
+        st.metric("Convergence Events", f"{convergence}")
+
     # Recent activity timeline
-    st.subheader("近期活動 (最新 10 筆交易)")
+    st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
+    st.subheader("Latest Filings")
     chamber_clause = "AND chamber IN ({})".format(",".join(f"'{c}'" for c in chambers)) if chambers else ""
     recent_df = query_db(f"""
         SELECT politician_name, ticker, transaction_type, amount_range,
@@ -240,19 +385,28 @@ def page_overview(start_date: str, end_date: str, chambers: List[str]):
     if not recent_df.empty:
         st.dataframe(
             recent_df.rename(columns={
-                "politician_name": "政治人物",
-                "ticker": "代碼",
-                "transaction_type": "類型",
-                "amount_range": "金額範圍",
-                "transaction_date": "交易日",
-                "filing_date": "申報日",
-                "chamber": "院別",
+                "politician_name": "Politician",
+                "ticker": "Ticker",
+                "transaction_type": "Type",
+                "amount_range": "Amount",
+                "transaction_date": "Trade Date",
+                "filing_date": "Filed",
+                "chamber": "Chamber",
             }),
             use_container_width=True,
             hide_index=True,
         )
     else:
-        st.info("目前日期範圍內無交易資料")
+        st.info("No trades in current date range")
+
+    # Footer
+    st.markdown(
+        '<div class="footer-text">'
+        'Political Alpha Monitor v2.1 | Congressional Trading Intelligence System<br>'
+        'Research use only. Not investment advice. Past performance does not guarantee future results.'
+        '</div>',
+        unsafe_allow_html=True,
+    )
 
 
 # ══════════════════════════════════════════════
@@ -897,29 +1051,207 @@ def page_sector_rotation():
 
 
 # ══════════════════════════════════════════════
+# Page 10: Social Intelligence
+# ══════════════════════════════════════════════
+def page_social_intelligence():
+    st.header("Social Media Intelligence")
+    st.caption("Real-time KOL & politician social media monitoring with AI-powered NLP analysis")
+
+    # KPI row
+    post_count = get_table_count("social_posts")
+    signal_count = get_table_count("social_signals")
+
+    social_alpha = query_db("SELECT COUNT(*) as cnt FROM alpha_signals WHERE trade_id LIKE 'social_%'")
+    social_alpha_count = int(social_alpha.iloc[0]["cnt"]) if not social_alpha.empty else 0
+
+    k1, k2, k3, k4 = st.columns(4)
+    k1.metric("Posts Collected", post_count)
+    k2.metric("NLP Signals", signal_count)
+    k3.metric("Alpha Signals (Social)", social_alpha_count)
+
+    # Consistent/Contradictory
+    alignment_df = query_db("""
+        SELECT speech_trade_alignment, COUNT(*) as cnt
+        FROM social_signals
+        WHERE speech_trade_alignment IS NOT NULL
+        GROUP BY speech_trade_alignment
+    """)
+    if not alignment_df.empty:
+        consistent = alignment_df[alignment_df["speech_trade_alignment"] == "CONSISTENT"]["cnt"].sum()
+        contradictory = alignment_df[alignment_df["speech_trade_alignment"] == "CONTRADICTORY"]["cnt"].sum()
+        k4.metric("Speech-Trade Match", f"{consistent} / {contradictory}", delta=f"{consistent} consistent")
+    else:
+        k4.metric("Speech-Trade Match", "N/A")
+
+    st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
+
+    # Social posts
+    col_left, col_right = st.columns([3, 2])
+
+    with col_left:
+        st.subheader("Recent Social Posts")
+        posts_df = query_db("""
+            SELECT sp.platform, sp.author_name, sp.author_type,
+                   sp.post_text, sp.post_time, sp.likes, sp.retweets,
+                   ss.sentiment, ss.impact_score, ss.signal_type,
+                   ss.tickers_implied, ss.reasoning
+            FROM social_posts sp
+            LEFT JOIN social_signals ss ON sp.id = ss.post_id
+            ORDER BY sp.created_at DESC
+            LIMIT 20
+        """)
+
+        if not posts_df.empty:
+            for _, row in posts_df.iterrows():
+                platform_icon = {"twitter": "X/Twitter", "truth_social": "Truth Social", "reddit": "Reddit"}.get(
+                    row.get("platform", ""), row.get("platform", "")
+                )
+                sentiment = row.get("sentiment", "N/A")
+                sentiment_color = "#4ade80" if sentiment == "Bullish" else "#f87171" if sentiment == "Bearish" else "#94a3b8"
+                impact = row.get("impact_score", 0) or 0
+
+                st.markdown(
+                    f'<div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:1rem;margin-bottom:0.8rem;">'
+                    f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">'
+                    f'<span style="font-weight:700;color:#e2e8f0;">{row["author_name"]}</span>'
+                    f'<span style="font-size:0.75rem;color:#64748b;">{platform_icon} | {str(row.get("post_time",""))[:16]}</span>'
+                    f'</div>'
+                    f'<p style="color:#cbd5e1;font-size:0.9rem;margin:0 0 0.5rem 0;">{str(row["post_text"])[:300]}</p>'
+                    f'<div style="display:flex;gap:1rem;font-size:0.75rem;">'
+                    f'<span style="color:{sentiment_color};font-weight:700;">{sentiment}</span>'
+                    f'<span style="color:#94a3b8;">Impact: {impact:.0f}/10</span>'
+                    f'<span style="color:#94a3b8;">Tickers: {row.get("tickers_implied", "[]")}</span>'
+                    f'</div>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+        else:
+            st.info("No social posts yet. Run `python run_social_analysis.py` to fetch.")
+
+    with col_right:
+        st.subheader("Signal Breakdown")
+
+        # Sentiment distribution
+        sentiment_df = query_db("""
+            SELECT sentiment, COUNT(*) as cnt
+            FROM social_signals
+            GROUP BY sentiment
+        """)
+        if not sentiment_df.empty:
+            fig = px.pie(
+                sentiment_df, names="sentiment", values="cnt",
+                color="sentiment",
+                color_discrete_map={"Bullish": COLORS["green"], "Bearish": COLORS["red"], "Neutral": "#64748b"},
+                hole=0.5,
+            )
+            fig.update_layout(height=250, margin=dict(t=10, b=10), **PLOTLY_TEMPLATE["layout"])
+            fig.update_traces(textinfo="label+percent", textfont_size=12)
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No sentiment data yet")
+
+        # Platform distribution
+        platform_df = query_db("""
+            SELECT platform, COUNT(*) as cnt FROM social_posts GROUP BY platform
+        """)
+        if not platform_df.empty:
+            st.subheader("By Platform")
+            fig2 = px.bar(
+                platform_df, x="platform", y="cnt",
+                color="platform",
+                color_discrete_sequence=PLOTLY_COLORS,
+                labels={"platform": "Platform", "cnt": "Posts"},
+            )
+            fig2.update_layout(height=200, margin=dict(t=10, b=30), showlegend=False, **PLOTLY_TEMPLATE["layout"])
+            st.plotly_chart(fig2, use_container_width=True)
+
+        # Social alpha signals
+        social_alpha_df = query_db("""
+            SELECT ticker, direction, signal_strength, expected_alpha_5d, confidence
+            FROM alpha_signals
+            WHERE trade_id LIKE 'social_%'
+            ORDER BY signal_strength DESC
+            LIMIT 10
+        """)
+        if not social_alpha_df.empty:
+            st.subheader("Social Alpha Signals")
+            st.dataframe(
+                social_alpha_df.rename(columns={
+                    "ticker": "Ticker", "direction": "Dir", "signal_strength": "Strength",
+                    "expected_alpha_5d": "Alpha 5d", "confidence": "Conf",
+                }),
+                use_container_width=True,
+                hide_index=True,
+            )
+
+    # Architecture explanation
+    st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
+    st.subheader("How It Works")
+    arch1, arch2, arch3, arch4 = st.columns(4)
+    with arch1:
+        st.markdown(
+            '<div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:1rem;text-align:center;">'
+            '<div style="font-size:1.5rem;margin-bottom:0.3rem;">1</div>'
+            '<div style="font-weight:700;color:#38bdf8;">Fetch</div>'
+            '<div style="font-size:0.8rem;color:#94a3b8;">Gemini Search monitors 14 KOL/politician accounts across X, Truth Social, Reddit</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+    with arch2:
+        st.markdown(
+            '<div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:1rem;text-align:center;">'
+            '<div style="font-size:1.5rem;margin-bottom:0.3rem;">2</div>'
+            '<div style="font-weight:700;color:#4ade80;">NLP</div>'
+            '<div style="font-size:0.8rem;color:#94a3b8;">Dual-layer: FinTwitBERT (fast, local) + Gemini Flash (deep reasoning, sarcasm detection)</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+    with arch3:
+        st.markdown(
+            '<div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:1rem;text-align:center;">'
+            '<div style="font-size:1.5rem;margin-bottom:0.3rem;">3</div>'
+            '<div style="font-weight:700;color:#fbbf24;">Cross-Ref</div>'
+            '<div style="font-size:0.8rem;color:#94a3b8;">Match politician speech vs actual trades: CONSISTENT = alpha boost, CONTRADICTORY = alert</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+    with arch4:
+        st.markdown(
+            '<div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:1rem;text-align:center;">'
+            '<div style="font-size:1.5rem;margin-bottom:0.3rem;">4</div>'
+            '<div style="font-weight:700;color:#a78bfa;">Signal</div>'
+            '<div style="font-size:0.8rem;color:#94a3b8;">High-impact posts (score >= 7) generate alpha signals with convergence bonus</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+
+
+# ══════════════════════════════════════════════
 # Main
 # ══════════════════════════════════════════════
 def main():
     page, start_date, end_date, chambers = render_sidebar()
 
-    if page == "總覽儀表板":
+    if page == "Executive Dashboard":
         page_overview(start_date, end_date, chambers)
-    elif page == "Alpha 訊號":
+    elif page == "Alpha Signals":
         page_alpha_signals(start_date, end_date, chambers)
-    elif page == "投資組合":
+    elif page == "Portfolio":
         page_portfolio()
-    elif page == "政治人物排名":
+    elif page == "Politician Ranking":
         page_politicians(start_date, end_date, chambers)
-    elif page == "匯聚訊號":
+    elif page == "Convergence":
         page_convergence()
-    elif page == "交易瀏覽器":
+    elif page == "Trade Explorer":
         page_trade_explorer(start_date, end_date, chambers)
-    elif page == "訊號品質分析":
+    elif page == "Signal Quality":
         page_signal_quality()
-    elif page == "訊號績效追蹤":
+    elif page == "Performance":
         page_signal_performance()
-    elif page == "板塊輪動":
+    elif page == "Sector Rotation":
         page_sector_rotation()
+    elif page == "Social Intelligence":
+        page_social_intelligence()
 
 
 if __name__ == "__main__":
