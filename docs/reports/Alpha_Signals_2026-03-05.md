@@ -1,6 +1,6 @@
 # Alpha Trading Signals Report
-**Generated**: 2026-03-05 18:34:45
-**Total Signals**: 386
+**Generated**: 2026-03-05 18:39:55
+**Total Signals**: 409
 
 ## Methodology
 
@@ -20,26 +20,26 @@
 
 | 指標 | 數值 |
 |------|------|
-| Buy 訊號 | 205 |
-| Sale 訊號 (反向做多) | 181 |
-| 匯聚訊號 | 19 |
+| Buy 訊號 | 216 |
+| Sale 訊號 (反向做多) | 193 |
+| 匯聚訊號 | 20 |
 | 平均預期 alpha (5d) | +0.64% |
-| 平均信心度 | 0.42 |
+| 平均信心度 | 0.43 |
 
 ### Top 標的 (出現頻率)
 
 | Ticker | 訊號數 |
 |--------|--------|
+| GS | 6 |
 | PTC | 5 |
-| GS | 5 |
 | DASH | 5 |
 | PWR | 4 |
 | HOOD | 4 |
 | ETN | 3 |
 | NFLX | 3 |
-| COIN | 3 |
 | MELI | 3 |
 | AMZN | 3 |
+| WAB | 3 |
 
 ## Top 30 Alpha Signals
 
@@ -52,33 +52,33 @@
 | 5 | **WPM** | LONG | +1.80% | +1.85% | 0.55 | 0.999 | Gilbert Cisneros | House | 31天 | B |  |
 | 6 | **NFLX** | LONG | +1.12% | +1.13% | 0.61 | 0.982 | John Boozman | Senate | 38天 | C | Y |
 | 7 | **AAPL** | LONG | +1.12% | +1.13% | 0.61 | 0.982 | John Boozman | Senate | 31天 | C | Y |
-| 8 | **STT** | LONG | +1.64% | +4.85% | 0.56 | 0.914 | Jake Auchincloss | House | 10天 | B |  |
-| 9 | **ANET** | LONG | +1.20% | +1.23% | 0.50 | 0.905 | Gilbert Cisneros | House | 28天 | B |  |
-| 10 | **BSX** | LONG | +1.20% | +1.23% | 0.50 | 0.905 | Gilbert Cisneros | House | 28天 | B |  |
-| 11 | **COIN** | LONG | +1.20% | +1.23% | 0.50 | 0.905 | Gilbert Cisneros | House | 28天 | B |  |
-| 12 | **FBK** | LONG | +1.20% | +1.23% | 0.50 | 0.905 | Gilbert Cisneros | House | 43天 | B |  |
-| 13 | **HD** | LONG | +1.20% | +1.23% | 0.50 | 0.905 | Gilbert Cisneros | House | 28天 | B |  |
-| 14 | **PTC** | LONG | +1.20% | +1.23% | 0.50 | 0.905 | Gilbert Cisneros | House | 30天 | B |  |
-| 15 | **SPGI** | LONG | +1.39% | +1.42% | 0.50 | 0.690 | Richard W. Allen | House | 44天 | C |  |
-| 16 | **DIS** | LONG | +1.12% | +1.13% | 0.61 | 0.682 | John Boozman | Senate | 38天 | C | Y |
-| 17 | **PWR** | LONG | +1.10% | +1.12% | 0.60 | 0.665 | Gilbert Cisneros | House | 49天 | B | Y |
-| 18 | **DIS** | LONG | +1.10% | +1.12% | 0.60 | 0.665 | Gilbert Cisneros | House | 49天 | B | Y |
-| 19 | **ISRG** | LONG | +1.20% | +1.23% | 0.52 | 0.630 | Gilbert Cisneros | House | 28天 | B |  |
-| 20 | **WDAY** | LONG | +1.20% | +1.23% | 0.52 | 0.630 | Gilbert Cisneros | House | 30天 | B |  |
-| 21 | **AJINY** | LONG | +1.20% | +1.23% | 0.50 | 0.606 | Gilbert Cisneros | House | 30天 | B |  |
-| 22 | **CMCSA** | LONG | +1.20% | +1.23% | 0.50 | 0.606 | Gilbert Cisneros | House | 34天 | B |  |
-| 23 | **MELI** | LONG | +1.20% | +1.23% | 0.50 | 0.606 | Gilbert Cisneros | House | 34天 | B |  |
+| 8 | **ISRG** | LONG | +1.20% | +1.23% | 0.52 | 0.930 | Gilbert Cisneros | House | 28天 | B |  |
+| 9 | **STT** | LONG | +1.64% | +4.85% | 0.56 | 0.914 | Jake Auchincloss | House | 10天 | B |  |
+| 10 | **CMCSA** | LONG | +1.20% | +1.23% | 0.50 | 0.905 | Gilbert Cisneros | House | 34天 | B |  |
+| 11 | **MELI** | LONG | +1.20% | +1.23% | 0.50 | 0.905 | Gilbert Cisneros | House | 34天 | B |  |
+| 12 | **AMZN** | LONG | +1.20% | +1.23% | 0.50 | 0.905 | Gilbert Cisneros | House | 28天 | B |  |
+| 13 | **ANET** | LONG | +1.20% | +1.23% | 0.50 | 0.905 | Gilbert Cisneros | House | 28天 | B |  |
+| 14 | **BSX** | LONG | +1.20% | +1.23% | 0.50 | 0.905 | Gilbert Cisneros | House | 28天 | B |  |
+| 15 | **FBK** | LONG | +1.20% | +1.23% | 0.50 | 0.905 | Gilbert Cisneros | House | 43天 | B |  |
+| 16 | **HD** | LONG | +1.20% | +1.23% | 0.50 | 0.905 | Gilbert Cisneros | House | 28天 | B |  |
+| 17 | **PTC** | LONG | +1.20% | +1.23% | 0.50 | 0.905 | Gilbert Cisneros | House | 30天 | B |  |
+| 18 | **SPGI** | LONG | +1.39% | +1.42% | 0.50 | 0.690 | Richard W. Allen | House | 44天 | C |  |
+| 19 | **DIS** | LONG | +1.12% | +1.13% | 0.61 | 0.682 | John Boozman | Senate | 38天 | C | Y |
+| 20 | **PWR** | LONG | +1.10% | +1.12% | 0.60 | 0.665 | Gilbert Cisneros | House | 49天 | B | Y |
+| 21 | **DIS** | LONG | +1.10% | +1.12% | 0.60 | 0.665 | Gilbert Cisneros | House | 49天 | B | Y |
+| 22 | **WDAY** | LONG | +1.20% | +1.23% | 0.52 | 0.630 | Gilbert Cisneros | House | 30天 | B |  |
+| 23 | **AJINY** | LONG | +1.20% | +1.23% | 0.50 | 0.606 | Gilbert Cisneros | House | 30天 | B |  |
 | 24 | **MHYYF** | LONG | +1.20% | +1.23% | 0.50 | 0.606 | Gilbert Cisneros | House | 30天 | B |  |
 | 25 | **RNMBF** | LONG | +1.20% | +1.23% | 0.50 | 0.606 | Gilbert Cisneros | House | 30天 | B |  |
 | 26 | **HOOD** | LONG | +1.20% | +1.23% | 0.50 | 0.606 | Gilbert Cisneros | House | 34天 | B |  |
 | 27 | **AJINF** | LONG | +1.20% | +1.23% | 0.50 | 0.606 | Gilbert Cisneros | House | 24天 | B |  |
 | 28 | **BABAF** | LONG | +1.20% | +1.23% | 0.50 | 0.606 | Gilbert Cisneros | House | 24天 | B |  |
-| 29 | **AMZN** | LONG | +1.20% | +1.23% | 0.50 | 0.606 | Gilbert Cisneros | House | 28天 | B |  |
-| 30 | **ASML** | LONG | +1.20% | +1.23% | 0.50 | 0.606 | Gilbert Cisneros | House | 28天 | B |  |
+| 29 | **ASML** | LONG | +1.20% | +1.23% | 0.50 | 0.606 | Gilbert Cisneros | House | 28天 | B |  |
+| 30 | **AZO** | LONG | +1.20% | +1.23% | 0.50 | 0.606 | Gilbert Cisneros | House | 28天 | B |  |
 
 ## Disclaimer
 
 本報告基於歷史統計模型生成，不構成投資建議。過去的統計顯著性不保證未來表現。國會交易資訊具有資訊延遲(filing lag)風險。
 
 ---
-*Generated by Political Alpha Monitor — Alpha Signal Generator v1.0 — 2026-03-05 18:34*
+*Generated by Political Alpha Monitor — Alpha Signal Generator v1.0 — 2026-03-05 18:39*

@@ -99,6 +99,8 @@ def render_sidebar():
             "匯聚訊號",
             "交易瀏覽器",
             "訊號品質分析",
+            "訊號績效追蹤",
+            "板塊輪動",
         ],
     )
 
@@ -748,6 +750,153 @@ def page_signal_quality():
 
 
 # ══════════════════════════════════════════════
+# Page 8: 訊號績效追蹤
+# ══════════════════════════════════════════════
+def page_signal_performance():
+    st.header("訊號績效追蹤")
+    st.caption("追蹤已生成訊號的實際市場表現，驗證系統有效性")
+
+    perf_df = query_db("""
+        SELECT sp.*, a.politician_name, a.chamber
+        FROM signal_performance sp
+        LEFT JOIN alpha_signals a ON sp.signal_id = a.id
+        ORDER BY sp.evaluated_at DESC
+    """)
+
+    if perf_df.empty:
+        st.warning("尚無績效追蹤資料。請先執行 `python -m src.signal_tracker`。")
+        return
+
+    # KPI cards
+    col1, col2, col3, col4 = st.columns(4)
+
+    has_5d = perf_df["hit_5d"].notna()
+    has_20d = perf_df["hit_20d"].notna()
+
+    if has_5d.sum() > 0:
+        hr_5d = perf_df.loc[has_5d, "hit_5d"].mean() * 100
+        avg_alpha_5d = perf_df.loc[has_5d, "actual_alpha_5d"].mean() * 100
+        col1.metric("5 日勝率", f"{hr_5d:.1f}%")
+        col2.metric("5 日平均 Alpha", f"{avg_alpha_5d:+.2f}%")
+    else:
+        col1.metric("5 日勝率", "N/A")
+        col2.metric("5 日平均 Alpha", "N/A")
+
+    if has_20d.sum() > 0:
+        hr_20d = perf_df.loc[has_20d, "hit_20d"].mean() * 100
+        avg_alpha_20d = perf_df.loc[has_20d, "actual_alpha_20d"].mean() * 100
+        col3.metric("20 日勝率", f"{hr_20d:.1f}%")
+        col4.metric("20 日平均 Alpha", f"{avg_alpha_20d:+.2f}%")
+    else:
+        col3.metric("20 日勝率", "N/A")
+        col4.metric("20 日平均 Alpha", "N/A")
+
+    col5, col6 = st.columns(2)
+    col5.metric("已評估訊號", f"{len(perf_df)}")
+    with_returns = (perf_df["actual_alpha_5d"].notna() | perf_df["actual_alpha_20d"].notna()).sum()
+    col6.metric("有實際報酬", f"{with_returns}")
+
+    # Scatter: expected vs actual alpha
+    scatter_df = perf_df[perf_df["actual_alpha_5d"].notna()].copy()
+    if not scatter_df.empty:
+        st.subheader("預期 vs 實際 Alpha (5 日)")
+        scatter_df["actual_alpha_5d_pct"] = scatter_df["actual_alpha_5d"] * 100
+        scatter_df["expected_alpha_5d_pct"] = scatter_df["expected_alpha_5d"] * 100
+        fig = px.scatter(
+            scatter_df,
+            x="expected_alpha_5d_pct",
+            y="actual_alpha_5d_pct",
+            color="ticker",
+            hover_data=["politician_name", "signal_strength", "confidence"],
+            labels={"expected_alpha_5d_pct": "預期 Alpha (%)", "actual_alpha_5d_pct": "實際 Alpha (%)"},
+            color_discrete_sequence=PLOTLY_COLORS,
+        )
+        fig.add_shape(type="line", x0=-5, y0=-5, x1=5, y1=5, line=dict(dash="dash", color="gray"))
+        fig.update_layout(height=450, margin=dict(t=30))
+        st.plotly_chart(fig, use_container_width=True)
+
+    # MFE/MAE analysis
+    mae_mfe_df = perf_df[perf_df["max_favorable_excursion"].notna()].copy()
+    if not mae_mfe_df.empty:
+        st.subheader("MAE/MFE 分析")
+        mae_mfe_df["MFE"] = mae_mfe_df["max_favorable_excursion"] * 100
+        mae_mfe_df["MAE"] = mae_mfe_df["max_adverse_excursion"] * 100
+        fig2 = px.scatter(
+            mae_mfe_df,
+            x="MAE",
+            y="MFE",
+            color="ticker",
+            hover_data=["politician_name"],
+            labels={"MAE": "最大不利偏移 (%)", "MFE": "最大有利偏移 (%)"},
+            color_discrete_sequence=PLOTLY_COLORS,
+        )
+        fig2.add_shape(type="line", x0=-10, y0=-10, x1=10, y1=10, line=dict(dash="dash", color="gray"))
+        fig2.update_layout(height=400, margin=dict(t=30))
+        st.plotly_chart(fig2, use_container_width=True)
+
+    # Performance table
+    st.subheader("績效明細")
+    display_cols = ["ticker", "direction", "signal_strength", "confidence",
+                    "actual_alpha_5d", "actual_alpha_20d", "hit_5d", "hit_20d",
+                    "max_favorable_excursion", "max_adverse_excursion", "evaluated_at"]
+    avail_cols = [c for c in display_cols if c in perf_df.columns]
+    st.dataframe(perf_df[avail_cols].head(50), use_container_width=True, hide_index=True)
+
+
+# ══════════════════════════════════════════════
+# Page 9: 板塊輪動
+# ══════════════════════════════════════════════
+def page_sector_rotation():
+    st.header("板塊輪動分析")
+    st.caption("國會交易板塊聚合 — 偵測資金流向與動能變化")
+
+    sector_df = query_db("SELECT * FROM sector_rotation_signals ORDER BY momentum_score DESC")
+
+    if sector_df.empty:
+        st.warning("尚無板塊輪動資料。請先執行 `python -m src.sector_rotation`。")
+        return
+
+    # KPI cards
+    col1, col2, col3 = st.columns(3)
+    col1.metric("板塊訊號數", len(sector_df))
+    buy_count = (sector_df["direction"] == "BUY").sum()
+    col2.metric("買入板塊", buy_count)
+    avg_momentum = sector_df["momentum_score"].mean()
+    col3.metric("平均動能", f"{avg_momentum:.3f}")
+
+    # Bar chart: momentum by sector
+    st.subheader("板塊動能排名")
+    fig = px.bar(
+        sector_df,
+        x="sector",
+        y="momentum_score",
+        color="direction",
+        hover_data=["etf", "trades", "politician_count", "rotation_type"],
+        color_discrete_map={"BUY": COLORS["green"], "SELL": COLORS["red"]},
+        labels={"sector": "板塊", "momentum_score": "動能分數", "direction": "方向"},
+    )
+    fig.update_layout(height=400, margin=dict(t=30))
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Sector details table
+    st.subheader("板塊詳細資料")
+    display_cols = ["sector", "etf", "direction", "signal_strength", "expected_alpha_20d",
+                    "momentum_score", "net_ratio", "trades", "buy_count", "sale_count",
+                    "politician_count", "cross_chamber", "rotation_type"]
+    avail = [c for c in display_cols if c in sector_df.columns]
+    st.dataframe(sector_df[avail], use_container_width=True, hide_index=True)
+
+    # Rotation types
+    if "rotation_type" in sector_df.columns:
+        st.subheader("輪動類型分布")
+        rot_counts = sector_df["rotation_type"].value_counts()
+        fig2 = px.pie(values=rot_counts.values, names=rot_counts.index,
+                      color_discrete_sequence=PLOTLY_COLORS)
+        fig2.update_layout(height=350, margin=dict(t=30))
+        st.plotly_chart(fig2, use_container_width=True)
+
+
+# ══════════════════════════════════════════════
 # Main
 # ══════════════════════════════════════════════
 def main():
@@ -767,6 +916,10 @@ def main():
         page_trade_explorer(start_date, end_date, chambers)
     elif page == "訊號品質分析":
         page_signal_quality()
+    elif page == "訊號績效追蹤":
+        page_signal_performance()
+    elif page == "板塊輪動":
+        page_sector_rotation()
 
 
 if __name__ == "__main__":
