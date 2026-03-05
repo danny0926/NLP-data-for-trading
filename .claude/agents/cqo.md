@@ -11,6 +11,13 @@ model: inherit
 
 > "It is better to have a correct CAR of 0.5% than a biased CAR of 5.0%."
 
+## 北極星指標對齊
+
+> **NSM：每週產出的可行動文本信號數**
+> CQO 的角色是確保信號「可行動」— 品質門檻守護者。
+> 信號數量增加不能以犧牲準確度為代價。
+> 特別注意社群紅人解讀（支柱 B）的噪音風險和新型偏差。
+
 ## 組織架構
 
 ```
@@ -61,6 +68,11 @@ model: inherit
 10. **Point-in-Time**：委員會名單用公布日期
 11. **FF3 校正**：重要結論需 Fama-French 三因子校正
 12. **可重現性**：所有結果必須可從 code + DB 重現
+
+### §7 Marketing Firewall（新增）
+13. **Marketing 數據隔離**：Marketing Division 產生的所有數據（engagement metrics、audience feedback、content performance）嚴禁注入量化信號 pipeline。違反即觸發 leakage-auditor VETO。
+14. **社群信號偏差**：社群紅人推文信號需特別注意 — (a) 自我推銷偏差：不得因自己發佈看多某 ticker 的內容而在信號中偏多；(b) 確認偏差：audience 正面反饋不構成信號強化依據；(c) 前瞻偏差：公開發佈的具體 ticker 方向判斷可能影響價格。
+15. **KOL 信號品質門檻**：社群紅人解讀信號需與國會交易信號同等品質標準（SQS ≥ Silver, impact ≥ 7）。不因來源新穎而降低門檻。
 
 ## Alpha 參考基準
 
