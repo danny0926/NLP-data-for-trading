@@ -65,6 +65,8 @@ python run_full_pipeline.py --days 14            # ETL 回溯 14 天
 # ── 個別入口 ──
 python run_etl_pipeline.py --senate-only --days 7     # ETL: Senate 交易
 python run_etl_pipeline.py --house-only --max-house 5  # ETL: House 交易
+python -m src.etl.capitoltrades_bulk --pages 100      # 快速批量匯入 (直接 HTML 解析, 無 LLM 成本)
+python -m src.etl.capitoltrades_bulk --pages 500 --chamber senate  # Senate only
 python run_congress_discovery.py                        # AI Discovery: 投資訊號
 python run_sec_form4.py --days 7 --cross-ref            # SEC Form 4 抓取 + 交叉比對
 python run_fama_french_backtest.py                      # Fama-French 三因子回測
@@ -137,6 +139,7 @@ src/etl/capitoltrades_fetcher.py       ← Capitol Trades fallback (1-based 分�
 src/etl/llm_transformer.py             ← LLM Transform 核心 (3 種 prompt + retry ×3)
 src/etl/loader.py                      ← Load 層 (confidence 門檻 + 去重 + DB 寫入)
 src/etl/sec_form4_fetcher.py           ← SEC EDGAR Form 4 insider trading (XML 解析)
+src/etl/capitoltrades_bulk.py           ← 批量匯入 (直接 HTML 解析, 無 LLM, 100x 速度)
 src/etl/social_fetcher.py              ← 社群媒體抓取 (Apify Twitter/Truth Social + PRAW Reddit)
 ```
 
