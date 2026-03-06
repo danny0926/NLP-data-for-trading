@@ -1,6 +1,6 @@
 # Alpha Trading Signals Report
-**Generated**: 2026-03-07 01:40:04
-**Total Signals**: 14329
+**Generated**: 2026-03-07 02:01:09
+**Total Signals**: 22853
 
 ## Methodology
 
@@ -20,65 +20,65 @@
 
 | 指標 | 數值 |
 |------|------|
-| Buy 訊號 | 14008 |
+| Buy 訊號 | 22532 |
 | Sale 訊號 (反向做多) | 321 |
-| 匯聚訊號 | 11535 |
-| 平均預期 alpha (5d) | +1.39% |
-| 平均信心度 | 0.59 |
+| 匯聚訊號 | 18474 |
+| 平均預期 alpha (5d) | +1.52% |
+| 平均信心度 | 0.60 |
 
 ### Top 標的 (出現頻率)
 
 | Ticker | 訊號數 |
 |--------|--------|
-| MSFT | 180 |
-| NVDA | 179 |
-| GOOGL | 167 |
-| AMZN | 139 |
-| AAPL | 137 |
-| META | 114 |
-| UNH | 109 |
-| AVGO | 103 |
-| JPM | 86 |
-| V | 82 |
+| MSFT | 284 |
+| GOOGL | 259 |
+| NVDA | 243 |
+| AAPL | 223 |
+| AMZN | 191 |
+| META | 172 |
+| JPM | 148 |
+| UNH | 144 |
+| AVGO | 127 |
+| B | 125 |
 
 ## Top 30 Alpha Signals
 
 | # | Ticker | Direction | Alpha(5d) | Alpha(20d) | Confidence | Strength | Politician | Chamber | Filing Lag | Grade | Convergence |
 |---|--------|-----------|-----------|------------|------------|----------|------------|---------|-----------|-------|-------------|
-| 1 | **NFLX** | LONG | +2.44% | +2.49% | 0.72 | 2.061 | Michael McCaul | House | 12天 | C | Y |
-| 2 | **CVX** | LONG | +2.30% | +2.35% | 0.71 | 1.929 | Gilbert Cisneros | House | N/A | B | Y |
-| 3 | **AGUBS** | LONG | +2.52% | +2.57% | 0.73 | 1.836 | Darrell Issa | House | 7天 | B | Y |
-| 4 | **AGUBS** | LONG | +2.52% | +2.57% | 0.73 | 1.836 | Mikie Sherrill | House | 3天 | B | Y |
-| 5 | **NFLX** | LONG | +2.18% | +2.23% | 0.70 | 1.818 | Cleo Fields | House | 14天 | C | Y |
-| 6 | **STT** | LONG | +2.44% | +2.49% | 0.72 | 1.761 | Jake Auchincloss | House | 2天 | C | Y |
-| 7 | **PINS** | LONG | +2.44% | +2.49% | 0.72 | 1.761 | Michael McCaul | House | 13天 | C | Y |
-| 8 | **IBM** | LONG | +2.44% | +2.49% | 0.72 | 1.761 | David Taylor | House | 13天 | C | Y |
-| 9 | **LRCX** | LONG | +2.44% | +2.49% | 0.72 | 1.761 | David Taylor | House | 13天 | C | Y |
-| 10 | **HOG** | LONG | +2.44% | +2.49% | 0.72 | 1.761 | Tim Moore | House | 10天 | C | Y |
-| 11 | **VZ** | LONG | +2.44% | +2.49% | 0.72 | 1.761 | Tim Moore | House | 9天 | C | Y |
-| 12 | **GOOGL** | LONG | +2.44% | +2.49% | 0.72 | 1.761 | Cleo Fields | House | 2天 | C | Y |
-| 13 | **T** | LONG | +2.44% | +2.49% | 0.72 | 1.761 | Cleo Fields | House | 6天 | C | Y |
-| 14 | **COHR** | LONG | +2.44% | +2.49% | 0.72 | 1.761 | Ro Khanna | House | 13天 | C | Y |
-| 15 | **APD** | LONG | +2.44% | +2.49% | 0.72 | 1.761 | Ro Khanna | House | 13天 | C | Y |
-| 16 | **GOOGL** | LONG | +2.44% | +2.49% | 0.72 | 1.761 | Debbie Dingell | House | 12天 | C | Y |
-| 17 | **HON** | LONG | +2.44% | +2.49% | 0.72 | 1.761 | Debbie Dingell | House | 12天 | C | Y |
-| 18 | **HOG** | LONG | +2.44% | +2.49% | 0.72 | 1.761 | Tim Moore | House | 4天 | C | Y |
-| 19 | **HOG** | LONG | +2.44% | +2.49% | 0.72 | 1.761 | Tim Moore | House | 11天 | C | Y |
-| 20 | **STT** | LONG | +2.44% | +2.49% | 0.72 | 1.761 | Jake Auchincloss | House | 1天 | C | Y |
-| 21 | **ADP** | LONG | +2.44% | +2.49% | 0.72 | 1.761 | Marjorie Taylor Gr.. | House | 1天 | C | Y |
-| 22 | **PAYX** | LONG | +2.44% | +2.49% | 0.72 | 1.761 | Marjorie Taylor Gr.. | House | 1天 | C | Y |
-| 23 | **CMG** | LONG | +2.44% | +2.49% | 0.72 | 1.761 | Cleo Fields | House | 13天 | C | Y |
-| 24 | **NVDA** | LONG | +2.44% | +2.49% | 0.72 | 1.761 | Cleo Fields | House | 13天 | C | Y |
-| 25 | **VZ** | LONG | +2.44% | +2.49% | 0.72 | 1.761 | Tim Moore | House | 12天 | C | Y |
-| 26 | **GOOGL** | LONG | +2.44% | +2.49% | 0.72 | 1.761 | Michael McCaul | House | 10天 | C | Y |
-| 27 | **SESAP** | LONG | +2.44% | +2.49% | 0.72 | 1.761 | Michael McCaul | House | 14天 | C | Y |
-| 28 | **GE** | LONG | +2.44% | +2.49% | 0.72 | 1.761 | Michael McCaul | House | 14天 | C | Y |
-| 29 | **PINS** | LONG | +2.44% | +2.49% | 0.72 | 1.761 | Michael McCaul | House | 14天 | C | Y |
-| 30 | **NFLX** | LONG | +2.44% | +2.49% | 0.72 | 1.761 | Michael McCaul | House | 14天 | C | Y |
+| 1 | **COHR** | LONG | +3.02% | +3.09% | 0.78 | 2.350 | Ro Khanna | House | 13天 | B | Y |
+| 2 | **APD** | LONG | +3.02% | +3.09% | 0.78 | 2.350 | Ro Khanna | House | 13天 | B | Y |
+| 3 | **BNS** | LONG | +3.02% | +3.09% | 0.78 | 2.350 | Ro Khanna | House | 10天 | B | Y |
+| 4 | **PG** | LONG | +3.02% | +3.09% | 0.78 | 2.350 | Ro Khanna | House | 14天 | B | Y |
+| 5 | **MRSH** | LONG | +3.02% | +3.09% | 0.78 | 2.350 | Ro Khanna | House | 14天 | B | Y |
+| 6 | **ADBE** | LONG | +3.02% | +3.09% | 0.78 | 2.350 | Ro Khanna | House | 14天 | B | Y |
+| 7 | **AAPL** | LONG | +3.02% | +3.09% | 0.78 | 2.350 | Ro Khanna | House | 14天 | B | Y |
+| 8 | **JNJ** | LONG | +3.02% | +3.09% | 0.78 | 2.350 | Ro Khanna | House | 14天 | B | Y |
+| 9 | **UNH** | LONG | +3.02% | +3.09% | 0.78 | 2.350 | Ro Khanna | House | 14天 | B | Y |
+| 10 | **PM** | LONG | +3.02% | +3.09% | 0.78 | 2.350 | Ro Khanna | House | 14天 | B | Y |
+| 11 | **TD** | LONG | +3.02% | +3.09% | 0.78 | 2.350 | Ro Khanna | House | 13天 | B | Y |
+| 12 | **ULTA** | LONG | +3.02% | +3.09% | 0.78 | 2.350 | Ro Khanna | House | 13天 | B | Y |
+| 13 | **TGT** | LONG | +3.02% | +3.09% | 0.78 | 2.350 | Ro Khanna | House | 13天 | B | Y |
+| 14 | **TFC** | LONG | +3.02% | +3.09% | 0.78 | 2.350 | Ro Khanna | House | 13天 | B | Y |
+| 15 | **BAX** | LONG | +3.02% | +3.09% | 0.78 | 2.350 | Ro Khanna | House | 13天 | B | Y |
+| 16 | **PLCST** | LONG | +3.02% | +3.09% | 0.78 | 2.350 | Ro Khanna | House | 13天 | B | Y |
+| 17 | **VRT** | LONG | +3.02% | +3.09% | 0.78 | 2.350 | Ro Khanna | House | 12天 | B | Y |
+| 18 | **CAT** | LONG | +3.02% | +3.09% | 0.78 | 2.350 | Ro Khanna | House | 12天 | B | Y |
+| 19 | **MSFT** | LONG | +3.02% | +3.09% | 0.78 | 2.350 | Ro Khanna | House | 9天 | B | Y |
+| 20 | **B** | LONG | +3.02% | +3.09% | 0.78 | 2.350 | Ro Khanna | House | 9天 | B | Y |
+| 21 | **BAC** | LONG | +3.02% | +3.09% | 0.78 | 2.350 | Ro Khanna | House | 9天 | B | Y |
+| 22 | **TXN** | LONG | +3.02% | +3.09% | 0.78 | 2.350 | Ro Khanna | House | 9天 | B | Y |
+| 23 | **PLCLIN** | LONG | +3.02% | +3.09% | 0.78 | 2.350 | Ro Khanna | House | 9天 | B | Y |
+| 24 | **UBER** | LONG | +3.02% | +3.09% | 0.78 | 2.350 | Ro Khanna | House | 9天 | B | Y |
+| 25 | **GOOGL** | LONG | +3.02% | +3.09% | 0.78 | 2.350 | Ro Khanna | House | 9天 | B | Y |
+| 26 | **LOW** | LONG | +3.02% | +3.09% | 0.78 | 2.350 | Ro Khanna | House | 9天 | B | Y |
+| 27 | **ADBE** | LONG | +3.02% | +3.09% | 0.78 | 2.350 | Ro Khanna | House | 9天 | B | Y |
+| 28 | **UNH** | LONG | +3.02% | +3.09% | 0.78 | 2.350 | Ro Khanna | House | 9天 | B | Y |
+| 29 | **INTU** | LONG | +3.02% | +3.09% | 0.78 | 2.350 | Ro Khanna | House | 9天 | B | Y |
+| 30 | **DHR** | LONG | +3.02% | +3.09% | 0.78 | 2.350 | Ro Khanna | House | 9天 | B | Y |
 
 ## Disclaimer
 
 本報告基於歷史統計模型生成，不構成投資建議。過去的統計顯著性不保證未來表現。國會交易資訊具有資訊延遲(filing lag)風險。
 
 ---
-*Generated by Political Alpha Monitor — Alpha Signal Generator v1.0 — 2026-03-07 01:40*
+*Generated by Political Alpha Monitor — Alpha Signal Generator v1.0 — 2026-03-07 02:01*
