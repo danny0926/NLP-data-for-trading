@@ -31,15 +31,25 @@ API_KEY = os.getenv("API_SERVER_KEY", "")
 RATE_LIMIT = int(os.getenv("API_RATE_LIMIT", "60"))  # requests per minute
 _START_TIME = time.time()
 
+LEGAL_DISCLAIMER = (
+    "DISCLAIMER: Political Alpha Monitor (PAM) is a research tool for informational purposes only. "
+    "It does NOT constitute investment advice, solicitation, or recommendation to buy or sell any securities. "
+    "All signals, scores, and portfolio suggestions are algorithmically generated and have not been verified "
+    "by a registered investment adviser (RIA). Past performance does not guarantee future returns. "
+    "Congressional trading data has an inherent filing delay of 30-45 days. "
+    "Users bear full responsibility for any investment decisions."
+)
+
 app = FastAPI(
     title="Political Alpha Monitor API",
     description=(
         "國會交易情報系統 REST API — 提供 Alpha 訊號、PACS 增強訊號、"
         "政治人物排名、國會交易、SEC Form 4 內部人交易、"
         "收斂訊號、板塊輪動、投資組合等端點。\n\n"
-        "認證：設定 `X-API-Key` header（若伺服器啟用 API_SERVER_KEY）"
+        "認證：設定 `X-API-Key` header（若伺服器啟用 API_SERVER_KEY）\n\n"
+        f"⚠ {LEGAL_DISCLAIMER}"
     ),
-    version="2.0.0",
+    version="2.1.0",
     openapi_tags=[
         {"name": "Signals", "description": "Alpha 訊號與增強訊號"},
         {"name": "Portfolio", "description": "投資組合與板塊輪動"},
@@ -57,6 +67,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ── Disclaimer Header Middleware ──
+@app.middleware("http")
+async def add_disclaimer_header(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Disclaimer"] = "Research tool only. Not investment advice."
+    return response
 
 
 # ── Rate Limiter (in-memory, per-IP) ──
