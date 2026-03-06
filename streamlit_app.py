@@ -1063,6 +1063,42 @@ def page_signal_performance():
         )
         st.plotly_chart(fig_cum, width="stretch")
 
+    # Hit rate by signal strength tier
+    tier_df = perf_df[perf_df["hit_5d"].notna()].copy()
+    if not tier_df.empty and "signal_strength" in tier_df.columns:
+        st.subheader("勝率 by 信號強度 (5 日)")
+        tier_df["tier"] = tier_df["signal_strength"].apply(
+            lambda x: "Strong (>=1.0)" if x >= 1.0 else ("Moderate (0.5-1.0)" if x >= 0.5 else "Weak (<0.5)")
+        )
+        tier_stats = tier_df.groupby("tier").agg(
+            n=("hit_5d", "count"),
+            hit_rate=("hit_5d", "mean"),
+            avg_alpha=("actual_alpha_5d", "mean"),
+        ).reset_index()
+        tier_stats["hit_rate_pct"] = (tier_stats["hit_rate"] * 100).round(1)
+        tier_stats["avg_alpha_pct"] = (tier_stats["avg_alpha"] * 100).round(2)
+
+        fig_tier = go.Figure()
+        colors = {"Strong (>=1.0)": COLORS["green"], "Moderate (0.5-1.0)": COLORS["yellow"], "Weak (<0.5)": COLORS["red"]}
+        for _, row in tier_stats.iterrows():
+            fig_tier.add_trace(go.Bar(
+                x=[row["tier"]], y=[row["hit_rate_pct"]],
+                name=f'{row["tier"]} (n={row["n"]})',
+                marker_color=colors.get(row["tier"], COLORS["primary"]),
+                text=f'{row["hit_rate_pct"]:.0f}%<br>n={row["n"]}',
+                textposition="outside",
+            ))
+        fig_tier.add_hline(y=50, line_dash="dash", line_color="gray", annotation_text="50% baseline")
+        fig_tier.update_layout(
+            height=300, margin=dict(t=30, b=40),
+            yaxis_title="Hit Rate (%)", showlegend=False,
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#e2e8f0"),
+            xaxis=dict(gridcolor="rgba(148,163,184,0.1)"),
+            yaxis=dict(gridcolor="rgba(148,163,184,0.1)", range=[0, 100]),
+        )
+        st.plotly_chart(fig_tier, width="stretch")
+
     # Scatter: expected vs actual alpha
     scatter_df = perf_df[perf_df["actual_alpha_5d"].notna()].copy()
     if not scatter_df.empty:
@@ -1103,7 +1139,7 @@ def page_signal_performance():
 
     # Performance table
     st.subheader("績效明細")
-    display_cols = ["ticker", "direction", "signal_strength", "confidence",
+    display_cols = ["ticker", "politician_name", "direction", "signal_strength", "confidence",
                     "actual_alpha_5d", "actual_alpha_20d", "hit_5d", "hit_20d",
                     "max_favorable_excursion", "max_adverse_excursion", "evaluated_at"]
     avail_cols = [c for c in display_cols if c in perf_df.columns]
