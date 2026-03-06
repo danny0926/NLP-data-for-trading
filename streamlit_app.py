@@ -1513,6 +1513,13 @@ def page_todays_action():
             else:
                 vix_zone, vix_color, vix_mult = "Extreme", "#f87171", "0.3x"
             ctx1.metric("VIX", f"{vix_val:.1f}", delta=f"{vix_zone} ({vix_mult})")
+            # VIX warning banner
+            if vix_val > 20:
+                st.warning(
+                    f"⚠ **VIX is {vix_val:.1f} ({vix_zone})** — Signal strength is reduced by "
+                    f"{(1-float(vix_mult.replace('x',''))):.0%}. "
+                    f"Consider smaller position sizes or waiting for lower volatility."
+                )
         else:
             ctx1.metric("VIX", "N/A")
     except Exception:
@@ -1526,9 +1533,13 @@ def page_todays_action():
     else:
         ctx2.metric("Last ETL", "Never")
 
-    # Trade count (7d)
-    recent_trades = query_db("SELECT COUNT(*) as n FROM congress_trades WHERE created_at >= date('now', '-7 days')")
-    ctx3.metric("New Trades (7d)", int(recent_trades['n'].iloc[0]) if not recent_trades.empty else 0)
+    # Avg filing lag
+    lag_df = query_db("""
+        SELECT avg(julianday(filing_date) - julianday(transaction_date)) as avg_lag
+        FROM congress_trades WHERE filing_date IS NOT NULL AND transaction_date IS NOT NULL
+    """)
+    lag_val = lag_df['avg_lag'].iloc[0] if not lag_df.empty and pd.notna(lag_df['avg_lag'].iloc[0]) else 0
+    ctx3.metric("Avg Filing Lag", f"{lag_val:.0f} days", delta="30-45d typical", delta_color="off")
 
     # Unique politicians
     pol_count = query_db("SELECT COUNT(DISTINCT politician_name) as n FROM congress_trades")
@@ -1538,6 +1549,7 @@ def page_todays_action():
 
     # ── Section 1: Top BUY Signals (PACS-enhanced, max 5) ──
     st.markdown("### 🟢 Top Buy Signals (PACS-Enhanced)")
+    st.caption("🟢 High (>=0.7) = Consider acting · 🟡 Medium (0.5-0.7) = Monitor closely · 🔴 Low (<0.5) = Wait for confirmation")
     top_buys = query_db("""
         SELECT e.ticker, a.asset_name, e.politician_name, e.chamber,
                e.enhanced_strength, e.confidence_v2, e.pacs_score,
