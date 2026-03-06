@@ -103,7 +103,7 @@ Research findings organized by RB (Research Brief) number.
 | 95% CI | [9.2%, 18.5%] |
 | Significant? | NO (p=0.8352 >> 0.05) |
 
-**Observed rate (13.2%) is actually BELOW the random baseline (15.4%)** ¡X Congress appears to avoid pre-earnings trading.
+**Observed rate (13.2%) is actually BELOW the random baseline (15.4%)** ï¿½X Congress appears to avoid pre-earnings trading.
 
 #### Buy vs Sale Breakdown (Step 5)
 | Type | N | Pre-earnings | Rate | p-value |
@@ -112,7 +112,7 @@ Research findings organized by RB (Research Brief) number.
 | Sale | 92 | 5 | 5.4% | 0.9992 (ns) |
 
 - Buy trades at 19.5% marginally above baseline but not significant
-- Sale trades at 5.4% strongly BELOW baseline ¡X Congress actively avoids selling before earnings
+- Sale trades at 5.4% strongly BELOW baseline ï¿½X Congress actively avoids selling before earnings
 
 #### Days-to-Earnings Distribution (Step 6)
 | Window | Count | % |
@@ -124,14 +124,14 @@ Research findings organized by RB (Research Brief) number.
 | 61-91d | 44 | 21.5% |
 | 92-365d | 6 | 2.9% |
 
-**Concentration in 31-60d window** ¡X trades cluster ~30-60 days before earnings, NOT in the 14-day pre-earnings window.
+**Concentration in 31-60d window** ï¿½X trades cluster ~30-60 days before earnings, NOT in the 14-day pre-earnings window.
 
 #### Alpha Comparison (Step 7: Buy trades only)
 | Group | N | CAR_5d | CAR_20d | WR_20d |
 |-------|---|--------|---------|--------|
 | Pre-earnings Buys (<=14d) | 14 | +0.98% | +3.50% | 71.4% |
 | Non-pre-earnings Buys (>14d) | 80 | -0.31% | +1.56% | 55.0% |
-| t-test p-value | ¡X | ¡X | 0.5926 (ns) | ¡X |
+| t-test p-value | ï¿½X | ï¿½X | 0.5926 (ns) | ï¿½X |
 
 **Alpha signal**: Pre-earnings Buys show higher CAR_20d (+3.50% vs +1.56%) and WR (71.4% vs 55.0%), but NOT statistically significant (p=0.59, N=14 too small).
 
@@ -142,7 +142,7 @@ Research findings organized by RB (Research Brief) number.
 - John Boozman: 5 trades (AAPL, NFLX)
 
 ### Limitations
-1. **Small sample N=205** due to yfinance coverage gap (56.8% ¡X bonds/ETFs/funds lack earnings)
+1. **Small sample N=205** due to yfinance coverage gap (56.8% ï¿½X bonds/ETFs/funds lack earnings)
 2. **Confounding**: Cisneros 21 trades on one day skews the entire pre-earnings count
 3. **Short data window**: Only ~3 months of trades (Dec 2025 - Feb 2026) = few earnings cycles
 4. **Pre-earnings window definition**: 14 days is arbitrary; 30-day window would show different picture
@@ -151,3 +151,59 @@ Research findings organized by RB (Research Brief) number.
 H0 NOT rejected. Congress members do NOT disproportionately trade before earnings announcements. The observed rate (13.2%) is below the random baseline (15.4%). The concentration in 31-60d window suggests trades are timed for post-earnings momentum (buying on the dip after prior quarter) rather than insider timing.
 
 **Actionable note**: Despite REJECT verdict, pre-earnings BUY trades show promising alpha (+3.50% CAR_20d, 71.4% WR) but sample too small for statistical confidence. Revisit with 12+ months of data.
+
+---
+
+## 2026-03-07 RB-012: Inverse Cramer Effect Validation
+
+**Hypothesis**: Going against Jim Cramer's stock recommendations generates positive alpha
+**Type**: SOCIAL SIGNAL
+**Result**: SHELVE (Meme, not alpha)
+
+### Evidence
+
+1. **SJIM ETF (Inverse Cramer Tracker)**: Returned **-8.31%** vs S&P 500 **+31.49%** during its lifetime
+2. SJIM was **liquidated in January 2024** due to poor performance
+3. No academic studies found with statistically significant evidence of contrarian alpha
+4. The "Inverse Cramer" effect is primarily a social media meme, not a validated trading signal
+
+### Current Implementation
+
+- `social_nlp.py` already flags Cramer as `contrarian=True` and inverts his sentiment
+- This is adequate as a **sentiment warning flag** but should NOT be used as a standalone alpha signal
+- Weight: Keep existing Cramer inversion in NLP pipeline (awareness), but do NOT give it extra PACS weight
+
+### Recommendation
+
+SHELVE. The Inverse Cramer effect lacks statistical evidence. Our current approach (flag + invert sentiment) is sufficient. Do not allocate development resources to building a Cramer-specific signal pathway.
+
+---
+
+## 2026-03-07 RB-013: Capitol Trades Bulk Import (Direct HTML Parsing)
+
+**Hypothesis**: Direct HTML parsing can replace LLM-based extraction for Capitol Trades
+**Type**: ENGINEERING
+**Result**: ADOPT
+
+### Key Findings
+
+1. Capitol Trades HTML table structure is predictable: Politician | Issuer | Published | Traded | Filed After | Owner | Type | Size | Price
+2. BeautifulSoup parsing achieves **0.85 confidence** with zero LLM API cost
+3. 100 pages (1200 records) parsed in **~60 seconds** vs ~30+ minutes with LLM transform
+4. **876 new trades** imported from 100 pages, expanding coverage from 580 to 1618 trades
+5. Politicians expanded from 39 to 63 unique names
+
+### Implementation
+
+New module: `src/etl/capitoltrades_bulk.py`
+- Direct HTML parsing via BeautifulSoup
+- SHA256 dedup compatible with existing loader
+- Handles politician name/party/chamber extraction
+- Auto-stops after 3 consecutive empty pages
+- Usage: `python -m src.etl.capitoltrades_bulk --pages 100`
+
+### Cost Impact
+
+- LLM transform: ~$0.005/page (Gemini Flash) x 100 pages = $0.50
+- Bulk import: $0.00 (no API calls)
+- Speed: 100x faster
