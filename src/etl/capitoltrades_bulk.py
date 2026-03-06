@@ -155,6 +155,16 @@ def fetch_and_parse_page(session, page: int, chamber: str = "") -> list:
             tx_type = TYPE_MAP.get(type_raw, "Buy")
             amount = SIZE_MAP.get(size_raw, size_raw)
 
+            # Compute filing date from trade_date + filed_after days
+            filed_after_raw = cells[4].get_text(strip=True)
+            filing_date = None
+            if trade_date:
+                m_days = re.match(r'days(\d+)', filed_after_raw)
+                if m_days:
+                    from datetime import timedelta
+                    td = datetime.strptime(trade_date, "%Y-%m-%d")
+                    filing_date = (td + timedelta(days=int(m_days.group(1)))).strftime("%Y-%m-%d")
+
             if not pol["name"]:
                 continue
 
@@ -164,7 +174,7 @@ def fetch_and_parse_page(session, page: int, chamber: str = "") -> list:
                 "ticker": issuer["ticker"],
                 "asset_name": issuer["asset_name"],
                 "transaction_date": trade_date,
-                "filing_date": None,  # Not reliably available from table
+                "filing_date": filing_date,
                 "transaction_type": tx_type,
                 "amount_range": amount,
                 "owner": owner_raw if owner_raw else "Self",
