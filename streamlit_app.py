@@ -445,26 +445,25 @@ def page_alpha_signals(start_date: str, end_date: str, chambers: List[str]):
 
     st.caption(f"共 {len(signals_df)} 筆訊號")
 
-    # Color-coded table
-    def color_strength(val):
-        if pd.isna(val):
-            return ""
-        if val >= 0.8:
-            return "background-color: rgba(74, 222, 128, 0.2)"
-        elif val >= 0.5:
-            return "background-color: rgba(251, 191, 36, 0.2)"
-        else:
-            return "background-color: rgba(248, 113, 113, 0.2)"
+    # Add intuitive labels
+    signals_df["strength_label"] = signals_df["signal_strength"].apply(
+        lambda x: "🔥 Strong" if x >= 1.0 else ("⭐ Moderate" if x >= 0.5 else "📊 Weak")
+    )
+    signals_df["confidence_label"] = signals_df["confidence"].apply(
+        lambda x: "🟢 High" if x >= 0.7 else ("🟡 Medium" if x >= 0.5 else "🔴 Low") if pd.notna(x) else "—"
+    )
 
     display_df = signals_df.rename(columns={
         "ticker": "代碼", "asset_name": "資產名稱", "politician_name": "政治人物",
         "chamber": "院別", "direction": "方向", "signal_strength": "訊號強度",
+        "strength_label": "強度", "confidence_label": "信心",
         "expected_alpha_5d": "Alpha 5d%", "expected_alpha_20d": "Alpha 20d%",
         "confidence": "信心度", "sqs_score": "SQS", "sqs_grade": "等級",
         "filing_lag_days": "申報延遲(天)", "created_at": "建立時間",
     })
     st.dataframe(
-        display_df.style.applymap(color_strength, subset=["訊號強度"]),
+        display_df[["代碼", "資產名稱", "政治人物", "院別", "方向", "強度", "信心",
+                     "訊號強度", "Alpha 5d%", "Alpha 20d%", "等級", "申報延遲(天)"]],
         use_container_width=True,
         hide_index=True,
         height=400,
@@ -535,19 +534,23 @@ def page_portfolio():
         fig.update_layout(margin=dict(t=20, b=40), height=350)
         st.plotly_chart(fig, use_container_width=True)
 
-    # Positions table
+    # Positions table with intuitive ratings
     st.subheader("所有持倉")
     display_pos = pos_df[["ticker", "sector", "weight", "conviction_score",
                            "expected_alpha", "volatility_30d", "sharpe_estimate"]].copy()
+    display_pos["rating"] = display_pos["conviction_score"].apply(
+        lambda x: "⭐⭐⭐" if x >= 70 else ("⭐⭐" if x >= 55 else "⭐")
+    )
     display_pos["weight"] = display_pos["weight"].apply(lambda x: f"{x:.2%}" if pd.notna(x) else "-")
     display_pos["expected_alpha"] = display_pos["expected_alpha"].apply(lambda x: f"{x:.4f}" if pd.notna(x) else "-")
     display_pos["volatility_30d"] = display_pos["volatility_30d"].apply(lambda x: f"{x:.2%}" if pd.notna(x) else "-")
     display_pos.rename(columns={
-        "ticker": "代碼", "sector": "板塊", "weight": "權重",
+        "ticker": "代碼", "sector": "板塊", "weight": "權重", "rating": "評級",
         "conviction_score": "信念分數", "expected_alpha": "預期 Alpha",
         "volatility_30d": "30日波動率", "sharpe_estimate": "Sharpe",
     }, inplace=True)
-    st.dataframe(display_pos, use_container_width=True, hide_index=True)
+    st.dataframe(display_pos[["代碼", "評級", "板塊", "權重", "信念分數", "預期 Alpha", "30日波動率", "Sharpe"]],
+                 use_container_width=True, hide_index=True)
 
 
 # ══════════════════════════════════════════════
@@ -928,20 +931,23 @@ def page_signal_performance():
     has_5d = perf_df["hit_5d"].notna()
     has_20d = perf_df["hit_20d"].notna()
 
-    if has_5d.sum() > 0:
+    n_5d = int(has_5d.sum())
+    n_20d = int(has_20d.sum())
+
+    if n_5d > 0:
         hr_5d = perf_df.loc[has_5d, "hit_5d"].mean() * 100
         avg_alpha_5d = perf_df.loc[has_5d, "actual_alpha_5d"].mean() * 100
-        col1.metric("5 日勝率", f"{hr_5d:.1f}%")
-        col2.metric("5 日平均 Alpha", f"{avg_alpha_5d:+.2f}%")
+        col1.metric("5 日勝率", f"{hr_5d:.1f}%", help=f"基於 {n_5d} 個樣本")
+        col2.metric("5 日平均 Alpha", f"{avg_alpha_5d:+.2f}%", help=f"n={n_5d}")
     else:
         col1.metric("5 日勝率", "N/A")
         col2.metric("5 日平均 Alpha", "N/A")
 
-    if has_20d.sum() > 0:
+    if n_20d > 0:
         hr_20d = perf_df.loc[has_20d, "hit_20d"].mean() * 100
         avg_alpha_20d = perf_df.loc[has_20d, "actual_alpha_20d"].mean() * 100
-        col3.metric("20 日勝率", f"{hr_20d:.1f}%")
-        col4.metric("20 日平均 Alpha", f"{avg_alpha_20d:+.2f}%")
+        col3.metric("20 日勝率", f"{hr_20d:.1f}%", help=f"基於 {n_20d} 個樣本")
+        col4.metric("20 日平均 Alpha", f"{avg_alpha_20d:+.2f}%", help=f"n={n_20d}")
     else:
         col3.metric("20 日勝率", "N/A")
         col4.metric("20 日平均 Alpha", "N/A")
@@ -950,6 +956,20 @@ def page_signal_performance():
     col5.metric("已評估訊號", f"{len(perf_df)}")
     with_returns = (perf_df["actual_alpha_5d"].notna() | perf_df["actual_alpha_20d"].notna()).sum()
     col6.metric("有實際報酬", f"{with_returns}")
+
+    # Statistical significance warning
+    min_samples = 200
+    if n_5d < min_samples:
+        st.warning(
+            f"⚠ **Statistical Warning**: 5-day hit rate is based on only **{n_5d} samples** "
+            f"(minimum {min_samples} needed for significance). "
+            f"Results should be interpreted with extreme caution. "
+            f"A {hr_5d:.0f}% hit rate with n={n_5d} has a 95% CI of approximately "
+            f"±{1.96 * (50 / (n_5d ** 0.5)):.0f}% — indistinguishable from random."
+            if n_5d > 0 else
+            f"⚠ **Statistical Warning**: No samples with actual returns yet. "
+            f"Minimum {min_samples} samples needed for statistically meaningful results."
+        )
 
     # Scatter: expected vs actual alpha
     scatter_df = perf_df[perf_df["actual_alpha_5d"].notna()].copy()
