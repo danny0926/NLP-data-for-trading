@@ -329,7 +329,7 @@ def page_overview(start_date: str, end_date: str, chambers: List[str]):
                 height=350,
             )
             fig.update_traces(textinfo="percent+label", textfont_size=11)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
         else:
             st.info("尚無持倉資料")
 
@@ -348,7 +348,7 @@ def page_overview(start_date: str, end_date: str, chambers: List[str]):
                 yaxis_title="數量",
                 height=350,
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
         else:
             st.info("尚無訊號資料")
 
@@ -394,7 +394,7 @@ def page_overview(start_date: str, end_date: str, chambers: List[str]):
                 "filing_date": "Filed",
                 "chamber": "Chamber",
             }),
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
         )
     else:
@@ -464,7 +464,7 @@ def page_alpha_signals(start_date: str, end_date: str, chambers: List[str]):
     st.dataframe(
         display_df[["代碼", "資產名稱", "政治人物", "院別", "方向", "強度", "信心",
                      "訊號強度", "Alpha 5d%", "Alpha 20d%", "等級", "申報延遲(天)"]],
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
         height=400,
     )
@@ -481,7 +481,7 @@ def page_alpha_signals(start_date: str, end_date: str, chambers: List[str]):
     )
     fig.update_traces(texttemplate="%{text:.2f}", textposition="outside")
     fig.update_layout(margin=dict(t=30, b=40), height=350)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 # ══════════════════════════════════════════════
@@ -519,7 +519,7 @@ def page_portfolio():
         )
         fig.update_layout(margin=dict(t=20, b=20), height=350)
         fig.update_traces(textinfo="percent+label", textfont_size=11)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
     with col_right:
         st.subheader("持倉權重")
@@ -532,7 +532,7 @@ def page_portfolio():
         )
         fig.update_traces(textposition="outside")
         fig.update_layout(margin=dict(t=20, b=40), height=350)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
     # Positions table with intuitive ratings
     st.subheader("所有持倉")
@@ -550,7 +550,7 @@ def page_portfolio():
         "volatility_30d": "30日波動率", "sharpe_estimate": "Sharpe",
     }, inplace=True)
     st.dataframe(display_pos[["代碼", "評級", "板塊", "權重", "信念分數", "預期 Alpha", "30日波動率", "Sharpe"]],
-                 use_container_width=True, hide_index=True)
+                 width="stretch", hide_index=True)
 
 
 # ══════════════════════════════════════════════
@@ -591,7 +591,7 @@ def page_politicians(start_date: str, end_date: str, chambers: List[str]):
             },
         )
         fig.update_layout(margin=dict(t=20, b=20), height=300)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
     with col_right:
         st.subheader("院別比較")
@@ -605,7 +605,7 @@ def page_politicians(start_date: str, end_date: str, chambers: List[str]):
         )
         fig.update_traces(texttemplate="%{text:.1f}", textposition="outside")
         fig.update_layout(margin=dict(t=20, b=40), height=300, showlegend=False)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
     # Rankings table
     st.subheader("完整排名")
@@ -618,7 +618,7 @@ def page_politicians(start_date: str, end_date: str, chambers: List[str]):
         "pis_diversification": "分散度", "pis_timing": "時機", "pis_total": "PIS 總分",
         "grade": "等級",
     }, inplace=True)
-    st.dataframe(display_rank, use_container_width=True, hide_index=True)
+    st.dataframe(display_rank, width="stretch", hide_index=True)
 
     # Drill-down
     st.markdown("---")
@@ -647,7 +647,7 @@ def page_politicians(start_date: str, end_date: str, chambers: List[str]):
                 "transaction_date": "交易日", "filing_date": "申報日",
                 "chamber": "院別", "asset_name": "資產名稱",
             }, inplace=True)
-            st.dataframe(trades_df, use_container_width=True, hide_index=True)
+            st.dataframe(trades_df, width="stretch", hide_index=True)
         else:
             st.info(f"{selected} 在目前日期範圍內無交易記錄")
 
@@ -693,7 +693,7 @@ def page_convergence():
         "score": "匯聚分數", "span_days": "天數",
         "detected_at": "偵測時間",
     }, inplace=True)
-    st.dataframe(display_conv, use_container_width=True, hide_index=True)
+    st.dataframe(display_conv, width="stretch", hide_index=True)
 
     # Score breakdown
     st.subheader("分數拆解")
@@ -705,7 +705,7 @@ def page_convergence():
         "score_cross_chamber": "跨院加分", "score_time_density": "時間密度",
         "score_amount_weight": "金額權重",
     }, inplace=True)
-    st.dataframe(score_df, use_container_width=True, hide_index=True)
+    st.dataframe(score_df, width="stretch", hide_index=True)
 
     # Timeline
     st.subheader("匯聚時間線")
@@ -719,7 +719,7 @@ def page_convergence():
             color_discrete_sequence=PLOTLY_COLORS,
         )
         fig.update_layout(margin=dict(t=20, b=40), height=350)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
 
 # ══════════════════════════════════════════════
@@ -798,7 +798,7 @@ def page_trade_explorer(start_date: str, end_date: str, chambers: List[str]):
             "transaction_date": "交易日", "filing_date": "申報日",
             "chamber": "院別", "filing_lag": "申報延遲(天)",
         }, inplace=True)
-        st.dataframe(display_trades, use_container_width=True, hide_index=True, height=500)
+        st.dataframe(display_trades, width="stretch", hide_index=True, height=500)
 
         # Filing lag distribution
         st.subheader("申報延遲分布")
@@ -815,7 +815,7 @@ def page_trade_explorer(start_date: str, end_date: str, chambers: List[str]):
                 yaxis_title="數量",
                 height=300,
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
     else:
         st.info("目前篩選條件下無交易資料")
 
@@ -846,7 +846,7 @@ def page_signal_quality():
             yaxis_title="數量",
             height=350,
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
     with col_right:
         st.subheader("等級分布")
@@ -861,7 +861,7 @@ def page_signal_quality():
             },
         )
         fig.update_layout(margin=dict(t=20, b=20), height=350)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
     # Radar chart for selected trade
     st.markdown("---")
@@ -901,7 +901,7 @@ def page_signal_quality():
             height=400,
             title=f"{row['ticker']} — {row['politician_name']} (SQS: {row['sqs']:.1f}, {row['grade']})",
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
     # Top quality signals table
     st.subheader("最高品質訊號")
@@ -914,7 +914,7 @@ def page_signal_quality():
         "conviction": "信念度", "information_edge": "資訊優勢",
         "market_impact": "市場影響",
     }, inplace=True)
-    st.dataframe(top_sqs, use_container_width=True, hide_index=True)
+    st.dataframe(top_sqs, width="stretch", hide_index=True)
 
 
 # ══════════════════════════════════════════════
@@ -998,7 +998,7 @@ def page_signal_performance():
         )
         fig.add_shape(type="line", x0=-5, y0=-5, x1=5, y1=5, line=dict(dash="dash", color="gray"))
         fig.update_layout(height=450, margin=dict(t=30))
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
     # MFE/MAE analysis
     mae_mfe_df = perf_df[perf_df["max_favorable_excursion"].notna()].copy()
@@ -1017,7 +1017,7 @@ def page_signal_performance():
         )
         fig2.add_shape(type="line", x0=-10, y0=-10, x1=10, y1=10, line=dict(dash="dash", color="gray"))
         fig2.update_layout(height=400, margin=dict(t=30))
-        st.plotly_chart(fig2, use_container_width=True)
+        st.plotly_chart(fig2, width="stretch")
 
     # Performance table
     st.subheader("績效明細")
@@ -1025,7 +1025,7 @@ def page_signal_performance():
                     "actual_alpha_5d", "actual_alpha_20d", "hit_5d", "hit_20d",
                     "max_favorable_excursion", "max_adverse_excursion", "evaluated_at"]
     avail_cols = [c for c in display_cols if c in perf_df.columns]
-    st.dataframe(perf_df[avail_cols].head(50), use_container_width=True, hide_index=True)
+    st.dataframe(perf_df[avail_cols].head(50), width="stretch", hide_index=True)
 
 
 # ══════════════════════════════════════════════
@@ -1061,7 +1061,7 @@ def page_sector_rotation():
         labels={"sector": "板塊", "momentum_score": "動能分數", "direction": "方向"},
     )
     fig.update_layout(height=400, margin=dict(t=30))
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
     # Sector details table
     st.subheader("板塊詳細資料")
@@ -1069,7 +1069,7 @@ def page_sector_rotation():
                     "momentum_score", "net_ratio", "trades", "buy_count", "sale_count",
                     "politician_count", "cross_chamber", "rotation_type"]
     avail = [c for c in display_cols if c in sector_df.columns]
-    st.dataframe(sector_df[avail], use_container_width=True, hide_index=True)
+    st.dataframe(sector_df[avail], width="stretch", hide_index=True)
 
     # Rotation types
     if "rotation_type" in sector_df.columns:
@@ -1078,7 +1078,7 @@ def page_sector_rotation():
         fig2 = px.pie(values=rot_counts.values, names=rot_counts.index,
                       color_discrete_sequence=PLOTLY_COLORS)
         fig2.update_layout(height=350, margin=dict(t=30))
-        st.plotly_chart(fig2, use_container_width=True)
+        st.plotly_chart(fig2, width="stretch")
 
 
 # ══════════════════════════════════════════════
@@ -1177,7 +1177,7 @@ def page_social_intelligence():
             )
             fig.update_layout(height=250, margin=dict(t=10, b=10), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
             fig.update_traces(textinfo="label+percent", textfont_size=12)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
         else:
             st.info("No sentiment data yet")
 
@@ -1194,7 +1194,7 @@ def page_social_intelligence():
                 labels={"platform": "Platform", "cnt": "Posts"},
             )
             fig2.update_layout(height=200, margin=dict(t=10, b=30), showlegend=False, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-            st.plotly_chart(fig2, use_container_width=True)
+            st.plotly_chart(fig2, width="stretch")
 
         # Social alpha signals
         social_alpha_df = query_db("""
@@ -1211,7 +1211,7 @@ def page_social_intelligence():
                     "ticker": "Ticker", "direction": "Dir", "signal_strength": "Strength",
                     "expected_alpha_5d": "Alpha 5d", "confidence": "Conf",
                 }),
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
             )
 
@@ -1494,7 +1494,7 @@ def page_todays_action():
         portfolio['conviction_int'] = portfolio['conviction_score'].apply(lambda x: f"{x:.0f}")
         display_df = portfolio[['ticker', 'stars', 'weight_pct', 'conviction_int', 'alpha_str']].copy()
         display_df.columns = ['Ticker', 'Rating', 'Weight', 'Score', 'Expected Alpha']
-        st.dataframe(display_df, use_container_width=True, hide_index=True)
+        st.dataframe(display_df, width="stretch", hide_index=True)
     else:
         st.info("No portfolio positions.")
 
