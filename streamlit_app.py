@@ -1553,18 +1553,23 @@ def page_todays_action():
     else:
         st.info("No strong buy signals in the last 7 days.")
 
-    # ── Section 2: Convergence Alerts ──
+    # ── Section 2: Convergence Alerts (deduplicated: best per ticker) ──
     st.markdown("### 🔔 Convergence Alerts")
     st.caption("Multiple politicians buying the same stock — strongest signal type.")
     convergence = query_db("""
-        SELECT ticker, direction, politician_count, politicians, chambers, score,
+        SELECT c.ticker, c.direction, c.politician_count, c.politicians, c.chambers, c.score,
                CASE
-                   WHEN score >= 2.0 THEN '🔥 Very Strong'
-                   WHEN score >= 1.5 THEN '⭐ Strong'
+                   WHEN c.score >= 2.0 THEN '🔥 Very Strong'
+                   WHEN c.score >= 1.5 THEN '⭐ Strong'
                    ELSE '📊 Moderate'
                END as score_label
-        FROM convergence_signals
-        ORDER BY score DESC
+        FROM convergence_signals c
+        INNER JOIN (
+            SELECT ticker, direction, MAX(score) as max_score
+            FROM convergence_signals
+            GROUP BY ticker, direction
+        ) best ON c.ticker = best.ticker AND c.direction = best.direction AND c.score = best.max_score
+        ORDER BY c.score DESC
         LIMIT 5
     """)
 

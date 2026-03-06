@@ -121,10 +121,11 @@ def get_dashboard_data() -> Dict[str, Any]:
     try:
         data['enhanced'] = query_db('''
             SELECT ticker, politician_name, chamber, direction,
-                   enhanced_strength, confidence_v2, pacs_score, vix_zone
+                   enhanced_strength, confidence_v2, pacs_score, vix_zone,
+                   COALESCE(insider_confirmed, 0) as insider_confirmed
             FROM enhanced_signals
             WHERE direction = 'LONG'
-            ORDER BY enhanced_strength DESC
+            ORDER BY pacs_score DESC
             LIMIT 10
         ''')
     except Exception:
