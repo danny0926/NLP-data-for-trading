@@ -117,6 +117,41 @@ def get_dashboard_data() -> Dict[str, Any]:
         LIMIT 15
     ''')
 
+    # 11. Enhanced signals (top PACS picks)
+    try:
+        data['enhanced'] = query_db('''
+            SELECT ticker, politician_name, chamber, direction,
+                   enhanced_strength, confidence_v2, pacs_score, vix_zone
+            FROM enhanced_signals
+            WHERE direction = 'LONG'
+            ORDER BY enhanced_strength DESC
+            LIMIT 10
+        ''')
+    except Exception:
+        data['enhanced'] = []
+
+    # 12. Social intelligence summary
+    try:
+        data['social_stats'] = {
+            'posts': query_db('SELECT COUNT(*) as n FROM social_posts')[0]['n'],
+            'signals': query_db('SELECT COUNT(*) as n FROM social_signals')[0]['n'],
+            'authors': query_db('SELECT COUNT(DISTINCT author_name) as n FROM social_posts')[0]['n'],
+        }
+    except Exception:
+        data['social_stats'] = {'posts': 0, 'signals': 0, 'authors': 0}
+
+    # 13. Signal performance summary
+    try:
+        perf = query_db('''
+            SELECT COUNT(*) as n,
+                   AVG(CASE WHEN hit_5d IS NOT NULL THEN hit_5d END) as hr5,
+                   AVG(CASE WHEN actual_alpha_5d IS NOT NULL THEN actual_alpha_5d END) as avg_alpha5
+            FROM signal_performance
+        ''')
+        data['performance'] = perf[0] if perf else {'n': 0, 'hr5': None, 'avg_alpha5': None}
+    except Exception:
+        data['performance'] = {'n': 0, 'hr5': None, 'avg_alpha5': None}
+
     return data
 
 
@@ -135,6 +170,9 @@ def generate_html(data: Dict[str, Any]) -> str:
     trade_types_json = json.dumps(data['trade_types'], default=str)
     chambers_json = json.dumps(data['chambers'], default=str)
     top_tickers_json = json.dumps(data['top_tickers'], default=str)
+    enhanced_json = json.dumps(data.get('enhanced', []), default=str)
+    social_stats_json = json.dumps(data.get('social_stats', {}), default=str)
+    performance_json = json.dumps(data.get('performance', {}), default=str)
 
     # Compute summary stats
     total_trades = data['stats'].get('congress_trades', 0)
@@ -462,6 +500,30 @@ def generate_html(data: Dict[str, Any]) -> str:
     </table>
   </div>
 
+  <!-- PACS-Enhanced Signals + Social Intelligence -->
+  <div class="grid-2">
+    <div class="card">
+      <h2>Top PACS-Enhanced Signals</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Ticker</th>
+            <th>Politician</th>
+            <th>Chamber</th>
+            <th>Strength</th>
+            <th>PACS</th>
+            <th>VIX Zone</th>
+          </tr>
+        </thead>
+        <tbody id="enhancedTable"></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Social Intelligence</h2>
+      <div id="socialStats" style="padding:0.5rem 0;color:#94a3b8;font-size:0.9rem;"></div>
+    </div>
+  </div>
+
   <!-- Rankings + Recent Trades -->
   <div class="grid-2">
     <div class="card">
@@ -535,6 +597,9 @@ const recentTrades = {recent_trades_json};
 const sectors = {sectors_json};
 const tradeTypes = {trade_types_json};
 const topTickers = {top_tickers_json};
+const enhanced = {enhanced_json};
+const socialStats = {social_stats_json};
+const performance = {performance_json};
 
 // ── Color palette ──
 const colors = [
@@ -713,6 +778,51 @@ recentTrades.forEach(t => {{
     <td style="color:#94a3b8;font-size:0.8rem">${{t.filing_date || '-'}}</td>
   </tr>`;
 }});
+
+// ── Enhanced Signals Table ──
+const enhBody = document.getElementById('enhancedTable');
+if (enhBody) {{
+  enhanced.forEach(e => {{
+    enhBody.innerHTML += `<tr>
+      <td><strong>${{e.ticker}}</strong></td>
+      <td>${{e.politician_name}}</td>
+      <td>${{e.chamber}}</td>
+      <td>${{(e.enhanced_strength || 0).toFixed(2)}}</td>
+      <td>${{(e.pacs_score || 0).toFixed(2)}}</td>
+      <td>${{e.vix_zone || 'N/A'}}</td>
+    </tr>`;
+  }});
+}}
+
+// ── Social Stats ──
+const socialDiv = document.getElementById('socialStats');
+if (socialDiv) {{
+  const p = socialStats.posts || 0;
+  const s = socialStats.signals || 0;
+  const a = socialStats.authors || 0;
+  const hr = performance.hr5 ? (performance.hr5 * 100).toFixed(0) + '%' : 'N/A';
+  const n = performance.n || 0;
+  socialDiv.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;">
+      <div style="background:#0f172a;padding:1rem;border-radius:8px;text-align:center;">
+        <div style="font-size:1.5rem;color:#38bdf8;font-weight:700;">${{p}}</div>
+        <div style="font-size:0.8rem;">Social Posts</div>
+      </div>
+      <div style="background:#0f172a;padding:1rem;border-radius:8px;text-align:center;">
+        <div style="font-size:1.5rem;color:#4ade80;font-weight:700;">${{s}}</div>
+        <div style="font-size:0.8rem;">NLP Signals</div>
+      </div>
+      <div style="background:#0f172a;padding:1rem;border-radius:8px;text-align:center;">
+        <div style="font-size:1.5rem;color:#a78bfa;font-weight:700;">${{a}}</div>
+        <div style="font-size:0.8rem;">Authors Tracked</div>
+      </div>
+      <div style="background:#0f172a;padding:1rem;border-radius:8px;text-align:center;">
+        <div style="font-size:1.5rem;color:#fbbf24;font-weight:700;">${{hr}}</div>
+        <div style="font-size:0.8rem;">5d Hit Rate (n=${{n}})</div>
+      </div>
+    </div>
+  `;
+}}
 </script>
 
 </body>
