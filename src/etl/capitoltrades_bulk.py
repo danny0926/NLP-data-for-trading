@@ -84,9 +84,9 @@ def _parse_politician_cell(cell_text: str) -> dict:
             chamber = ch
             break
 
-    # Extract party
+    # Extract party (must check "Other" too for independents like Angus King)
     party = None
-    for p in ["Republican", "Democrat", "Independent"]:
+    for p in ["Republican", "Democrat", "Independent", "Other"]:
         if p in cell_text:
             party = p
             break

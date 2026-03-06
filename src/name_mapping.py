@@ -141,6 +141,41 @@ POLITICIAN_ALIASES: Dict[str, List[str]] = {
     "Tom Suozzi": [
         "Thomas Suozzi", "Thomas R. Suozzi", "Rep. Tom Suozzi",
     ],
+
+    # --- 新增: 從 Capitol Trades Bulk Import 發現的議員 ---
+    "Julia Letlow": [
+        "Julia Asbury Letlow", "Rep. Julia Letlow",
+    ],
+    "Katie Britt": [
+        "Katherine Britt", "Sen. Katie Britt",
+    ],
+    "Thomas Kean Jr": [
+        "Thomas H. Kean Jr.", "Tom Kean Jr.", "Rep. Tom Kean Jr.",
+    ],
+    "Angus King": [
+        "Angus S. King Jr.", "Angus Stanley King", "Sen. Angus King",
+    ],
+    "Julie Johnson": [
+        "Rep. Julie Johnson",
+    ],
+    "Sheldon Whitehouse": [
+        "Sheldon W. Whitehouse", "Sen. Sheldon Whitehouse",
+    ],
+    "French Hill": [
+        "French Hill Jr.", "Rep. French Hill",
+    ],
+    "Byron Donalds": [
+        "Rep. Byron Donalds",
+    ],
+    "Jared Moskowitz": [
+        "Rep. Jared Moskowitz",
+    ],
+    "Dan Newhouse": [
+        "Daniel Newhouse", "Daniel M. Newhouse", "Rep. Dan Newhouse",
+    ],
+    "Michael Guest": [
+        "Michael Patrick Guest", "Rep. Michael Guest",
+    ],
 }
 
 # ── 反向索引：alias → canonical_name（啟動時自動建立） ──
