@@ -352,6 +352,29 @@ def page_overview(start_date: str, end_date: str, chambers: List[str]):
         else:
             st.info("尚無訊號資料")
 
+    # Top PACS-Enhanced Picks
+    st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
+    st.subheader("Top PACS-Enhanced Signals")
+    top_enhanced = query_db("""
+        SELECT e.ticker, e.politician_name, e.chamber, e.direction,
+               e.enhanced_strength, e.confidence_v2, e.pacs_score, e.vix_zone,
+               e.has_convergence
+        FROM enhanced_signals e
+        WHERE e.direction = 'LONG'
+        ORDER BY e.enhanced_strength DESC
+        LIMIT 8
+    """)
+    if not top_enhanced.empty:
+        top_enhanced['convergence'] = top_enhanced['has_convergence'].apply(
+            lambda x: 'Yes' if x else ''
+        )
+        display_cols = top_enhanced[['ticker', 'politician_name', 'chamber', 'enhanced_strength',
+                                      'confidence_v2', 'pacs_score', 'vix_zone', 'convergence']].copy()
+        display_cols.columns = ['Ticker', 'Politician', 'Chamber', 'Strength', 'Confidence', 'PACS', 'VIX Zone', 'Convergence']
+        st.dataframe(display_cols, width="stretch", hide_index=True)
+    else:
+        st.info("No enhanced signals yet. Run signal enhancer.")
+
     # Data sources overview
     st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
     st.subheader("Data Sources & Coverage")
@@ -367,6 +390,41 @@ def page_overview(start_date: str, end_date: str, chambers: List[str]):
         st.metric("FF3 Backtests", f"{ff3_count:,}")
     with src4:
         st.metric("Convergence Events", f"{convergence}")
+
+    # Signal generation timeline
+    st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
+    st.subheader("Signal Generation Timeline")
+    timeline_df = query_db("""
+        SELECT date(created_at) as day, COUNT(*) as signals,
+               SUM(CASE WHEN direction='LONG' THEN 1 ELSE 0 END) as buy_signals,
+               SUM(CASE WHEN direction='SHORT' THEN 1 ELSE 0 END) as sell_signals
+        FROM alpha_signals
+        WHERE created_at >= date('now', '-30 days')
+        GROUP BY date(created_at)
+        ORDER BY day
+    """)
+    if not timeline_df.empty:
+        fig_tl = go.Figure()
+        fig_tl.add_trace(go.Bar(
+            x=timeline_df["day"], y=timeline_df["buy_signals"],
+            name="BUY", marker_color=COLORS["green"],
+        ))
+        fig_tl.add_trace(go.Bar(
+            x=timeline_df["day"], y=timeline_df["sell_signals"],
+            name="SELL", marker_color=COLORS["red"],
+        ))
+        fig_tl.update_layout(
+            barmode="stack", height=250,
+            margin=dict(t=20, b=40, l=40, r=20),
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#e2e8f0"),
+            xaxis=dict(gridcolor="rgba(148,163,184,0.1)"),
+            yaxis=dict(gridcolor="rgba(148,163,184,0.1)", title="Signals"),
+            legend=dict(orientation="h", y=1.1),
+        )
+        st.plotly_chart(fig_tl, width="stretch")
+    else:
+        st.info("No signals in last 30 days")
 
     # Recent activity timeline
     st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
@@ -981,6 +1039,30 @@ def page_signal_performance():
             f"Minimum {min_samples} samples needed for statistically meaningful results."
         )
 
+    # Cumulative Alpha Chart
+    cum_df = perf_df[perf_df["actual_alpha_5d"].notna()].sort_values("signal_date").copy()
+    if not cum_df.empty and "signal_date" in cum_df.columns:
+        st.subheader("累積 Alpha 曲線 (5 日)")
+        cum_df["cum_alpha"] = (cum_df["actual_alpha_5d"] * 100).cumsum()
+        cum_df["signal_num"] = range(1, len(cum_df) + 1)
+        fig_cum = go.Figure()
+        fig_cum.add_trace(go.Scatter(
+            x=cum_df["signal_num"], y=cum_df["cum_alpha"],
+            mode="lines+markers", name="Cumulative Alpha",
+            line=dict(color=COLORS["primary"], width=2),
+            marker=dict(size=5),
+        ))
+        fig_cum.add_hline(y=0, line_dash="dash", line_color="gray")
+        fig_cum.update_layout(
+            height=350, margin=dict(t=30, b=40),
+            xaxis_title="Signal #", yaxis_title="Cumulative Alpha (%)",
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#e2e8f0"),
+            xaxis=dict(gridcolor="rgba(148,163,184,0.1)"),
+            yaxis=dict(gridcolor="rgba(148,163,184,0.1)"),
+        )
+        st.plotly_chart(fig_cum, width="stretch")
+
     # Scatter: expected vs actual alpha
     scatter_df = perf_df[perf_df["actual_alpha_5d"].notna()].copy()
     if not scatter_df.empty:
@@ -1260,8 +1342,42 @@ def page_social_intelligence():
 # ══════════════════════════════════════════════
 # Main
 # ══════════════════════════════════════════════
+def render_alert_banner():
+    """Show a top-of-page alert if there are fresh high-priority signals."""
+    fresh_strong = query_db("""
+        SELECT COUNT(*) as n FROM alpha_signals
+        WHERE signal_strength >= 1.0 AND created_at >= date('now', '-1 days')
+    """)
+    fresh_conv = query_db("""
+        SELECT COUNT(*) as n FROM convergence_signals
+        WHERE score >= 2.0 AND detected_at >= date('now', '-1 days')
+    """)
+    n_strong = int(fresh_strong['n'].iloc[0]) if not fresh_strong.empty else 0
+    n_conv = int(fresh_conv['n'].iloc[0]) if not fresh_conv.empty else 0
+
+    if n_strong > 0 or n_conv > 0:
+        parts = []
+        if n_strong > 0:
+            parts.append(f"{n_strong} strong signal{'s' if n_strong > 1 else ''}")
+        if n_conv > 0:
+            parts.append(f"{n_conv} convergence alert{'s' if n_conv > 1 else ''}")
+        st.markdown(
+            f'<div style="background:linear-gradient(90deg,#1e3a5f,#1e293b);border:1px solid #38bdf8;'
+            f'border-radius:8px;padding:0.8rem 1.2rem;margin-bottom:1rem;display:flex;'
+            f'align-items:center;gap:0.5rem;">'
+            f'<span style="font-size:1.2rem;">🔔</span>'
+            f'<span style="color:#38bdf8;font-weight:600;">New Today:</span>'
+            f'<span style="color:#e2e8f0;">{" + ".join(parts)} in the last 24h</span>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+
 def main():
     page, start_date, end_date, chambers = render_sidebar()
+
+    # Alert banner on every page
+    render_alert_banner()
 
     if page == "🎯 Today's Action":
         page_todays_action()
@@ -1340,6 +1456,49 @@ def page_todays_action():
         f'convergence signals, and social intelligence.</p></div>',
         unsafe_allow_html=True,
     )
+
+    # ── Section 0: Market Context & Data Freshness ──
+    ctx1, ctx2, ctx3, ctx4 = st.columns(4)
+
+    # VIX regime
+    try:
+        import yfinance as yf
+        vix_data = yf.Ticker("^VIX").history(period="2d")
+        if not vix_data.empty:
+            vix_val = vix_data["Close"].iloc[-1]
+            if vix_val < 14:
+                vix_zone, vix_color, vix_mult = "Ultra Low", "#94a3b8", "0.6x"
+            elif vix_val <= 16:
+                vix_zone, vix_color, vix_mult = "Goldilocks", "#4ade80", "1.3x"
+            elif vix_val <= 20:
+                vix_zone, vix_color, vix_mult = "Moderate", "#fbbf24", "0.8x"
+            elif vix_val <= 30:
+                vix_zone, vix_color, vix_mult = "High", "#fb923c", "0.5x"
+            else:
+                vix_zone, vix_color, vix_mult = "Extreme", "#f87171", "0.3x"
+            ctx1.metric("VIX", f"{vix_val:.1f}", delta=f"{vix_zone} ({vix_mult})")
+        else:
+            ctx1.metric("VIX", "N/A")
+    except Exception:
+        ctx1.metric("VIX", "Unavailable")
+
+    # Data freshness
+    freshness = query_db("SELECT MAX(created_at) as last FROM extraction_log")
+    if not freshness.empty and pd.notna(freshness['last'].iloc[0]):
+        last_str = str(freshness['last'].iloc[0])[:16]
+        ctx2.metric("Last ETL", last_str)
+    else:
+        ctx2.metric("Last ETL", "Never")
+
+    # Trade count (7d)
+    recent_trades = query_db("SELECT COUNT(*) as n FROM congress_trades WHERE created_at >= date('now', '-7 days')")
+    ctx3.metric("New Trades (7d)", int(recent_trades['n'].iloc[0]) if not recent_trades.empty else 0)
+
+    # Unique politicians
+    pol_count = query_db("SELECT COUNT(DISTINCT politician_name) as n FROM congress_trades")
+    ctx4.metric("Politicians Tracked", int(pol_count['n'].iloc[0]) if not pol_count.empty else 0)
+
+    st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
 
     # ── Section 1: Top BUY Signals (max 5) ──
     st.markdown("### 🟢 Top Buy Signals")
