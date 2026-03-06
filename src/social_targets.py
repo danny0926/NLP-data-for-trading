@@ -113,6 +113,34 @@ POLITICIAN_SOCIAL_TARGETS: List[Dict] = [
         "sector_focus": ["agriculture", "finance"],
         "note": "農業/銀行委員會，社群活躍",
     },
+    {
+        "name": "Ro Khanna",
+        "twitter": "@RoKhanna",
+        "committees": ["Armed Services", "Oversight"],
+        "sector_focus": ["tech", "defense"],
+        "note": "最高頻交易者 (4000+ trades)，矽谷選區",
+    },
+    {
+        "name": "Marjorie Taylor Greene",
+        "twitter": "@RepMTG",
+        "committees": ["Oversight", "Homeland Security"],
+        "sector_focus": ["defense", "energy"],
+        "note": "社群高活躍度，325+ trades 全 Buy",
+    },
+    {
+        "name": "Michael McCaul",
+        "twitter": "@RepMcCaul",
+        "committees": ["Foreign Affairs", "Homeland Security"],
+        "sector_focus": ["defense", "tech"],
+        "note": "外交委員會主席，國防/科技關注",
+    },
+    {
+        "name": "Lisa McClain",
+        "twitter": "@RepLisaMcClain",
+        "committees": ["Armed Services", "Budget"],
+        "sector_focus": ["defense", "finance"],
+        "note": "高頻交易者 (1200+ trades)，軍事/預算委員會",
+    },
 ]
 
 
