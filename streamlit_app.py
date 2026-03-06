@@ -665,23 +665,33 @@ def page_convergence():
 
     st.caption(f"共 {len(conv_df)} 筆匯聚事件")
 
-    # Highlight strongest
-    top = conv_df.iloc[0]
-    st.success(
-        f"最強匯聚: **{top['ticker']}** — {top['direction']} | "
-        f"分數: {top['score']:.3f} | "
-        f"涉及 {top['politician_count']} 位政治人物 ({top['politicians']})"
+    # Add intuitive labels
+    conv_df["strength_label"] = conv_df["score"].apply(
+        lambda x: "🔥 Very Strong" if x >= 2.0 else ("⭐ Strong" if x >= 1.5 else "📊 Moderate")
+    )
+    conv_df["cross_chamber"] = conv_df["chambers"].apply(
+        lambda x: "🏛 Cross-chamber" if pd.notna(x) and "Senate" in str(x) and "House" in str(x) else ""
     )
 
-    # Table
-    display_conv = conv_df[["ticker", "direction", "politician_count", "politicians",
-                             "chambers", "window_start", "window_end", "span_days",
-                             "score", "detected_at"]].copy()
+    # Highlight strongest
+    top = conv_df.iloc[0]
+    direction_icon = "🟢" if top['direction'] == 'Buy' else "🔴"
+    st.success(
+        f"最強匯聚: **{top['ticker']}** {direction_icon} {top['direction']} | "
+        f"{conv_df.iloc[0]['strength_label']} (分數 {top['score']:.2f}) | "
+        f"{top['politician_count']} 位政治人物同向交易 {conv_df.iloc[0]['cross_chamber']}"
+    )
+
+    # Table with intuitive labels
+    display_conv = conv_df[["ticker", "direction", "strength_label", "cross_chamber",
+                             "politician_count", "politicians",
+                             "score", "span_days", "detected_at"]].copy()
     display_conv.rename(columns={
-        "ticker": "代碼", "direction": "方向", "politician_count": "政治人物數",
-        "politicians": "涉及政治人物", "chambers": "院別", "window_start": "窗口起始",
-        "window_end": "窗口結束", "span_days": "天數跨度",
-        "score": "匯聚分數", "detected_at": "偵測時間",
+        "ticker": "代碼", "direction": "方向", "strength_label": "強度",
+        "cross_chamber": "跨院", "politician_count": "人數",
+        "politicians": "涉及政治人物",
+        "score": "匯聚分數", "span_days": "天數",
+        "detected_at": "偵測時間",
     }, inplace=True)
     st.dataframe(display_conv, use_container_width=True, hide_index=True)
 
