@@ -569,7 +569,7 @@ def _section_politician_watchlist(rankings: Optional[List[dict]]) -> str:
             f"{r['total_trades']} | **{pis:.1f}** | {grade_tag} | "
             f"{r['pis_activity']:.1f} | {r['pis_conviction']:.1f} | "
             f"{r['pis_diversification']:.1f} | {r['pis_timing']:.1f} | "
-            f"{buy_sale} | {r['avg_filing_lag_days']:.1f}天 |"
+            f"{buy_sale} | {r['avg_filing_lag_days']:.1f}天 |" if r['avg_filing_lag_days'] is not None else f"{buy_sale} | N/A |"
         )
 
     return "\n".join(lines)

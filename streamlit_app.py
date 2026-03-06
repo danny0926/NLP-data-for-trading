@@ -1657,7 +1657,52 @@ def page_todays_action():
     else:
         st.info("No portfolio positions.")
 
-    # ── Section 5: Risk Warnings ──
+    # ── Section 5: Sector Momentum ──
+    st.markdown("### 📊 Sector Momentum (Top 5)")
+    st.caption("Congressional net buying by sector — ETF signals based on RB-007.")
+    sectors = query_db("""
+        SELECT sector, etf, direction, signal_strength, expected_alpha_20d,
+               momentum_score, rotation_type, politician_count, trades,
+               CASE
+                   WHEN signal_strength >= 0.7 THEN '🔥 Strong'
+                   WHEN signal_strength >= 0.4 THEN '⭐ Moderate'
+                   ELSE '📊 Weak'
+               END as strength_label
+        FROM sector_rotation_signals
+        ORDER BY created_at DESC, momentum_score DESC
+        LIMIT 5
+    """)
+    if not sectors.empty:
+        for _, row in sectors.iterrows():
+            rot_color = {"ACCELERATING": "#4ade80", "DECELERATING": "#fbbf24",
+                         "REVERSING_UP": "#38bdf8", "REVERSING_DOWN": "#f87171",
+                         "STABLE": "#94a3b8"}.get(row['rotation_type'], "#94a3b8")
+            alpha_str = f"+{row['expected_alpha_20d']:.1f}%" if pd.notna(row['expected_alpha_20d']) else "N/A"
+            st.markdown(
+                f'<div style="background:#1e293b;border-left:4px solid {rot_color};border-radius:8px;'
+                f'padding:0.8rem;margin-bottom:0.6rem;">'
+                f'<div style="display:flex;justify-content:space-between;align-items:center;">'
+                f'<div>'
+                f'<span style="color:#e2e8f0;font-weight:700;">{row["sector"]}</span>'
+                f' <span style="color:#38bdf8;">({row["etf"]})</span>'
+                f'</div>'
+                f'<div style="text-align:right;">'
+                f'<span style="color:{rot_color};font-size:0.85rem;">{row["rotation_type"]}</span>'
+                f' · {row["strength_label"]}'
+                f'</div></div>'
+                f'<div style="color:#94a3b8;font-size:0.82rem;margin-top:0.3rem;">'
+                f'Momentum: {row["momentum_score"]:.2f} · '
+                f'Expected 20d Alpha: <strong style="color:#4ade80;">{alpha_str}</strong> · '
+                f'{row["politician_count"]} politicians · {row["trades"]} trades'
+                f'</div></div>',
+                unsafe_allow_html=True,
+            )
+    else:
+        st.info("No sector rotation signals available.")
+
+    st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
+
+    # ── Section 6: Risk Warnings ──
     st.markdown("### ⚠ Risk Context")
     perf = query_db("SELECT count(*) as n, avg(hit_5d) as hr FROM signal_performance WHERE hit_5d IS NOT NULL")
     n_samples = int(perf['n'].iloc[0]) if not perf.empty else 0
@@ -1687,6 +1732,23 @@ def page_todays_action():
             f'congress members have 30-45 days to disclose</div></div>',
             unsafe_allow_html=True,
         )
+
+    # ── Full Disclaimer ──
+    st.markdown("---")
+    st.markdown(
+        '<div style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:1rem;margin-top:1rem;">'
+        '<p style="color:#f87171;font-weight:700;margin:0 0 0.5rem 0;">DISCLAIMER</p>'
+        '<p style="color:#94a3b8;font-size:0.78rem;margin:0;line-height:1.5;">'
+        'This dashboard is for <strong>educational and research purposes only</strong>. '
+        'It does NOT constitute investment advice, financial advice, trading advice, or any other advice. '
+        'Congressional trading data is sourced from public disclosures and may be delayed 30-45 days. '
+        'Past performance does not guarantee future results. '
+        'All signals are AI-generated and may contain errors. '
+        'Always do your own research and consult a qualified financial advisor before making investment decisions. '
+        'The creators of this tool accept no liability for any financial losses.</p>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
 
 
 if __name__ == "__main__":
