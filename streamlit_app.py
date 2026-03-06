@@ -195,6 +195,7 @@ def render_sidebar():
     page = st.sidebar.radio(
         "Navigation",
         [
+            "🎯 Today's Action",
             "Executive Dashboard",
             "Alpha Signals",
             "Portfolio",
@@ -1232,7 +1233,9 @@ def page_social_intelligence():
 def main():
     page, start_date, end_date, chambers = render_sidebar()
 
-    if page == "Executive Dashboard":
+    if page == "🎯 Today's Action":
+        page_todays_action()
+    elif page == "Executive Dashboard":
         page_overview(start_date, end_date, chambers)
     elif page == "Alpha Signals":
         page_alpha_signals(start_date, end_date, chambers)
@@ -1252,6 +1255,249 @@ def main():
         page_sector_rotation()
     elif page == "Social Intelligence":
         page_social_intelligence()
+
+    # ── Legal Disclaimer (every page) ──
+    render_disclaimer()
+
+
+# ══════════════════════════════════════════════
+# Legal Disclaimer
+# ══════════════════════════════════════════════
+def render_disclaimer():
+    """Render full legal disclaimer at the bottom of every page."""
+    st.markdown("---")
+    st.markdown(
+        '<div style="background:#0f172a;border:1px solid #334155;border-radius:8px;'
+        'padding:1.2rem;margin-top:1rem;">'
+        '<p style="color:#64748b;font-size:0.75rem;line-height:1.6;margin:0;">'
+        '<strong style="color:#94a3b8;">⚠ Important Disclaimer</strong><br>'
+        'Political Alpha Monitor (PAM) is a <strong>research tool</strong> for informational '
+        'purposes only. It does <strong>not</strong> constitute investment advice, solicitation, '
+        'or recommendation to buy or sell any securities.<br><br>'
+        '• All signals, scores, and portfolio suggestions are <strong>algorithmically generated</strong> '
+        'and have not been verified by a registered investment adviser (RIA).<br>'
+        '• Past performance and backtested results do <strong>not</strong> guarantee future returns. '
+        'Signal hit rates are based on limited historical samples and may not be statistically significant.<br>'
+        '• Congressional trading data is sourced from public government disclosures with an inherent '
+        'filing delay of 30-45 days. Information may be outdated by the time it is displayed.<br>'
+        '• Social media analysis reflects AI-interpreted sentiment and may contain errors, '
+        'misinterpretations, or hallucinations.<br>'
+        '• Users should conduct their own due diligence and consult a qualified financial professional '
+        'before making any investment decisions.<br><br>'
+        '<em>By using this tool, you acknowledge that you bear full responsibility for any '
+        'investment decisions made based on the information provided.</em>'
+        '</p></div>',
+        unsafe_allow_html=True,
+    )
+
+
+# ══════════════════════════════════════════════
+# Page 11: Today's Action (行動清單)
+# ══════════════════════════════════════════════
+def page_todays_action():
+    """One-page actionable summary for non-quant users."""
+    st.markdown("## 🎯 Today's Action Plan")
+    st.caption("AI-generated daily briefing — not investment advice. See disclaimer below.")
+
+    # ── Morning Briefing Header ──
+    from datetime import date
+    today = date.today().strftime("%Y-%m-%d")
+    st.markdown(
+        f'<div style="background:linear-gradient(135deg,#1e293b,#0f172a);border:1px solid #334155;'
+        f'border-radius:12px;padding:1.5rem;margin-bottom:1rem;">'
+        f'<h3 style="color:#38bdf8;margin:0;">📋 Daily Briefing — {today}</h3>'
+        f'<p style="color:#94a3b8;margin:0.3rem 0 0 0;">Auto-generated from congressional trades, '
+        f'convergence signals, and social intelligence.</p></div>',
+        unsafe_allow_html=True,
+    )
+
+    # ── Section 1: Top BUY Signals (max 5) ──
+    st.markdown("### 🟢 Top Buy Signals")
+    top_buys = query_db("""
+        SELECT a.ticker, a.asset_name, a.politician_name, a.chamber,
+               a.signal_strength, a.confidence, a.expected_alpha_20d,
+               a.reasoning,
+               CASE
+                   WHEN a.signal_strength >= 1.0 THEN '🔥 Strong'
+                   WHEN a.signal_strength >= 0.5 THEN '⭐ Moderate'
+                   ELSE '📊 Weak'
+               END as strength_label,
+               CASE
+                   WHEN a.confidence >= 0.7 THEN '🟢 High'
+                   WHEN a.confidence >= 0.5 THEN '🟡 Medium'
+                   ELSE '🔴 Low'
+               END as confidence_label
+        FROM alpha_signals a
+        WHERE a.direction = 'LONG'
+          AND a.created_at >= date('now', '-7 days')
+        ORDER BY a.signal_strength DESC
+        LIMIT 5
+    """)
+
+    if not top_buys.empty:
+        for _, row in top_buys.iterrows():
+            asset = row['asset_name'] if pd.notna(row['asset_name']) else row['ticker']
+            alpha_str = f"+{row['expected_alpha_20d']:.1f}%" if pd.notna(row['expected_alpha_20d']) else "N/A"
+            st.markdown(
+                f'<div style="background:#1e293b;border-left:4px solid #4ade80;border-radius:8px;'
+                f'padding:1rem;margin-bottom:0.8rem;">'
+                f'<div style="display:flex;justify-content:space-between;align-items:center;">'
+                f'<div>'
+                f'<span style="color:#4ade80;font-size:1.3rem;font-weight:700;">{row["ticker"]}</span>'
+                f'<span style="color:#94a3b8;margin-left:0.5rem;">{asset}</span>'
+                f'</div>'
+                f'<div style="text-align:right;">'
+                f'<span style="color:#e2e8f0;">{row["strength_label"]}</span>'
+                f' · <span>{row["confidence_label"]}</span>'
+                f'</div></div>'
+                f'<div style="color:#94a3b8;font-size:0.85rem;margin-top:0.5rem;">'
+                f'👤 {row["politician_name"]} ({row["chamber"]}) · '
+                f'Expected 20d Alpha: <strong style="color:#4ade80;">{alpha_str}</strong>'
+                f'</div></div>',
+                unsafe_allow_html=True,
+            )
+    else:
+        st.info("No strong buy signals in the last 7 days.")
+
+    # ── Section 2: Convergence Alerts ──
+    st.markdown("### 🔔 Convergence Alerts")
+    st.caption("Multiple politicians buying the same stock — strongest signal type.")
+    convergence = query_db("""
+        SELECT ticker, direction, politician_count, politicians, chambers, score,
+               CASE
+                   WHEN score >= 2.0 THEN '🔥 Very Strong'
+                   WHEN score >= 1.5 THEN '⭐ Strong'
+                   ELSE '📊 Moderate'
+               END as score_label
+        FROM convergence_signals
+        ORDER BY score DESC
+        LIMIT 5
+    """)
+
+    if not convergence.empty:
+        for _, row in convergence.iterrows():
+            direction_icon = "🟢 BUY" if row['direction'] == 'Buy' else "🔴 SELL"
+            chambers_str = row['chambers'] if pd.notna(row['chambers']) else ""
+            cross = "🏛 Cross-chamber" if "Senate" in chambers_str and "House" in chambers_str else ""
+            st.markdown(
+                f'<div style="background:#1e293b;border-left:4px solid #fbbf24;border-radius:8px;'
+                f'padding:1rem;margin-bottom:0.8rem;">'
+                f'<div style="display:flex;justify-content:space-between;">'
+                f'<span style="color:#fbbf24;font-size:1.2rem;font-weight:700;">{row["ticker"]}</span>'
+                f'<span>{row["score_label"]} {cross}</span>'
+                f'</div>'
+                f'<div style="color:#94a3b8;font-size:0.85rem;margin-top:0.3rem;">'
+                f'{direction_icon} · {row["politician_count"]} politicians · '
+                f'Score: {row["score"]:.2f}</div>'
+                f'<div style="color:#64748b;font-size:0.8rem;margin-top:0.2rem;">'
+                f'👥 {row["politicians"]}</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+    else:
+        st.info("No convergence signals detected.")
+
+    # ── Section 3: Social Intelligence Highlights ──
+    st.markdown("### 📱 Social Intelligence")
+    st.caption("Key statements from politicians and KOLs with market impact.")
+    social = query_db("""
+        SELECT sp.author_name, sp.platform, ss.sentiment, ss.impact_score,
+               substr(sp.post_text, 1, 200) as text_preview,
+               ss.tickers_implied,
+               CASE
+                   WHEN ss.impact_score >= 8 THEN '🔥 High Impact'
+                   WHEN ss.impact_score >= 6 THEN '⚡ Notable'
+                   ELSE '📝 Low'
+               END as impact_label,
+               CASE
+                   WHEN ss.sentiment = 'Bullish' THEN '🟢'
+                   WHEN ss.sentiment = 'Bearish' THEN '🔴'
+                   ELSE '⚪'
+               END as sentiment_icon
+        FROM social_signals ss
+        JOIN social_posts sp ON ss.post_id = sp.id
+        WHERE ss.impact_score >= 6
+        ORDER BY ss.impact_score DESC
+        LIMIT 5
+    """)
+
+    if not social.empty:
+        for _, row in social.iterrows():
+            tickers = row['tickers_implied'] if pd.notna(row['tickers_implied']) and row['tickers_implied'] != '[]' else "—"
+            st.markdown(
+                f'<div style="background:#1e293b;border-left:4px solid #a78bfa;border-radius:8px;'
+                f'padding:1rem;margin-bottom:0.8rem;">'
+                f'<div style="display:flex;justify-content:space-between;">'
+                f'<span style="color:#a78bfa;font-weight:600;">{row["author_name"]}</span>'
+                f'<span>{row["sentiment_icon"]} {row["sentiment"]} · {row["impact_label"]}</span>'
+                f'</div>'
+                f'<div style="color:#cbd5e1;font-size:0.85rem;margin-top:0.5rem;'
+                f'font-style:italic;">"{row["text_preview"]}..."</div>'
+                f'<div style="color:#94a3b8;font-size:0.8rem;margin-top:0.3rem;">'
+                f'📊 Related tickers: <strong style="color:#38bdf8;">{tickers}</strong> · '
+                f'Platform: {row["platform"]}</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+    else:
+        st.info("No high-impact social signals.")
+
+    # ── Section 4: Portfolio Summary (simplified) ──
+    st.markdown("### 💼 Current Portfolio — Top Holdings")
+    portfolio = query_db("""
+        SELECT ticker, weight, conviction_score, expected_alpha,
+               CASE
+                   WHEN conviction_score >= 70 THEN '⭐⭐⭐'
+                   WHEN conviction_score >= 55 THEN '⭐⭐'
+                   ELSE '⭐'
+               END as stars
+        FROM portfolio_positions
+        ORDER BY conviction_score DESC
+        LIMIT 10
+    """)
+
+    if not portfolio.empty:
+        portfolio['weight_pct'] = portfolio['weight'].apply(lambda x: f"{x:.1%}")
+        portfolio['alpha_str'] = portfolio['expected_alpha'].apply(
+            lambda x: f"+{x:.1%}" if pd.notna(x) else "N/A"
+        )
+        portfolio['conviction_int'] = portfolio['conviction_score'].apply(lambda x: f"{x:.0f}")
+        display_df = portfolio[['ticker', 'stars', 'weight_pct', 'conviction_int', 'alpha_str']].copy()
+        display_df.columns = ['Ticker', 'Rating', 'Weight', 'Score', 'Expected Alpha']
+        st.dataframe(display_df, use_container_width=True, hide_index=True)
+    else:
+        st.info("No portfolio positions.")
+
+    # ── Section 5: Risk Warnings ──
+    st.markdown("### ⚠ Risk Context")
+    perf = query_db("SELECT count(*) as n, avg(hit_5d) as hr FROM signal_performance WHERE hit_5d IS NOT NULL")
+    n_samples = int(perf['n'].iloc[0]) if not perf.empty else 0
+    hr = perf['hr'].iloc[0] if not perf.empty and pd.notna(perf['hr'].iloc[0]) else 0
+
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown(
+            f'<div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:1rem;">'
+            f'<div style="color:#94a3b8;font-size:0.8rem;">Signal Track Record</div>'
+            f'<div style="color:#e2e8f0;font-size:1.5rem;">{hr:.0%} hit rate</div>'
+            f'<div style="color:#f87171;font-size:0.75rem;">⚠ Based on only {n_samples} samples — '
+            f'not statistically significant (need 200+)</div></div>',
+            unsafe_allow_html=True,
+        )
+    with col2:
+        avg_lag = query_db("""
+            SELECT avg(julianday(filing_date) - julianday(transaction_date)) as avg_lag
+            FROM congress_trades WHERE filing_date IS NOT NULL AND transaction_date IS NOT NULL
+        """)
+        lag_val = avg_lag['avg_lag'].iloc[0] if not avg_lag.empty and pd.notna(avg_lag['avg_lag'].iloc[0]) else 0
+        st.markdown(
+            f'<div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:1rem;">'
+            f'<div style="color:#94a3b8;font-size:0.8rem;">Avg Filing Delay</div>'
+            f'<div style="color:#fbbf24;font-size:1.5rem;">{lag_val:.0f} days</div>'
+            f'<div style="color:#f87171;font-size:0.75rem;">⚠ Signals may be stale — '
+            f'congress members have 30-45 days to disclose</div></div>',
+            unsafe_allow_html=True,
+        )
 
 
 if __name__ == "__main__":

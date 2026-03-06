@@ -25,12 +25,14 @@ from datetime import datetime, timedelta
 from typing import Optional
 from dataclasses import dataclass
 
+import os
+
 import requests
 
 logger = logging.getLogger("ETL.SECForm4Fetcher")
 
-# SEC EDGAR 要求的 User-Agent
-SEC_USER_AGENT = "Political Alpha Monitor research@example.com"
+# SEC EDGAR 要求的 User-Agent（應透過環境變數設定真實信箱）
+SEC_USER_AGENT = f"Political Alpha Monitor {os.getenv('SEC_CONTACT_EMAIL', 'research@example.com')}"
 
 # Rate limiting: SEC 限制 10 req/sec，保守設為每秒 5 個
 SEC_RATE_LIMIT_DELAY = 0.2  # 200ms between requests
