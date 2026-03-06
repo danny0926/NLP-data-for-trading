@@ -301,6 +301,24 @@ def generate_html(data: Dict[str, Any]) -> str:
     height: 280px;
   }}
 
+  /* Disclaimer */
+  .disclaimer {{
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.2rem;
+    margin-top: 2rem;
+  }}
+  .disclaimer p {{
+    color: #64748b;
+    font-size: 0.75rem;
+    line-height: 1.6;
+    margin: 0;
+  }}
+  .disclaimer strong.title {{
+    color: #94a3b8;
+  }}
+
   /* Footer */
   .footer {{
     text-align: center;
@@ -476,6 +494,28 @@ def generate_html(data: Dict[str, Any]) -> str:
         <tbody id="recentTable"></tbody>
       </table>
     </div>
+  </div>
+
+  <!-- Disclaimer -->
+  <div class="disclaimer">
+    <p>
+      <strong class="title">&#9888; Important Disclaimer</strong><br>
+      Political Alpha Monitor (PAM) is a <strong>research tool</strong> for informational
+      purposes only. It does <strong>not</strong> constitute investment advice, solicitation,
+      or recommendation to buy or sell any securities.<br><br>
+      &bull; All signals, scores, and portfolio suggestions are <strong>algorithmically generated</strong>
+      and have not been verified by a registered investment adviser (RIA).<br>
+      &bull; Past performance and backtested results do <strong>not</strong> guarantee future returns.
+      Signal hit rates are based on limited historical samples and may not be statistically significant.<br>
+      &bull; Congressional trading data is sourced from public government disclosures with an inherent
+      filing delay of 30-45 days. Information may be outdated by the time it is displayed.<br>
+      &bull; Social media analysis reflects AI-interpreted sentiment and may contain errors,
+      misinterpretations, or hallucinations.<br>
+      &bull; Users should conduct their own due diligence and consult a qualified financial professional
+      before making any investment decisions.<br><br>
+      <em>By using this tool, you acknowledge that you bear full responsibility for any
+      investment decisions made based on the information provided.</em>
+    </p>
   </div>
 
 </div>
