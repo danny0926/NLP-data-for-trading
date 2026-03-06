@@ -8,50 +8,52 @@
 | 指標 | 數值 |
 |------|------|
 | 持股數 | 20 |
-| 總權重 | 100.00% |
-| 平均信念分數 | 74.9/100 |
-| 加權預期 Alpha (5日) | 0.8036% |
-| 年化預期 Alpha | 41.79% |
-| 平均 30 日波動率 | 43.44% |
-| 平均 Sharpe 估算 | 1.07 |
+| 總權重 | 99.98% |
+| 平均信念分數 | 81.3/100 |
+| 加權預期 Alpha (5日) | 0.9296% |
+| 年化預期 Alpha | 48.34% |
+| 平均 30 日波動率 | 37.89% |
+| 平均 Sharpe 估算 | 1.41 |
 
 ## 板塊分布
 
 | 板塊 | 權重 | 持股數 |
 |------|------|--------|
-| Technology | 20.15% | 4 |
-| Industrials | 19.86% | 4 |
-| Healthcare | 19.57% | 4 |
-| Communication Services | 15.77% | 3 |
-| Financial Services | 14.85% | 3 |
+| Healthcare | 29.75% | 6 |
+| Technology | 20.36% | 4 |
+| Industrials | 15.30% | 3 |
 | Consumer Cyclical | 9.80% | 2 |
+| Communication Services | 9.77% | 2 |
+| Consumer Defensive | 5.20% | 1 |
+| Energy | 4.98% | 1 |
+| Financial Services | 4.82% | 1 |
 
-**多樣性分數**: 0.8251 (1.0=完全分散, 0.0=集中)
+**多樣性分數**: 0.8200 (1.0=完全分散, 0.0=集中)
 
 ## 持倉明細
 
 | # | Ticker | 名稱 | 板塊 | 權重 | 信念分數 | Alpha(5d) | 波動率 | Sharpe | 理由 |
 |---|--------|------|------|------|---------|-----------|--------|--------|------|
-| 1 | **DIS** | Walt Disney Company  | Communication Services | 5.38% | 86.3 | 1.0900% | 34.94% | 1.62 | 3 位議員交易; 4 筆買入; 強力買入信號; 收斂訊號(分數1.98); House 為主; Top議員(Cisneros) |
-| 2 | **ETN** | Eaton Corporation, P | Industrials | 5.31% | 84.2 | 0.9400% | 35.77% | 1.37 | 4 位議員交易; 5 筆買入; 1 筆賣出(不計 alpha); 強力買入信號; 收斂訊號(分數2.04); House 為主; Top議員(Cisneros) |
-| 3 | **AAPL** | Apple Inc. | Technology | 5.27% | 83.1 | 1.0800% | 29.78% | 1.89 | 7 位議員交易; 11 筆買入; 強力買入信號; 收斂訊號(分數1.53); House 為主; Top議員(Tuberville) |
-| 4 | **NFLX** | Netflix, Inc. | Communication Services | 5.24% | 82.2 | 0.8700% | 50.95% | 0.89 | 7 位議員交易; 6 筆買入; 2 筆賣出(不計 alpha); 買入為主; 收斂訊號(分數1.47); 高金額交易; 甜蜜點金額(5K-0K); House 為主; Top議員(Cisneros) |
-| 5 | **META** | Meta Platforms, Inc. | Communication Services | 5.15% | 79.3 | 0.9700% | 41.72% | 1.21 | 5 位議員交易; 7 筆買入; 1 筆賣出(不計 alpha); 強力買入信號; 收斂訊號(分數1.44); House 為主; Top議員(Cisneros) |
-| 6 | **AVGO** | Broadcom Inc. | Technology | 5.13% | 78.8 | 0.8200% | 40.17% | 1.06 | 4 位議員交易; 8 筆買入; 1 筆賣出(不計 alpha); 強力買入信號; 收斂訊號(分數1.50); House 為主; Top議員(Cisneros) |
-| 7 | **GS** | Goldman Sachs Group, | Financial Services | 5.11% | 78.3 | 0.7500% | 36.00% | 1.08 | 6 位議員交易; 10 筆買入; 7 筆賣出(不計 alpha); 買入為主; 收斂訊號(分數0.95); 高金額交易; 甜蜜點金額(5K-0K); Senate 為主(RB-004); Top議員(Johnson) |
-| 8 | **AMZN** | Amazon.com, Inc. | Consumer Cyclical | 4.99% | 74.5 | 0.8000% | 32.44% | 1.28 | 4 位議員交易; 10 筆買入; 2 筆賣出(不計 alpha); 強力買入信號; 收斂訊號(分數1.14); House 為主; Top議員(Cisneros) |
-| 9 | **UNH** | UnitedHealth Group I | Healthcare | 4.96% | 73.8 | 0.9400% | 62.48% | 0.78 | 4 位議員交易; 4 筆買入; 強力買入信號; 高金額交易; 甜蜜點金額(5K-0K); House 為主; Top議員(Cisneros) |
-| 10 | **ISRG** | Intuitive Surgical,  | Healthcare | 4.92% | 72.5 | 0.7200% | 23.75% | 1.58 | 3 位議員交易; 5 筆買入; 強力買入信號; 甜蜜點金額(5K-0K); House 為主; Top議員(Cisneros) |
-| 11 | **V** | Visa Inc. | Financial Services | 4.91% | 72.2 | 0.6300% | 24.51% | 1.34 | 3 位議員交易; 3 筆買入; 1 筆賣出(不計 alpha); 買入為主; 收斂訊號(分數1.08); House 為主; Top議員(Cisneros) |
-| 12 | **RTX** | RTX Corporation | Industrials | 4.91% | 72.1 | 0.7200% | 27.94% | 1.34 | 4 位議員交易; 5 筆買入; 強力買入信號; 甜蜜點金額(5K-0K); House 為主; Top議員(Cisneros) |
-| 13 | **LRCX** | Lam Research Corpora | Technology | 4.89% | 71.5 | 0.7200% | 56.66% | 0.66 | 4 位議員交易; 5 筆買入; 1 筆賣出(不計 alpha); 強力買入信號; 高金額交易; 甜蜜點金額(5K-0K); Top議員(Boozman) |
-| 14 | **MCK** | McKesson Corporation | Healthcare | 4.87% | 71.0 | 0.6600% | 52.73% | 0.65 | 3 位議員交易; 3 筆買入; 1 筆賣出(不計 alpha); 買入為主; 高金額交易; 甜蜜點金額(5K-0K); Top議員(Cisneros) |
-| 15 | **IBM** | International Busine | Technology | 4.86% | 70.6 | 0.7100% | 55.99% | 0.66 | 5 位議員交易; 6 筆買入; 強力買入信號; 甜蜜點金額(5K-0K); House 為主; Top議員(Cisneros) |
-| 16 | **GEV** | GE Vernova Inc. | Industrials | 4.83% | 69.9 | 0.9100% | 42.60% | 1.11 | 2 位議員交易; 4 筆買入; 強力買入信號; 收斂訊號(分數0.65); 甜蜜點金額(5K-0K); House 為主; Top議員(Cisneros) |
-| 17 | **HOOD** | Robinhood Markets, I | Financial Services | 4.83% | 69.7 | 0.5300% | 82.68% | 0.33 | 3 位議員交易; 6 筆買入; 3 筆賣出(不計 alpha); 買入為主; 收斂訊號(分數0.55); 甜蜜點金額(5K-0K); House 為主; Top議員(Cisneros) |
-| 18 | **BSX** | Boston Scientific Co | Healthcare | 4.82% | 69.4 | 0.5900% | 54.64% | 0.56 | 3 位議員交易; 5 筆買入; 1 筆賣出(不計 alpha); 強力買入信號; 甜蜜點金額(5K-0K); House 為主; Top議員(Cisneros) |
-| 19 | **CAT** | Caterpillar, Inc. | Industrials | 4.81% | 69.3 | 0.8900% | 39.61% | 1.17 | 2 位議員交易; 2 筆買入; 強力買入信號; 高金額交易; 甜蜜點金額(5K-0K); Senate 為主(RB-004); Top議員(Boozman) |
-| 20 | **MELI** | MercadoLibre, Inc. | Consumer Cyclical | 4.81% | 69.2 | 0.6500% | 43.48% | 0.78 | 4 位議員交易; 8 筆買入; 1 筆賣出(不計 alpha); 強力買入信號; 甜蜜點金額(5K-0K); House 為主; Top議員(Cisneros) |
+| 1 | **RTX** | RTX Corporation | Industrials | 5.34% | 92.2 | 1.2100% | 28.15% | 2.24 | 4 位議員交易; 5 筆買入; 強力買入信號; 收斂訊號(分數2.13); 甜蜜點金額(5K-0K); House 為主; Top議員(Cisneros) |
+| 2 | **IBM** | International Busine | Technology | 5.28% | 90.5 | 1.1800% | 55.99% | 1.10 | 5 位議員交易; 6 筆買入; 強力買入信號; 收斂訊號(分數2.05); 甜蜜點金額(5K-0K); House 為主; Top議員(Cisneros) |
+| 3 | **LRCX** | Lam Research Corpora | Technology | 5.20% | 87.9 | 1.1200% | 56.62% | 1.03 | 4 位議員交易; 5 筆買入; 1 筆賣出(不計 alpha); 強力買入信號; 收斂訊號(分數1.70); 高金額交易; 甜蜜點金額(5K-0K); Top議員(Mullin) |
+| 4 | **COST** | Costco Wholesale Cor | Consumer Defensive | 5.20% | 87.6 | 0.9500% | 21.12% | 2.34 | 3 位議員交易; 4 筆買入; 1 筆賣出(不計 alpha); 強力買入信號; 收斂訊號(分數1.92); 甜蜜點金額(5K-0K); House 為主; Top議員(Cisneros) |
+| 5 | **ETN** | Eaton Corporation, P | Industrials | 5.09% | 84.3 | 0.9400% | 35.80% | 1.37 | 4 位議員交易; 5 筆買入; 1 筆賣出(不計 alpha); 強力買入信號; 收斂訊號(分數2.29); House 為主; Top議員(Cisneros) |
+| 6 | **FIS** | Fidelity National In | Technology | 5.06% | 83.3 | 1.0100% | 41.10% | 1.28 | 3 位議員交易; 3 筆買入; 強力買入信號; 收斂訊號(分數1.90); House 為主; Top議員(Cisneros) |
+| 7 | **UNH** | UnitedHealth Group I | Healthcare | 5.03% | 82.4 | 1.2200% | 62.48% | 1.02 | 4 位議員交易; 4 筆買入; 強力買入信號; 收斂訊號(分數0.87); 高金額交易; 甜蜜點金額(5K-0K); House 為主; Top議員(Cisneros) |
+| 8 | **HD** | Home Depot, Inc. (Th | Consumer Cyclical | 4.98% | 80.7 | 0.7700% | 21.69% | 1.85 | 7 位議員交易; 9 筆買入; 2 筆賣出(不計 alpha); 強力買入信號; 收斂訊號(分數1.23); 甜蜜點金額(5K-0K); House 為主; Top議員(Cisneros) |
+| 9 | **COP** | ConocoPhillips | Energy | 4.98% | 80.7 | 0.6800% | 28.82% | 1.23 | 3 位議員交易; 4 筆買入; 4 筆賣出(不計 alpha); 買入為主; 收斂訊號(分數1.64); 高金額交易; 甜蜜點金額(5K-0K); House 為主; Top議員(Cisneros) |
+| 10 | **MRK** | Merck & Company, Inc | Healthcare | 4.97% | 80.3 | 0.9200% | 27.96% | 1.71 | 4 位議員交易; 4 筆買入; 1 筆賣出(不計 alpha); 強力買入信號; 收斂訊號(分數1.14); 高金額交易; 甜蜜點金額(5K-0K); House 為主; Top議員(Cisneros) |
+| 11 | **ISRG** | Intuitive Surgical,  | Healthcare | 4.96% | 79.9 | 0.9000% | 23.72% | 1.97 | 3 位議員交易; 5 筆買入; 強力買入信號; 收斂訊號(分數0.75); 甜蜜點金額(5K-0K); House 為主; Top議員(Cisneros) |
+| 12 | **BSX** | Boston Scientific Co | Healthcare | 4.95% | 79.7 | 0.7900% | 55.44% | 0.74 | 3 位議員交易; 5 筆買入; 1 筆賣出(不計 alpha); 強力買入信號; 收斂訊號(分數1.02); 甜蜜點金額(5K-0K); House 為主; Top議員(Cisneros) |
+| 13 | **SYK** | Stryker Corporation | Healthcare | 4.92% | 78.8 | 0.9000% | 21.71% | 2.16 | 3 位議員交易; 3 筆買入; 1 筆賣出(不計 alpha); 買入為主; 收斂訊號(分數1.05); 高金額交易; 甜蜜點金額(5K-0K); House 為主; Top議員(Cisneros) |
+| 14 | **MCK** | McKesson Corporation | Healthcare | 4.92% | 78.8 | 0.8300% | 52.74% | 0.82 | 3 位議員交易; 3 筆買入; 1 筆賣出(不計 alpha); 買入為主; 收斂訊號(分數0.77); 高金額交易; 甜蜜點金額(5K-0K); Top議員(Cisneros) |
+| 15 | **NFLX** | Netflix, Inc. | Communication Services | 4.90% | 78.1 | 0.7900% | 50.95% | 0.81 | 7 位議員交易; 6 筆買入; 2 筆賣出(不計 alpha); 買入為主; 收斂訊號(分數1.07); 高金額交易; 甜蜜點金額(5K-0K); House 為主; Top議員(Cisneros) |
+| 16 | **CAT** | Caterpillar, Inc. | Industrials | 4.87% | 77.1 | 1.1300% | 39.78% | 1.48 | 2 位議員交易; 2 筆買入; 強力買入信號; 收斂訊號(分數0.83); 高金額交易; 甜蜜點金額(5K-0K); Senate 為主(RB-004); Top議員(Mullin) |
+| 17 | **DIS** | Walt Disney Company  | Communication Services | 4.87% | 77.1 | 0.8800% | 34.96% | 1.31 | 3 位議員交易; 4 筆買入; 強力買入信號; 收斂訊號(分數1.06); House 為主; Top議員(Cisneros) |
+| 18 | **MELI** | MercadoLibre, Inc. | Consumer Cyclical | 4.82% | 75.5 | 0.7900% | 43.48% | 0.94 | 4 位議員交易; 8 筆買入; 1 筆賣出(不計 alpha); 強力買入信號; 收斂訊號(分數0.64); 甜蜜點金額(5K-0K); House 為主; Top議員(Cisneros) |
+| 19 | **V** | Visa Inc. | Financial Services | 4.82% | 75.3 | 0.6800% | 24.55% | 1.44 | 3 位議員交易; 3 筆買入; 1 筆賣出(不計 alpha); 買入為主; 收斂訊號(分數1.40); House 為主; Top議員(Cisneros) |
+| 20 | **UBER** | Uber Technologies, I | Technology | 4.82% | 75.3 | 0.8400% | 30.80% | 1.42 | 5 位議員交易; 6 筆買入; 1 筆賣出(不計 alpha); 強力買入信號; 收斂訊號(分數1.12); House 為主; Top議員(Cisneros) |
 
 ## 方法論
 
