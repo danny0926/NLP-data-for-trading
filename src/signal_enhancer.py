@@ -600,6 +600,7 @@ class SignalEnhancer:
         for col_def in [
             "pacs_contract_component REAL DEFAULT 0",
             "decay_factor REAL DEFAULT 1.0",
+            "insider_confirmed INTEGER DEFAULT 0",
         ]:
             try:
                 cursor.execute(f"ALTER TABLE enhanced_signals ADD COLUMN {col_def}")
@@ -667,6 +668,29 @@ class SignalEnhancer:
                     trade_id,
                 ))
                 updated += 1
+
+        # 標記 insider-confirmed 信號 (Congress + SEC Form 4 同向交易 30 天內)
+        try:
+            insider_count = cursor.execute("""
+                UPDATE enhanced_signals SET insider_confirmed = 1
+                WHERE ticker IN (
+                    SELECT DISTINCT ct.ticker
+                    FROM congress_trades ct
+                    INNER JOIN sec_form4_trades sf
+                        ON ct.ticker = sf.ticker
+                        AND ct.transaction_type = 'Buy'
+                        AND sf.transaction_type IN ('Purchase', 'Buy', 'A')
+                        AND ct.transaction_date IS NOT NULL
+                        AND sf.transaction_date IS NOT NULL
+                        AND ABS(julianday(ct.transaction_date) - julianday(sf.transaction_date)) <= 30
+                )
+                AND direction = 'LONG'
+                AND insider_confirmed = 0
+            """).rowcount
+            if insider_count > 0:
+                logger.info(f"  Insider-confirmed: {insider_count} signals marked")
+        except Exception:
+            pass  # sec_form4_trades may not exist
 
         conn.commit()
         conn.close()

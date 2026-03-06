@@ -1500,26 +1500,28 @@ def page_todays_action():
 
     st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
 
-    # ── Section 1: Top BUY Signals (max 5) ──
-    st.markdown("### 🟢 Top Buy Signals")
+    # ── Section 1: Top BUY Signals (PACS-enhanced, max 5) ──
+    st.markdown("### 🟢 Top Buy Signals (PACS-Enhanced)")
     top_buys = query_db("""
-        SELECT a.ticker, a.asset_name, a.politician_name, a.chamber,
-               a.signal_strength, a.confidence, a.expected_alpha_20d,
-               a.reasoning,
+        SELECT e.ticker, a.asset_name, e.politician_name, e.chamber,
+               e.enhanced_strength, e.confidence_v2, e.pacs_score,
+               a.expected_alpha_20d, a.reasoning,
+               COALESCE(e.insider_confirmed, 0) as insider_confirmed,
                CASE
-                   WHEN a.signal_strength >= 1.0 THEN '🔥 Strong'
-                   WHEN a.signal_strength >= 0.5 THEN '⭐ Moderate'
+                   WHEN e.enhanced_strength >= 1.0 THEN '🔥 Strong'
+                   WHEN e.enhanced_strength >= 0.5 THEN '⭐ Moderate'
                    ELSE '📊 Weak'
                END as strength_label,
                CASE
-                   WHEN a.confidence >= 0.7 THEN '🟢 High'
-                   WHEN a.confidence >= 0.5 THEN '🟡 Medium'
+                   WHEN e.confidence_v2 >= 0.7 THEN '🟢 High'
+                   WHEN e.confidence_v2 >= 0.5 THEN '🟡 Medium'
                    ELSE '🔴 Low'
-               END as confidence_label
-        FROM alpha_signals a
-        WHERE a.direction = 'LONG'
-          AND a.created_at >= date('now', '-7 days')
-        ORDER BY a.signal_strength DESC
+               END as confidence_label,
+               e.vix_zone
+        FROM enhanced_signals e
+        LEFT JOIN alpha_signals a ON e.trade_id = a.trade_id
+        WHERE e.direction = 'LONG'
+        ORDER BY e.pacs_score DESC
         LIMIT 5
     """)
 
@@ -1527,13 +1529,15 @@ def page_todays_action():
         for _, row in top_buys.iterrows():
             asset = row['asset_name'] if pd.notna(row['asset_name']) else row['ticker']
             alpha_str = f"+{row['expected_alpha_20d']:.1f}%" if pd.notna(row['expected_alpha_20d']) else "N/A"
+            insider_badge = ' <span style="background:#eab308;color:#000;padding:1px 6px;border-radius:4px;font-size:0.7rem;font-weight:700;">INSIDER CONFIRMED</span>' if row.get('insider_confirmed', 0) == 1 else ""
+            pacs_str = f"PACS: {row['pacs_score']:.2f}" if pd.notna(row.get('pacs_score')) else ""
             st.markdown(
                 f'<div style="background:#1e293b;border-left:4px solid #4ade80;border-radius:8px;'
                 f'padding:1rem;margin-bottom:0.8rem;">'
                 f'<div style="display:flex;justify-content:space-between;align-items:center;">'
                 f'<div>'
                 f'<span style="color:#4ade80;font-size:1.3rem;font-weight:700;">{row["ticker"]}</span>'
-                f'<span style="color:#94a3b8;margin-left:0.5rem;">{asset}</span>'
+                f'<span style="color:#94a3b8;margin-left:0.5rem;">{asset}</span>{insider_badge}'
                 f'</div>'
                 f'<div style="text-align:right;">'
                 f'<span style="color:#e2e8f0;">{row["strength_label"]}</span>'
@@ -1541,6 +1545,7 @@ def page_todays_action():
                 f'</div></div>'
                 f'<div style="color:#94a3b8;font-size:0.85rem;margin-top:0.5rem;">'
                 f'👤 {row["politician_name"]} ({row["chamber"]}) · '
+                f'{pacs_str} · '
                 f'Expected 20d Alpha: <strong style="color:#4ade80;">{alpha_str}</strong>'
                 f'</div></div>',
                 unsafe_allow_html=True,
