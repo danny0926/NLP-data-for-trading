@@ -1864,6 +1864,37 @@ def page_social_intelligence():
                 hide_index=True,
             )
 
+    # Ticker mentions from social signals
+    ticker_mentions_df = query_db("""
+        SELECT tickers_implied FROM social_signals
+        WHERE tickers_implied IS NOT NULL AND tickers_implied != '[]'
+    """)
+    if not ticker_mentions_df.empty:
+        import json as _json
+        all_tickers = []
+        for _, row in ticker_mentions_df.iterrows():
+            try:
+                tickers = _json.loads(row["tickers_implied"])
+                all_tickers.extend([t for t in tickers if len(t) <= 5 and t.isupper()])
+            except (ValueError, TypeError):
+                pass
+        if all_tickers:
+            from collections import Counter
+            ticker_counts = Counter(all_tickers).most_common(15)
+            tc_df = pd.DataFrame(ticker_counts, columns=["ticker", "mentions"])
+            st.subheader("Social Ticker Mentions")
+            fig_tc = px.bar(
+                tc_df, x="ticker", y="mentions",
+                color_discrete_sequence=[COLORS["purple"]],
+                labels={"ticker": "Ticker", "mentions": "Mentions"},
+            )
+            fig_tc.update_layout(
+                height=300, margin=dict(t=20, b=40),
+                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="#e2e8f0"), showlegend=False,
+            )
+            st.plotly_chart(fig_tc, use_container_width=True)
+
     # Architecture explanation
     st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
     st.subheader("How It Works")
