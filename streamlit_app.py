@@ -1041,6 +1041,59 @@ def page_convergence():
     }, inplace=True)
     st.dataframe(score_df, width="stretch", hide_index=True)
 
+    # Charts row
+    ch1, ch2 = st.columns(2)
+
+    with ch1:
+        st.subheader("Top Tickers by Convergence Count")
+        ticker_counts = conv_df.groupby("ticker").agg(
+            events=("id", "count"),
+            avg_score=("score", "mean"),
+            max_politicians=("politician_count", "max"),
+        ).sort_values("events", ascending=False).head(15).reset_index()
+
+        fig = go.Figure(go.Bar(
+            x=ticker_counts["events"],
+            y=ticker_counts["ticker"],
+            orientation="h",
+            marker_color=COLORS["primary"],
+            text=[f"avg:{s:.1f}" for s in ticker_counts["avg_score"]],
+            textposition="auto",
+        ))
+        fig.update_layout(
+            margin=dict(t=20, b=40, l=60),
+            height=400,
+            xaxis_title="Convergence Events",
+            yaxis=dict(autorange="reversed"),
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+    with ch2:
+        st.subheader("Direction & Score Distribution")
+        dir_counts = conv_df["direction"].value_counts()
+        fig = go.Figure(go.Pie(
+            labels=dir_counts.index,
+            values=dir_counts.values,
+            marker_colors=[COLORS["green"] if d == "Buy" else COLORS["red"] for d in dir_counts.index],
+            hole=0.4,
+        ))
+        fig.update_layout(margin=dict(t=20, b=20), height=300)
+        st.plotly_chart(fig, use_container_width=True)
+
+        # Score histogram
+        fig2 = go.Figure(go.Histogram(
+            x=conv_df["score"],
+            nbinsx=25,
+            marker_color=COLORS["purple"],
+        ))
+        fig2.update_layout(
+            margin=dict(t=10, b=40),
+            height=200,
+            xaxis_title="Convergence Score",
+            yaxis_title="Count",
+        )
+        st.plotly_chart(fig2, use_container_width=True)
+
     # Timeline
     st.subheader("匯聚時間線")
     if "detected_at" in conv_df.columns:

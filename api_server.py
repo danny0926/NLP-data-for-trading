@@ -584,7 +584,7 @@ def health_check():
     uptime_s = int(time.time() - _START_TIME)
     return {
         "status": "ok" if db_ok else "degraded",
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now().isoformat(),
         "database": "connected" if db_ok else "disconnected",
         "version": app.version,
         "uptime_seconds": uptime_s,
