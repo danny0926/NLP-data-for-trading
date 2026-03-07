@@ -1870,6 +1870,44 @@ def page_signal_performance():
         st.plotly_chart(fig_corr, use_container_width=True)
         st.caption(f"Based on {len(factor_df)} evaluated signals. Confidence (r={corr_matrix.loc['confidence','actual_alpha_5d']:.3f}) is the best alpha predictor.")
 
+    # Multi-factor scoring comparison
+    multi_factor = query_db("""
+        SELECT sp.signal_strength, sp.confidence, sp.actual_alpha_5d,
+               e.pacs_score
+        FROM signal_performance sp
+        JOIN alpha_signals a ON sp.signal_id = a.id
+        LEFT JOIN enhanced_signals e ON CAST(a.trade_id AS TEXT) = e.trade_id
+        WHERE sp.actual_alpha_5d IS NOT NULL
+          AND sp.signal_strength IS NOT NULL
+    """)
+    if not multi_factor.empty and len(multi_factor) >= 20:
+        st.subheader("多因子預測力比較")
+        mf1, mf2, mf3 = st.columns(3)
+        for col_widget, x_col, label in [
+            (mf1, "signal_strength", "Signal Strength"),
+            (mf2, "confidence", "Confidence"),
+            (mf3, "pacs_score", "PACS Score"),
+        ]:
+            with col_widget:
+                valid = multi_factor[[x_col, "actual_alpha_5d"]].dropna()
+                if len(valid) >= 5:
+                    fig_mf = px.scatter(
+                        valid, x=x_col, y="actual_alpha_5d",
+                        trendline="ols", opacity=0.5,
+                        color_discrete_sequence=[COLORS["primary"]],
+                        labels={x_col: label, "actual_alpha_5d": "Alpha 5d"},
+                    )
+                    r_val = valid[x_col].corr(valid["actual_alpha_5d"])
+                    fig_mf.update_layout(
+                        height=250, margin=dict(t=30, b=30),
+                        title=dict(text=f"r={r_val:.3f}", font=dict(size=12)),
+                        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                        font=dict(color="#e2e8f0", size=9),
+                        showlegend=False,
+                    )
+                    st.plotly_chart(fig_mf, use_container_width=True)
+        st.caption("哪個因子最能預測實際 alpha？r 越接近 1 或 -1 越有預測力。")
+
     # Performance table
     st.subheader("績效明細")
     display_cols = ["ticker", "politician_name", "direction", "signal_strength", "confidence",

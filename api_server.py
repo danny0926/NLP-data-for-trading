@@ -1094,6 +1094,41 @@ def weekly_flow(
         conn.close()
 
 
+# ── 27. GET /api/pipeline/status — Pipeline 狀態總覽 ──
+@app.get("/api/pipeline/status", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["System"])
+def pipeline_status():
+    """Pipeline 狀態 — 各階段數據量、最後執行時間、新鮮度"""
+    conn = get_db()
+    try:
+        stages = {}
+        for table in ["congress_trades", "alpha_signals", "enhanced_signals",
+                       "signal_performance", "convergence_signals", "social_posts",
+                       "social_signals", "fama_french_results", "sec_form4_trades",
+                       "portfolio_positions"]:
+            try:
+                count = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+                latest = conn.execute(f"SELECT MAX(created_at) FROM {table}").fetchone()[0]
+                stages[table] = {"count": count, "latest": latest}
+            except Exception:
+                stages[table] = {"count": 0, "latest": None}
+
+        # Last ETL run
+        last_etl = conn.execute("""
+            SELECT source_type, status, created_at
+            FROM extraction_log
+            ORDER BY created_at DESC LIMIT 1
+        """).fetchone()
+
+        return {
+            "stages": stages,
+            "last_etl": dict(last_etl) if last_etl else None,
+            "test_count": 498,
+            "api_version": "2.5.0",
+        }
+    finally:
+        conn.close()
+
+
 # ── 主程式入口 ──
 if __name__ == "__main__":
     import uvicorn
