@@ -229,3 +229,80 @@ New module: `src/etl/capitoltrades_bulk.py`
 - Concentrated in semiconductors and AI sectors
 - Tariff-related trades: $88B revenue impact
 
+---
+
+## 2026-03-07 Frontier Scan: Congressional Trading Alpha Research (2025-2026)
+
+### "The Death of Insider Trading Alpha" (Ozlen & Batumoglu, SSRN Dec 2025)
+- 70-80% of total alpha dissipates between transaction date and filing date
+- Once entry is delayed until filing date, most alpha is gone
+- **PAM Impact**: Validates our filing_lag findings (RB-004). Short filing lag (<15d) captures residual alpha. Ultra-short lag (<3d) is the sweet spot.
+- Source: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5966834
+
+### ML for Insider Trading Prediction (arXiv Feb 2025)
+- Compared Decision Trees, Random Forest, SVM, K-Means on insider trading data
+- SVM with RBF kernel achieves best accuracy for stock price prediction
+- ML substantially outperforms linear models for predicting insider sales
+- **PAM Impact**: Consider ML ensemble approach (RF/XGBoost) for signal scoring instead of hand-tuned PACS. Future RB candidate.
+- Source: https://arxiv.org/abs/2502.08728
+
+### "Should the Public be Concerned about Congressional Stock Trading?" (Blonien, Crane, Crotty, SSRN 2025)
+- Examines whether post-STOCK Act disclosure reduces information asymmetry
+- Source: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5524863
+
+### H.R. 7008 — Congressional Trading Reform (Jan 2026)
+- Would require 7-day ADVANCE notice before trades (vs current 45-day post-trade disclosure)
+- If enacted, would fundamentally change our signal pipeline — pre-trade disclosure = alpha accessible to everyone
+- **PAM Impact**: Monitor legislation. If passed, pivot from "filing lag" to "pre-trade signal" paradigm.
+- Source: https://www.congress.gov/crs-product/R48641
+
+### Unusual Whales Congress Trading Report 2025
+- Only 32.2% of Congress beat S&P 500 (needed >16.8% return)
+- 29 members exceeded threshold (15D, 14R — bipartisan)
+- Net equity EXIT: divested ~$170M stocks, acquired only ~$125M
+- Rotation: out of software/fintech, into government debt and hardware
+- **PAM Impact**: Confirms sector rotation findings (RB-007). Congressional net selling = bearish macro signal.
+- Source: https://unusualwhales.com/congress-trading-report-2025
+
+### Inside the Beltway: Senator Trading and Legislative Gains (J Business Ethics, 2025)
+- Senators' trades prior to critical legislative events yield significant abnormal returns
+- Patterns consistent with "stealth trading" — sequential trades leading up to legislative decisions
+- **PAM Impact**: Validates convergence detection (multiple trades by same senator in short window = stronger signal)
+- Source: https://link.springer.com/article/10.1007/s10551-025-06108-4
+
+### Actionable Next Steps from Frontier Scan
+1. **RB-015 candidate**: ML-based signal scoring (RF/XGBoost vs hand-tuned PACS)
+2. **RB-016 candidate**: Pre-legislative event detection (bill calendar → politician trade timing)
+3. **Monitor**: H.R. 7008 progress — existential risk/opportunity for PAM
+4. **Data enrichment**: Add congressional committee hearing calendar as feature
+
+---
+
+## 2026-03-07 RB-014: Committee Leadership Alpha Re-test (25K Dataset)
+
+**Hypothesis**: Committee chairs/ranking members generate higher alpha than non-leaders
+**Type**: ALPHA (re-test of RB-008 with 25K dataset)
+**Result**: CONFIRM SHELVE
+
+### Methodology
+- Matched 119th Congress committee YAML (96 main committee leaders) to DB (30 matched in 191 politicians)
+- Compared market-adjusted CAR_5d and CAR_20d from fama_french_results (17,480 valid observations)
+- Two-sample t-test, leaders (N=2,218) vs non-leaders (N=15,262)
+
+### Key Findings
+| Metric | Leaders | Non-Leaders | t-stat | p-value | Sig |
+|--------|---------|-------------|--------|---------|-----|
+| CAR_5d (all) | -0.0014% | -0.0001% | -1.166 | 0.244 | ns |
+| CAR_20d (all) | -0.0022% | +0.0021% | -2.156 | 0.031 | ** |
+| CAR_5d (buy) | -0.0010% | -0.0001% | -0.906 | 0.365 | ns |
+| CAR_20d (buy) | -0.0022% | +0.0021% | -2.136 | 0.033 | ** |
+
+Cohen's d (5d): -0.027 (negligible effect size)
+
+### Conclusion
+- Committee leaders actually UNDERPERFORM non-leaders at 20d horizon (statistically significant but wrong direction)
+- 5d alpha difference is not significant
+- Effect size is negligible (d < 0.03)
+- Possible explanation: leaders face more scrutiny, trade more defensively, or diversify more
+- **Verdict: CONFIRM SHELVE** — committee leadership is not an alpha factor. Do not integrate into scoring.
+
