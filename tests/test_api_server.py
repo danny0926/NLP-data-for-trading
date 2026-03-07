@@ -100,7 +100,8 @@ def test_db(tmp_path):
     cursor.execute("""
         CREATE TABLE sec_form4_trades (
             id INTEGER PRIMARY KEY, ticker TEXT, filer_name TEXT,
-            transaction_type TEXT, transaction_date TEXT,
+            filer_title TEXT, transaction_type TEXT, transaction_date TEXT,
+            shares REAL, total_value REAL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
@@ -205,6 +206,58 @@ def test_db(tmp_path):
         VALUES ('Trump', 'twitter', 'bullish', '["AAPL"]', '["MSFT","GOOG"]', 8.0)
     """)
 
+    # Additional sample data for broader test coverage
+    cursor.execute("""
+        INSERT INTO politician_rankings (politician_name, chamber, total_trades, pis_total, rank)
+        VALUES ('John Doe', 'Senate', 15, 72.5, 1)
+    """)
+    cursor.execute("""
+        INSERT INTO politician_rankings (politician_name, chamber, total_trades, pis_total, rank)
+        VALUES ('Jane Smith', 'House', 8, 45.0, 2)
+    """)
+    cursor.execute("""
+        INSERT INTO portfolio_positions (ticker, sector, weight, conviction_score, expected_alpha)
+        VALUES ('AAPL', 'Technology', 0.08, 75.0, 0.015)
+    """)
+    cursor.execute("""
+        INSERT INTO sec_form4_trades (ticker, filer_name, transaction_type, transaction_date)
+        VALUES ('AAPL', 'Tim Cook', 'Sale', '2026-01-18')
+    """)
+    cursor.execute("""
+        INSERT INTO sector_rotation_signals (sector, etf, direction, signal_strength,
+                                              expected_alpha_20d, momentum_score, net_ratio,
+                                              net_dollar, trades, buy_count, sale_count,
+                                              politician_count, ticker_count, cross_chamber,
+                                              rotation_type, rotation_bonus, top_tickers, window_days)
+        VALUES ('Technology', 'XLK', 'Buy', 0.82, 0.025, 0.75, 0.68,
+                500000, 10, 7, 3, 5, 4, 1, 'ACCELERATING', 0.1, 'AAPL,MSFT', 30)
+    """)
+    cursor.execute("""
+        INSERT INTO rebalance_history (ticker, action) VALUES ('AAPL', 'BUY')
+    """)
+    cursor.execute("""
+        INSERT INTO extraction_log (source_type, status) VALUES ('senate', 'success')
+    """)
+    cursor.execute("""
+        INSERT INTO extraction_log (source_type, status) VALUES ('house', 'success')
+    """)
+
+    # Second alpha signal for richer test data
+    cursor.execute("""
+        INSERT INTO alpha_signals (trade_id, ticker, politician_name, chamber,
+                                    transaction_type, direction, signal_strength, confidence,
+                                    sqs_score, sqs_grade, transaction_date, created_at)
+        VALUES (2, 'MSFT', 'Jane Smith', 'House', 'Sale', 'LONG', 0.55, 0.60,
+                42.0, 'Silver', '2026-01-20', '2026-02-10')
+    """)
+
+    # Second performance row
+    cursor.execute("""
+        INSERT INTO signal_performance (signal_id, ticker, direction, signal_date,
+                                         actual_alpha_5d, hit_5d, signal_strength, confidence)
+        VALUES (2, 'MSFT', 'LONG', '2026-01-20', -0.008, 0, 0.55, 0.60)
+    """)
+
     conn.commit()
     conn.close()
     return db_path
@@ -244,10 +297,33 @@ class TestSignalEndpoints:
         data = r.json()
         assert "data" in data
         assert "total" in data
+        assert data["total"] >= 1
 
     def test_list_signals_with_ticker(self, client):
         r = client.get("/api/signals?ticker=AAPL")
         assert r.status_code == 200
+        data = r.json()
+        assert all(s["ticker"] == "AAPL" for s in data["data"])
+
+    def test_list_signals_pagination(self, client):
+        r = client.get("/api/signals?limit=1&offset=0")
+        assert r.status_code == 200
+        data = r.json()
+        assert len(data["data"]) <= 1
+
+    def test_list_signals_nonexistent_ticker(self, client):
+        r = client.get("/api/signals?ticker=ZZZZ")
+        assert r.status_code == 200
+        assert r.json()["total"] == 0
+
+    def test_get_single_signal(self, client):
+        r = client.get("/api/signals/1")
+        assert r.status_code == 200
+        assert r.json()["data"]["ticker"] == "AAPL"
+
+    def test_get_signal_not_found(self, client):
+        r = client.get("/api/signals/99999")
+        assert r.status_code == 404
 
     def test_enhanced_signals(self, client):
         r = client.get("/api/enhanced-signals")
@@ -263,6 +339,13 @@ class TestSignalEndpoints:
         r = client.get("/api/signals/distribution")
         assert r.status_code == 200
 
+    def test_convergence_signals(self, client):
+        r = client.get("/api/convergence")
+        assert r.status_code == 200
+        data = r.json()
+        assert "data" in data
+        assert data["total"] >= 1
+
 
 class TestTradeEndpoints:
     def test_list_trades(self, client):
@@ -271,6 +354,26 @@ class TestTradeEndpoints:
         data = r.json()
         assert "data" in data
         assert data["total"] >= 1
+
+    def test_list_trades_pagination(self, client):
+        r = client.get("/api/trades?limit=1&offset=0")
+        assert r.status_code == 200
+        data = r.json()
+        assert len(data["data"]) <= 1
+
+    def test_list_trades_by_chamber(self, client):
+        r = client.get("/api/trades?chamber=Senate")
+        assert r.status_code == 200
+
+    def test_insider_trades(self, client):
+        r = client.get("/api/insider")
+        assert r.status_code == 200
+        data = r.json()
+        assert "data" in data
+
+    def test_cross_reference(self, client):
+        r = client.get("/api/cross-ref")
+        assert r.status_code == 200
 
     def test_ticker_concentration(self, client):
         r = client.get("/api/tickers/concentration?days=365&limit=10")
@@ -284,22 +387,41 @@ class TestTradeEndpoints:
         data = r.json()
         assert "weeks" in data
 
+    def test_weekly_flow_custom_weeks(self, client):
+        r = client.get("/api/flow/weekly?weeks=8")
+        assert r.status_code == 200
+
     def test_chamber_comparison(self, client):
         r = client.get("/api/chambers/comparison")
         assert r.status_code == 200
         data = r.json()
         assert "senate" in data
         assert "house" in data
+        assert "politicians" in data["senate"]
+        assert "politicians" in data["house"]
 
 
 class TestPoliticianEndpoints:
     def test_list_politicians(self, client):
         r = client.get("/api/politicians")
         assert r.status_code == 200
+        data = r.json()
+        assert "data" in data
+        assert data["total"] >= 1
+
+    def test_politician_trades(self, client):
+        r = client.get("/api/politicians/John%20Doe/trades")
+        assert r.status_code == 200
+        data = r.json()
+        assert "data" in data
+
+    def test_politician_trades_not_found(self, client):
+        r = client.get("/api/politicians/Nobody/trades")
+        assert r.status_code in (200, 404)
 
     def test_top_performers(self, client):
         r = client.get("/api/top-performers", params={"min_signals": 1})
-        assert r.status_code in (200, 422)  # 422 if validation issue with test data
+        assert r.status_code in (200, 422)
 
     def test_politician_performance(self, client):
         r = client.get("/api/politicians/performance")
@@ -310,10 +432,15 @@ class TestPerformanceEndpoints:
     def test_performance(self, client):
         r = client.get("/api/performance")
         assert r.status_code == 200
+        data = r.json()
+        assert "data" in data
 
     def test_performance_summary(self, client):
         r = client.get("/api/performance/summary")
         assert r.status_code == 200
+        data = r.json()
+        assert "data" in data
+        assert "total_evaluated" in data["data"]
 
     def test_seasonal(self, client):
         r = client.get("/api/performance/seasonal")
@@ -353,6 +480,9 @@ class TestSystemEndpoints:
     def test_stats(self, client):
         r = client.get("/api/stats")
         assert r.status_code == 200
+        data = r.json()
+        assert "data" in data
+        assert "table_counts" in data["data"]
 
     def test_daily_briefing(self, client):
         r = client.get("/api/daily-briefing")
@@ -360,3 +490,65 @@ class TestSystemEndpoints:
         data = r.json()
         assert "date" in data
         assert "top_picks" in data
+
+    def test_pipeline_status(self, client):
+        r = client.get("/api/pipeline/status")
+        assert r.status_code == 200
+        data = r.json()
+        assert "stages" in data
+        assert "api_version" in data
+        assert "congress_trades" in data["stages"]
+
+
+class TestEdgeCases:
+    """Edge cases and validation tests."""
+
+    def test_invalid_limit(self, client):
+        r = client.get("/api/signals?limit=-1")
+        assert r.status_code == 422
+
+    def test_large_limit_clamped(self, client):
+        r = client.get("/api/signals?limit=9999")
+        # Should either clamp or return 422
+        assert r.status_code in (200, 422)
+
+    def test_negative_offset(self, client):
+        r = client.get("/api/signals?offset=-5")
+        assert r.status_code == 422
+
+    def test_nonexistent_endpoint(self, client):
+        r = client.get("/api/nonexistent")
+        assert r.status_code == 404
+
+    def test_health_no_auth_required(self, client):
+        """Health endpoints should work without API key."""
+        r = client.get("/api/health")
+        assert r.status_code == 200
+
+    def test_signals_response_structure(self, client):
+        """Verify standard paginated response structure."""
+        r = client.get("/api/signals")
+        data = r.json()
+        assert isinstance(data["data"], list)
+        assert isinstance(data["total"], int)
+        assert "limit" in data
+        assert "offset" in data
+
+    def test_enhanced_signals_party_field(self, client):
+        """Verify party field is returned in enhanced signals."""
+        r = client.get("/api/enhanced-signals")
+        data = r.json()
+        if data["data"]:
+            assert "party" in data["data"][0]
+
+    def test_social_mentions_limit(self, client):
+        r = client.get("/api/social/ticker-mentions?limit=5")
+        assert r.status_code == 200
+
+    def test_weekly_flow_min_weeks(self, client):
+        r = client.get("/api/flow/weekly?weeks=4")
+        assert r.status_code == 200
+
+    def test_concentration_min_days(self, client):
+        r = client.get("/api/tickers/concentration?days=30")
+        assert r.status_code == 200
