@@ -665,6 +665,44 @@ def page_politicians(start_date: str, end_date: str, chambers: List[str]):
         fig.update_layout(margin=dict(t=20, b=40), height=300, showlegend=False)
         st.plotly_chart(fig, width="stretch")
 
+    # Top 10 Leaderboard with trade activity
+    st.subheader("Top 10 政治人物 — 交易活躍度")
+    top10 = rank_df.head(10)
+    top10_names = top10["politician_name"].tolist()
+    if top10_names:
+        placeholders = ",".join("?" for _ in top10_names)
+        monthly_df = query_db(f"""
+            SELECT politician_name,
+                   strftime('%Y-%m', transaction_date) as month,
+                   COUNT(*) as trades
+            FROM congress_trades
+            WHERE politician_name IN ({placeholders})
+              AND transaction_date >= date('now', '-12 months')
+            GROUP BY politician_name, month
+            ORDER BY month
+        """, tuple(top10_names))
+
+        if not monthly_df.empty:
+            fig_lb = go.Figure()
+            for name in top10_names:
+                person = monthly_df[monthly_df["politician_name"] == name]
+                if not person.empty:
+                    pis = float(top10[top10["politician_name"] == name]["pis_total"].iloc[0])
+                    fig_lb.add_trace(go.Bar(
+                        x=person["month"], y=person["trades"],
+                        name=f"{name} ({pis:.0f})",
+                    ))
+            fig_lb.update_layout(
+                barmode="group", height=400, margin=dict(t=30, b=40),
+                xaxis_title="Month", yaxis_title="Trades",
+                legend=dict(font=dict(size=9), orientation="h", yanchor="bottom", y=1.02),
+                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="#e2e8f0"),
+                xaxis=dict(gridcolor="rgba(148,163,184,0.1)"),
+                yaxis=dict(gridcolor="rgba(148,163,184,0.1)"),
+            )
+            st.plotly_chart(fig_lb, use_container_width=True)
+
     # Rankings table
     st.subheader("完整排名")
     display_rank = rank_df[["rank", "politician_name", "chamber", "total_trades",
@@ -1212,6 +1250,52 @@ def page_signal_performance():
         fig2.add_shape(type="line", x0=-10, y0=-10, x1=10, y1=10, line=dict(dash="dash", color="gray"))
         fig2.update_layout(height=400, margin=dict(t=30))
         st.plotly_chart(fig2, width="stretch")
+
+    # Alpha Horizon Decay (from Fama-French results)
+    ff3_df = query_db("""
+        SELECT transaction_type,
+               AVG(mkt_car_5d) as avg_5d, COUNT(mkt_car_5d) as n_5d,
+               AVG(mkt_car_20d) as avg_20d, COUNT(mkt_car_20d) as n_20d,
+               AVG(mkt_car_60d) as avg_60d, COUNT(mkt_car_60d) as n_60d
+        FROM fama_french_results
+        WHERE mkt_car_5d IS NOT NULL
+        GROUP BY transaction_type
+    """)
+    if not ff3_df.empty:
+        st.subheader("Alpha 時間維度分析 (Fama-French)")
+        st.caption("基於事件研究法：Filing Date 後 5/20/60 交易日的市場調整累積異常報酬 (CAR)")
+
+        fig_decay = go.Figure()
+        horizons = ["5d", "20d", "60d"]
+        x_labels = ["5 Trading Days", "20 Trading Days", "60 Trading Days"]
+
+        for _, row in ff3_df.iterrows():
+            tx = row["transaction_type"]
+            vals = [row["avg_5d"] * 100 if row["avg_5d"] else 0,
+                    row["avg_20d"] * 100 if row["avg_20d"] else 0,
+                    row["avg_60d"] * 100 if row["avg_60d"] else 0]
+            ns = [int(row["n_5d"]), int(row["n_20d"]), int(row["n_60d"])]
+            color = COLORS["green"] if tx == "Buy" else COLORS["red"]
+            fig_decay.add_trace(go.Scatter(
+                x=x_labels, y=vals, mode="lines+markers+text",
+                name=f"{tx}",
+                line=dict(color=color, width=3),
+                marker=dict(size=10),
+                text=[f"{v:+.2f}%<br>(n={n})" for v, n in zip(vals, ns)],
+                textposition="top center",
+                textfont=dict(size=10),
+            ))
+        fig_decay.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5)
+        fig_decay.update_layout(
+            height=380, margin=dict(t=30, b=40),
+            xaxis_title="Holding Period", yaxis_title="Market-Adjusted CAR (%)",
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#e2e8f0"),
+            xaxis=dict(gridcolor="rgba(148,163,184,0.1)"),
+            yaxis=dict(gridcolor="rgba(148,163,184,0.1)"),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        )
+        st.plotly_chart(fig_decay, use_container_width=True)
 
     # Performance table
     st.subheader("績效明細")
