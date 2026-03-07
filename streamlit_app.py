@@ -1255,6 +1255,58 @@ def page_signal_performance():
         )
         st.plotly_chart(fig_tier, width="stretch")
 
+    # Amount Range Performance
+    amt_perf = query_db("""
+        SELECT ct.amount_range, COUNT(*) as n,
+               AVG(sp.hit_5d) as hit_rate,
+               AVG(sp.actual_alpha_5d) as avg_alpha
+        FROM signal_performance sp
+        JOIN alpha_signals a ON sp.signal_id = a.id
+        JOIN congress_trades ct ON a.trade_id = ct.id
+        WHERE sp.hit_5d IS NOT NULL AND ct.amount_range IS NOT NULL
+        GROUP BY ct.amount_range
+        HAVING COUNT(*) >= 3
+        ORDER BY AVG(sp.hit_5d) DESC
+    """)
+    if not amt_perf.empty:
+        st.subheader("金額範圍 vs 績效")
+        ac1, ac2 = st.columns(2)
+        with ac1:
+            fig_amt = go.Figure()
+            fig_amt.add_trace(go.Bar(
+                x=amt_perf["amount_range"], y=amt_perf["hit_rate"] * 100,
+                text=[f'{r*100:.0f}%<br>n={n}' for r, n in zip(amt_perf["hit_rate"], amt_perf["n"])],
+                textposition="outside",
+                marker_color=[COLORS["green"] if r >= 0.5 else COLORS["red"] for r in amt_perf["hit_rate"]],
+            ))
+            fig_amt.add_hline(y=50, line_dash="dash", line_color="gray")
+            fig_amt.update_layout(
+                height=300, margin=dict(t=30, b=80),
+                yaxis_title="Hit Rate (%)", yaxis=dict(range=[0, 80]),
+                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="#e2e8f0"), showlegend=False,
+                xaxis=dict(tickangle=-20),
+            )
+            st.plotly_chart(fig_amt, use_container_width=True)
+        with ac2:
+            fig_amt2 = go.Figure()
+            fig_amt2.add_trace(go.Bar(
+                x=amt_perf["amount_range"], y=amt_perf["avg_alpha"],
+                text=[f'{a:+.2f}%' for a in amt_perf["avg_alpha"]],
+                textposition="outside",
+                marker_color=[COLORS["green"] if a > 0 else COLORS["red"] for a in amt_perf["avg_alpha"]],
+            ))
+            fig_amt2.add_hline(y=0, line_dash="dash", line_color="gray")
+            fig_amt2.update_layout(
+                height=300, margin=dict(t=30, b=80),
+                yaxis_title="Avg Alpha (%)",
+                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="#e2e8f0"), showlegend=False,
+                xaxis=dict(tickangle=-20),
+            )
+            st.plotly_chart(fig_amt2, use_container_width=True)
+        st.caption("$15K-$100K 交易表現最佳 (RB-004 驗證)")
+
     # Top Politician Performance
     pol_perf = query_db("""
         SELECT a.politician_name, COUNT(*) as n,
