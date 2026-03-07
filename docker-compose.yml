@@ -1,0 +1,47 @@
+# PAM Docker Compose — Full Stack
+# Usage: docker compose up -d
+
+services:
+  dashboard:
+    build: .
+    container_name: pam-dashboard
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./data:/app/data
+      - ./.env:/app/.env:ro
+    environment:
+      - STREAMLIT_SERVER_HEADLESS=true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  api:
+    build: .
+    container_name: pam-api
+    command: ["uvicorn", "api_server:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./.env:/app/.env:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  etl:
+    build: .
+    container_name: pam-etl
+    command: ["python", "run_daily.py", "--skip-etl", "--analysis-only"]
+    volumes:
+      - ./data:/app/data
+      - ./.env:/app/.env:ro
+    profiles:
+      - etl
+    # Run manually: docker compose --profile etl run --rm etl

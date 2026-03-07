@@ -1,0 +1,15 @@
+.git
+.claude
+.venv
+.venv_wsl
+venv
+__pycache__
+*.pyc
+bk/
+logs/
+docs/
+tests/
+*.log
+*.excalidraw
+excalidraw.log
+node_modules/
