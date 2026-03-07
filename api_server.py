@@ -1207,7 +1207,107 @@ def research_summary():
     return {"briefs": briefs, "total": len(briefs)}
 
 
-# ── 31. GET /api/politicians/leaderboard — 政治人物排行榜 ──
+# ── 31. GET /api/research-summary — 研究摘要（結構化） ──
+@app.get("/api/research-summary", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Research"])
+def research_summary_detailed():
+    """研究日誌結構化摘要 — 解析 research_log.md 提取所有 RB 研究條目"""
+    import re
+    log_path = os.path.join(os.path.dirname(__file__), "docs", "research_log.md")
+    if not os.path.exists(log_path):
+        return {"studies": [], "total_count": 0, "adopt_count": 0, "shelve_count": 0, "reject_count": 0}
+
+    with open(log_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # Split into sections by ## headers
+    sections = re.split(r'^## ', content, flags=re.MULTILINE)
+    studies = []
+
+    for section in sections:
+        # Match RB-XXX entries: "YYYY-MM-DD RB-XXX[b][ Mini]: Title"
+        header_match = re.match(
+            r'(\d{4}-\d{2}-\d{2})\s+(RB-\d+[a-z]?)(?:\s+Mini)?[:\s]+(.+)',
+            section
+        )
+        if not header_match:
+            continue
+
+        date_str = header_match.group(1)
+        rb_id = header_match.group(2)
+        title = header_match.group(3).split('\n')[0].strip()
+
+        # Extract result from **Result**: or **Status**: lines
+        result = "UNKNOWN"
+        result_match = re.search(r'\*\*(?:Result|Status)\*\*:\s*(.+)', section)
+        if result_match:
+            result_text = result_match.group(1).strip().upper()
+            # Order matters: check multi-word results first
+            for candidate in [
+                "CONDITIONAL SHELVE", "CONDITIONAL ADOPT", "CONFIRM SHELVE",
+                "ADOPT", "SHELVE", "SHELVED", "REJECT", "REJECTED",
+                "INTEGRATED", "PARTIALLY CONFIRMED", "MARGINAL",
+                "NOT SIGNIFICANT",
+            ]:
+                if candidate in result_text:
+                    # Normalize variants
+                    if candidate in ("SHELVED",):
+                        result = "SHELVE"
+                    elif candidate in ("REJECTED",):
+                        result = "REJECT"
+                    elif candidate in ("PARTIALLY CONFIRMED", "MARGINAL", "NOT SIGNIFICANT"):
+                        result = "CONDITIONAL SHELVE"
+                    else:
+                        result = candidate
+                    break
+
+        # Extract key_stat: first data line containing a percentage or p-value
+        key_stat = ""
+        section_lines = section.split('\n')
+        for line in section_lines:
+            stripped = line.strip()
+            # Skip non-data lines
+            if not stripped:
+                continue
+            if stripped.startswith('|--') or stripped.startswith('**Hypothesis') or stripped.startswith('**Type'):
+                continue
+            if stripped.startswith('**Result') or stripped.startswith('**Status'):
+                continue
+            # Skip the header line itself (starts with date or RB-)
+            if re.match(r'^\d{4}-\d{2}-\d{2}\s+RB-', stripped):
+                continue
+            # Skip section-level headers
+            if stripped.startswith('#'):
+                continue
+            if re.search(r'[+-]?\d+\.?\d*%|p[<>=]\d|p\s*[<>=]', stripped):
+                # Clean up markdown formatting
+                key_stat = re.sub(r'\*\*', '', stripped).strip('| -').strip()
+                if len(key_stat) > 120:
+                    key_stat = key_stat[:117] + "..."
+                break
+
+        studies.append({
+            "id": rb_id,
+            "title": title,
+            "date": date_str,
+            "result": result,
+            "key_stat": key_stat,
+        })
+
+    # Count by result category
+    adopt_count = sum(1 for s in studies if s["result"] in ("ADOPT", "CONDITIONAL ADOPT", "INTEGRATED"))
+    shelve_count = sum(1 for s in studies if s["result"] in ("SHELVE", "CONDITIONAL SHELVE", "CONFIRM SHELVE"))
+    reject_count = sum(1 for s in studies if s["result"] in ("REJECT",))
+
+    return {
+        "studies": studies,
+        "total_count": len(studies),
+        "adopt_count": adopt_count,
+        "shelve_count": shelve_count,
+        "reject_count": reject_count,
+    }
+
+
+# ── 32. GET /api/politicians/leaderboard — 政治人物排行榜 ──
 @app.get("/api/politicians/leaderboard", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Politicians"])
 def politician_leaderboard(
     limit: int = Query(20, ge=5, le=100),

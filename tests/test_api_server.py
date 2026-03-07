@@ -542,6 +542,30 @@ class TestTimelineAndLeaderboard:
         assert "data" in data
 
 
+class TestResearchSummary:
+    def test_research_summary_returns_200(self, client):
+        r = client.get("/api/research-summary")
+        assert r.status_code == 200
+
+    def test_research_summary_has_studies_array(self, client):
+        r = client.get("/api/research-summary")
+        data = r.json()
+        assert "studies" in data
+        assert isinstance(data["studies"], list)
+        assert "total_count" in data
+        assert "adopt_count" in data
+        assert "shelve_count" in data
+        assert "reject_count" in data
+
+    def test_research_summary_counts_match(self, client):
+        r = client.get("/api/research-summary")
+        data = r.json()
+        assert data["total_count"] == len(data["studies"])
+        # adopt + shelve + reject <= total (some may be UNKNOWN)
+        categorized = data["adopt_count"] + data["shelve_count"] + data["reject_count"]
+        assert categorized <= data["total_count"]
+
+
 class TestEdgeCases:
     """Edge cases and validation tests."""
 
