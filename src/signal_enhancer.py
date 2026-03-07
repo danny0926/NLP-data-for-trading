@@ -1,16 +1,18 @@
 """Signal Enhancer v2 — 基於回測實證的信號增強模組
 
-將 RB-001~RB-007 的研究發現整合進信號評分系統:
+將 RB-001~RB-007, RB-021 的研究發現整合進信號評分系統:
   1. VIX 體制偵測: VIX 14-16 黃金區間加乘, <14 或 >16 降權 (RB-004)
   2. PACS 多信號融合: 50% signal_strength + 25% filing_lag_inv + 15% options_sentiment + 10% convergence (RB-006)
   3. SQS 權重修正: SQS 負相關問題修正 — actionability 優先 (RB-006)
   4. Buy-Only 模式: Buy +1.10% vs Sale -3.21% CAR_20d (RB-004)
   5. 社群媒體情緒整合: social_signals 表的 sentiment 加權 (新模組)
+  6. Ticker Familiarity Bonus: 議員重複交易同 ticker 3+次 → +0.05, 5+次 → +0.08 (RB-021)
 
 研究實證依據:
   RB-004: VIX 15-16 最佳 (+1.03% CAR_20d, 63.2% WR), VIX<14 -2.94%, VIX>16 -1.68%
   RB-006: PACS Q1-Q4 alpha 差距 6.5%; SQS conviction r=-0.50 (負相關)
   RB-007: Congress NET BUY 66.7% hit rate, NET SELL 38.9% (不可靠)
+  RB-021: Ticker familiarity 3+ trades: +0.70% alpha vs first-time -1.04% (p=0.045)
 
 用法:
     python -m src.signal_enhancer                    # 增強現有 alpha_signals
@@ -281,6 +283,56 @@ class SignalEnhancer:
         logger.info(f"載入 {len(contracts)} 檔合約資料")
         return contracts
 
+    # ── Ticker Familiarity (RB-021) ─────────────────────────────────
+
+    def _get_ticker_familiarity(self, politician_name: str, ticker: str) -> int:
+        """查詢該議員交易該 ticker 的歷史次數。
+
+        RB-021: 重複交易 3+ 次的 ticker alpha 顯著更高
+        (+0.70% vs -1.04%, p=0.045)。
+
+        Returns:
+            交易次數 (int)
+        """
+        conn = sqlite3.connect(self.db_path)
+        try:
+            cursor = conn.execute(
+                "SELECT COUNT(*) FROM congress_trades WHERE politician_name = ? AND ticker = ?",
+                (politician_name, ticker),
+            )
+            count = cursor.fetchone()[0]
+        except sqlite3.OperationalError:
+            count = 0
+        finally:
+            conn.close()
+        return count
+
+    def _load_ticker_familiarity_bulk(self) -> Dict[str, int]:
+        """批量載入所有 (politician, ticker) 交易次數，避免逐筆查詢。
+
+        Returns:
+            dict mapping "politician_name||ticker" → trade count
+        """
+        conn = sqlite3.connect(self.db_path)
+        familiarity = {}
+        try:
+            cursor = conn.execute(
+                "SELECT politician_name, ticker, COUNT(*) as cnt "
+                "FROM congress_trades "
+                "WHERE politician_name IS NOT NULL AND ticker IS NOT NULL "
+                "GROUP BY politician_name, ticker"
+            )
+            for row in cursor.fetchall():
+                key = f"{row[0]}||{row[1]}"
+                familiarity[key] = row[2]
+        except sqlite3.OperationalError:
+            logger.warning("congress_trades 表不存在，跳過 ticker familiarity")
+        finally:
+            conn.close()
+
+        logger.info(f"載入 {len(familiarity)} 筆 ticker familiarity 記錄")
+        return familiarity
+
     # ── PACS 計算核心 ──────────────────────────────────────────────
 
     def _calc_pacs_score(
@@ -289,6 +341,7 @@ class SignalEnhancer:
         options_data: Optional[dict],
         convergence_data: Optional[dict],
         contract_data: Optional[dict] = None,
+        ticker_trade_count: int = 0,
     ) -> Tuple[float, dict]:
         """計算 PACS (Political Alpha Composite Score)。
 
@@ -297,6 +350,7 @@ class SignalEnhancer:
                    + 15% * options_sentiment_norm
                    + 10% * convergence_norm
                    + contract_bonus (additive, 0 / 0.1 / 0.2)
+                   + ticker_familiarity_bonus (additive, 0 / 0.05 / 0.08, RB-021)
 
         Returns:
             (pacs_score, component_details)
@@ -339,6 +393,13 @@ class SignalEnhancer:
             elif max_amount > 0:
                 contract_bonus = 0.1   # 一般合約
 
+        # 6. Ticker Familiarity Bonus (RB-021): 重複交易同 ticker 3+ 次 alpha 更高
+        ticker_familiarity_bonus = 0.0
+        if ticker_trade_count >= 5:
+            ticker_familiarity_bonus = 0.08
+        elif ticker_trade_count >= 3:
+            ticker_familiarity_bonus = 0.05
+
         # 加權合計
         pacs = (
             PACS_WEIGHT_SIGNAL_STRENGTH * strength_norm
@@ -346,7 +407,11 @@ class SignalEnhancer:
             + PACS_WEIGHT_OPTIONS_SENTIMENT * options_norm
             + PACS_WEIGHT_CONVERGENCE * convergence_norm
             + contract_bonus
+            + ticker_familiarity_bonus
         )
+
+        # 上限 1.0
+        pacs = min(pacs, 1.0)
 
         components = {
             "signal_strength_norm": round(strength_norm, 4),
@@ -354,6 +419,8 @@ class SignalEnhancer:
             "options_sentiment_norm": round(options_norm, 4),
             "convergence_norm": round(convergence_norm, 4),
             "contract_bonus": round(contract_bonus, 4),
+            "ticker_familiarity_bonus": round(ticker_familiarity_bonus, 4),
+            "ticker_trade_count": ticker_trade_count,
             "pacs_raw": round(pacs, 4),
         }
 
@@ -438,6 +505,7 @@ class SignalEnhancer:
         social_sentiment = self._load_social_sentiment()
         convergence_data = self._load_convergence_data()
         contract_data = self._load_contract_data()
+        ticker_familiarity = self._load_ticker_familiarity_bulk()
 
         # Step 6: 逐筆增強
         enhanced = []
@@ -459,8 +527,14 @@ class SignalEnhancer:
             social = social_sentiment.get(politician)
             contract = contract_data.get(ticker)
 
+            # Ticker familiarity (RB-021)
+            fam_key = f"{politician}||{ticker}"
+            ticker_trade_count = ticker_familiarity.get(fam_key, 0)
+
             # PACS 分數
-            pacs, pacs_components = self._calc_pacs_score(sig, opts, conv, contract)
+            pacs, pacs_components = self._calc_pacs_score(
+                sig, opts, conv, contract, ticker_trade_count=ticker_trade_count
+            )
 
             # 修正信心度
             confidence_v2 = self._calc_confidence_v2(sig)
@@ -529,6 +603,8 @@ class SignalEnhancer:
                 "pacs_options_component": pacs_components["options_sentiment_norm"],
                 "pacs_convergence_component": pacs_components["convergence_norm"],
                 "pacs_contract_component": pacs_components.get("contract_bonus", 0),
+                "ticker_familiarity_bonus": pacs_components.get("ticker_familiarity_bonus", 0),
+                "ticker_trade_count": pacs_components.get("ticker_trade_count", 0),
                 # 輔助資訊
                 "options_sentiment": opts.get("sentiment") if opts else None,
                 "options_signal_type": opts.get("signal_type") if opts else None,
@@ -604,6 +680,8 @@ class SignalEnhancer:
             "insider_confirmed INTEGER DEFAULT 0",
             "whale_trade INTEGER DEFAULT 0",
             "party TEXT DEFAULT ''",
+            "ticker_familiarity_bonus REAL DEFAULT 0",
+            "ticker_trade_count INTEGER DEFAULT 0",
         ]:
             try:
                 cursor.execute(f"ALTER TABLE enhanced_signals ADD COLUMN {col_def}")
@@ -626,11 +704,12 @@ class SignalEnhancer:
                         pacs_signal_component, pacs_lag_component,
                         pacs_options_component, pacs_convergence_component,
                         pacs_contract_component,
+                        ticker_familiarity_bonus, ticker_trade_count,
                         options_sentiment, options_signal_type,
                         social_alignment, social_bonus,
                         has_convergence, politician_grade,
                         filing_lag_days, sqs_score, decay_factor
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     trade_id, sig["ticker"], sig["politician_name"],
                     sig["chamber"], sig["transaction_type"], sig["direction"],
@@ -640,6 +719,8 @@ class SignalEnhancer:
                     sig["pacs_signal_component"], sig["pacs_lag_component"],
                     sig["pacs_options_component"], sig["pacs_convergence_component"],
                     sig.get("pacs_contract_component", 0),
+                    sig.get("ticker_familiarity_bonus", 0),
+                    sig.get("ticker_trade_count", 0),
                     sig["options_sentiment"], sig["options_signal_type"],
                     sig["social_alignment"], sig["social_bonus"],
                     1 if sig["has_convergence"] else 0,
@@ -655,6 +736,7 @@ class SignalEnhancer:
                         pacs_signal_component = ?, pacs_lag_component = ?,
                         pacs_options_component = ?, pacs_convergence_component = ?,
                         pacs_contract_component = ?,
+                        ticker_familiarity_bonus = ?, ticker_trade_count = ?,
                         options_sentiment = ?, options_signal_type = ?,
                         social_alignment = ?, social_bonus = ?,
                         has_convergence = ?, decay_factor = ?, updated_at = CURRENT_TIMESTAMP
@@ -665,6 +747,8 @@ class SignalEnhancer:
                     sig["pacs_signal_component"], sig["pacs_lag_component"],
                     sig["pacs_options_component"], sig["pacs_convergence_component"],
                     sig.get("pacs_contract_component", 0),
+                    sig.get("ticker_familiarity_bonus", 0),
+                    sig.get("ticker_trade_count", 0),
                     sig["options_sentiment"], sig["options_signal_type"],
                     sig["social_alignment"], sig["social_bonus"],
                     1 if sig["has_convergence"] else 0, sig.get("decay_factor", 1.0),
