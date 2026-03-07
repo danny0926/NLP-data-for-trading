@@ -1176,7 +1176,38 @@ def alerts_preview(
         return {"total": 0, "days": days, "alerts": [], "error": str(e)}
 
 
-# ── 30. GET /api/politicians/leaderboard — 政治人物排行榜 ──
+# ── 30. GET /api/research — 研究日誌摘要 ──
+@app.get("/api/research", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["System"])
+def research_summary():
+    """研究日誌摘要 — 解析 research_log.md 返回結構化 JSON"""
+    import re
+    log_path = os.path.join(os.path.dirname(__file__), "docs", "research_log.md")
+    if not os.path.exists(log_path):
+        return {"briefs": [], "total": 0}
+
+    with open(log_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # Parse RB-XXX entries
+    briefs = []
+    pattern = r'##\s+(RB-\d+[a-z]?)[:\s]+(.+?)(?=\n##|\Z)'
+    for match in re.finditer(pattern, content, re.DOTALL):
+        rb_id = match.group(1)
+        body = match.group(2).strip()
+        # Extract status
+        status = "UNKNOWN"
+        for s in ["ADOPT", "INTEGRATED", "REJECT", "SHELVE", "CONDITIONAL SHELVE", "CONFIRM SHELVE"]:
+            if s in body.upper():
+                status = s
+                break
+        # First line as title
+        title = body.split("\n")[0].strip("# -")
+        briefs.append({"id": rb_id, "title": title[:100], "status": status})
+
+    return {"briefs": briefs, "total": len(briefs)}
+
+
+# ── 31. GET /api/politicians/leaderboard — 政治人物排行榜 ──
 @app.get("/api/politicians/leaderboard", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Politicians"])
 def politician_leaderboard(
     limit: int = Query(20, ge=5, le=100),

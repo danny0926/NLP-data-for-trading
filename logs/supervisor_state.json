@@ -22,13 +22,12 @@
     "Tasks 73-74: Party affiliation + chart",
     "Tasks 75-77: Ticker concentration API, signal tracker, pytest",
     "Tasks 78-82: Ticker chart, signal distribution API, party performance, daily report, RB-017",
-    "Tasks 83-87: Chamber comparison API, filing lag by chamber chart, amount range alpha chart"
+    "Tasks 83-87: Chamber comparison API, filing lag by chamber chart, amount range alpha chart",
+    "Tasks 100-121 (CW5): 52 API tests, 27 enhancer tests, convergence/social charts, alerts API, timeline API, leaderboard API, RB-018/019 studies, pipeline refresh, signal tracker"
   ],
   "tasks_remaining": [
-    "Task 8: RB-014 committee alpha (agent)",
-    "Task 9: Test suite (agent)",
-    "Task 10: Frontier scan (agent)",
-    "Task 34: FF3 backtest refresh (background)"
+    "Task 117: smoke test",
+    "Task 120: research API"
   ],
   "commits": [
     "c538abe",
@@ -55,7 +54,15 @@
     "6cdb5db",
     "ab1b1cd",
     "0035f9b",
-    "eabb870"
+    "eabb870",
+    "6741b3d",
+    "ce2efaa",
+    "ef87929",
+    "a0c11f5",
+    "d2dcef7",
+    "2461d8b",
+    "8ae6cdb",
+    "72b8c5d"
   ],
   "key_findings": [
     "5d HR: 52.2% +0.45% (N=485)",
@@ -68,7 +75,11 @@
     "RB-016: R vs D marginal (R +0.10% 5d, p=0.02)",
     "RB-017: Senate slower filers but better alpha (info quality > speed)",
     "Frontier: Death of Insider Trading Alpha validates filing lag importance",
-    "H.R. 7008 monitoring: advance disclosure could reshape PAM"
+    "H.R. 7008 monitoring: advance disclosure could reshape PAM",
+    "RB-018: Seasonality SHELVED (only 2 months data)",
+    "RB-019: Repeat traders HR=55.3% vs one-off HR=47.9% (p=0.07, marginal)",
+    "Total test suite: 553 passing",
+    "API v2.6.0: 30 endpoints with 52 tests"
   ],
-  "last_updated_utc": "2026-03-07T03:00:33.614568+00:00"
+  "last_updated_utc": "2026-03-07T03:34:51.212660+00:00"
 }

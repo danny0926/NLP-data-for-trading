@@ -499,6 +499,13 @@ class TestSystemEndpoints:
         assert "api_version" in data
         assert "congress_trades" in data["stages"]
 
+    def test_research_summary(self, client):
+        r = client.get("/api/research")
+        assert r.status_code == 200
+        data = r.json()
+        assert "briefs" in data
+        assert "total" in data
+
 
 class TestAlertsEndpoint:
     def test_alerts_preview(self, client):

@@ -385,3 +385,40 @@ Cohen's d (5d): -0.027 (negligible effect size)
 - Possible explanation: leaders face more scrutiny, trade more defensively, or diversify more
 - **Verdict: CONFIRM SHELVE** — committee leadership is not an alpha factor. Do not integrate into scoring.
 
+---
+
+## 2026-03-07 RB-018: Seasonality Analysis — Monthly Alpha Patterns
+
+**Hypothesis**: Congressional trading alpha varies by month (January effect, tax-loss selling, etc.)
+**Type**: PATTERN
+**Status**: SHELVED (insufficient data)
+
+### Findings
+- Only 2 months of signal_performance data (Jan-Feb 2026): N=519
+- Jan: N=16, HR=81.2%, Alpha=291% (extreme outliers, tiny sample)
+- Feb: N=503, HR=51.9%, Alpha=41%
+- Cannot test Q1 vs Q3 (no Q3 data)
+- **Verdict: SHELVE** — need 12+ months of tracked signals. Revisit when data accumulates.
+
+---
+
+## 2026-03-07 RB-019: Politician Consistency — Repeat vs One-Off Traders
+
+**Hypothesis**: Politicians who trade the same ticker 3+ times show better alpha than one-off traders
+**Type**: PATTERN
+**Status**: CONDITIONAL SHELVE
+
+### Data
+- Repeat traders (3+ same ticker): N=365, HR=55.3%, median_alpha=+51.8%
+- One-off traders (<3 same ticker): N=167, HR=47.9%, median_alpha=-44.1%
+
+### Statistical Test
+- Mann-Whitney U test: p=0.0699 (not significant at 0.05)
+- T-test: t=1.339, p=0.1812 (mean skewed by outliers)
+
+### Findings
+- Direction is correct: repeat traders show higher HR and median alpha
+- Not statistically significant at p<0.05 (marginal at p=0.07)
+- High variance suggests outlier-driven effect
+- **Verdict: CONDITIONAL SHELVE** — directionally positive but not conclusive. Could be useful as a weak signal multiplier (5-10% weight) in ensemble. Revisit with more data.
+
