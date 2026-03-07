@@ -207,3 +207,25 @@ New module: `src/etl/capitoltrades_bulk.py`
 - LLM transform: ~$0.005/page (Gemini Flash) x 100 pages = $0.50
 - Bulk import: $0.00 (no API calls)
 - Speed: 100x faster
+
+---
+
+## 2026-03-07 Frontier Scan: Key External Research
+
+### "The Death of Insider Trading Alpha" (Ozlen & Batumoglu, Dec 2025, SSRN)
+- **Key Finding**: 70-80% of insider trading alpha dissipates between transaction date and filing date
+- **Implication for PAM**: Our measured +0.55% 5d alpha (filing date entry) is the RESIDUAL alpha — most is already captured by insiders
+- **Validation**: Filing lag < 15d filter is critical (4.6x alpha per RB-001) — aligns with this research
+- **Action**: Prioritize fast-filing detection; signals with filing_lag < 7d should get maximum weighting
+
+### Congress Beat Market in 2025 (Independent Institute, Feb 2026)
+- 29 members beat the market (>16.8% gains required)
+- Only 32.2% of Congress beat overall
+- Leaders outperform rank-and-file by 40-50 percentage points annually
+- **Implication for PAM**: Committee leadership alpha (RB-008/RB-014) worth re-testing with larger dataset
+
+### Unusual Whales Congress Trading Report 2025
+- Over 2,000 congressional trades involving 700 companies
+- Concentrated in semiconductors and AI sectors
+- Tariff-related trades: $88B revenue impact
+
