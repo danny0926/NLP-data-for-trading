@@ -601,6 +601,7 @@ class SignalEnhancer:
             "pacs_contract_component REAL DEFAULT 0",
             "decay_factor REAL DEFAULT 1.0",
             "insider_confirmed INTEGER DEFAULT 0",
+            "whale_trade INTEGER DEFAULT 0",
         ]:
             try:
                 cursor.execute(f"ALTER TABLE enhanced_signals ADD COLUMN {col_def}")
@@ -691,6 +692,28 @@ class SignalEnhancer:
                 logger.info(f"  Insider-confirmed: {insider_count} signals marked")
         except Exception:
             pass  # sec_form4_trades may not exist
+
+        # 標記 whale trades (RB-015b: $500K+ trades show +0.83~4.4% 20d alpha)
+        try:
+            whale_count = cursor.execute("""
+                UPDATE enhanced_signals SET whale_trade = 1
+                WHERE trade_id IN (
+                    SELECT CAST(ct.id AS TEXT)
+                    FROM congress_trades ct
+                    WHERE ct.amount_range IN (
+                        '$500,001 - $1,000,000',
+                        '$1,000,001 - $5,000,000',
+                        '$5,000,001 - $25,000,000',
+                        '$25,000,001 - $50,000,000',
+                        '$50,000,001 +'
+                    )
+                )
+                AND whale_trade = 0
+            """).rowcount
+            if whale_count > 0:
+                logger.info(f"  Whale trades: {whale_count} signals marked ($500K+)")
+        except Exception:
+            pass
 
         conn.commit()
         conn.close()

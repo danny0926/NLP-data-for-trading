@@ -632,8 +632,8 @@ def page_alpha_signals(start_date: str, end_date: str, chambers: List[str]):
         height=400,
     )
 
-    # PACS Distribution + Insider Confirmation
-    enh_df = query_db("SELECT pacs_score, insider_confirmed, ticker, politician_name, enhanced_strength FROM enhanced_signals WHERE pacs_score IS NOT NULL")
+    # PACS Distribution + Insider Confirmation + Whale Trades
+    enh_df = query_db("SELECT pacs_score, insider_confirmed, whale_trade, ticker, politician_name, enhanced_strength FROM enhanced_signals WHERE pacs_score IS NOT NULL")
     if not enh_df.empty:
         pacs_col1, pacs_col2 = st.columns(2)
         with pacs_col1:
@@ -662,6 +662,9 @@ def page_alpha_signals(start_date: str, end_date: str, chambers: List[str]):
             st.subheader("Insider 確認")
             st.metric("Insider 確認訊號", f"{insider_count} / {total_enh}",
                        help="國會議員 + SEC Form 4 內部人同向交易")
+            whale_count = int(enh_df["whale_trade"].sum()) if "whale_trade" in enh_df.columns else 0
+            st.metric("Whale Trades ($500K+)", f"{whale_count}",
+                       help="RB-015b: $500K+ trades show +0.83~4.4% 20d alpha")
             if insider_count > 0:
                 insider_df = enh_df[enh_df["insider_confirmed"] == 1].sort_values("enhanced_strength", ascending=False).head(10)
                 st.dataframe(

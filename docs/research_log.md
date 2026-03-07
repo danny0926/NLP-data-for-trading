@@ -278,6 +278,24 @@ New module: `src/etl/capitoltrades_bulk.py`
 
 ---
 
+## 2026-03-07 RB-016 Mini: Bipartisan Alpha — Republican vs Democrat (25K Dataset)
+
+**Hypothesis**: Party affiliation affects trading alpha
+**Result**: MARGINAL — R buys outperform at 5d only
+
+| Party | N (Buy) | CAR_5d | CAR_20d |
+|-------|---------|--------|---------|
+| Republican | 5,515 | +0.102% | +0.158% |
+| Democrat | 10,394 | -0.074% | +0.170% |
+
+- R vs D 5d: t=2.324, **p=0.020** — Republicans have higher short-term alpha
+- R vs D 20d: t=-0.082, p=0.934 — No difference at 20 days
+- Democrats trade 2x more volume but with less short-term edge
+- Aligns with Unusual Whales 2025: bipartisan split (15D, 14R beat market)
+- **Verdict: CONDITIONAL SHELVE** — too small effect size for practical use. Party is not a reliable alpha factor. May reflect policy access differences (R majority → more committee info).
+
+---
+
 ## 2026-03-07 RB-015 Mini: Filing Lag Speed vs Alpha (25K Dataset)
 
 **Hypothesis**: Faster filers generate higher alpha (validates "Death of Insider Trading Alpha" paper)

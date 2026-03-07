@@ -916,7 +916,40 @@ def seasonal_analysis():
         conn.close()
 
 
-# ── 22. GET /api/flow/weekly — 國會每週淨買賣壓力 ──
+# ── 22. GET /api/top-performers — 驗證績效排名 ──
+@app.get("/api/top-performers", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Politicians"])
+def top_performers(
+    min_signals: int = Query(5, ge=2, le=50, description="最低信號數門檻"),
+    limit: int = Query(20, ge=1, le=100, description="回傳筆數"),
+):
+    """已驗證績效排名 — 基於 signal_performance 實際 hit rate"""
+    conn = get_db()
+    try:
+        rows = conn.execute("""
+            SELECT a.politician_name, a.chamber,
+                   COUNT(*) as total_signals,
+                   AVG(CASE WHEN sp.hit_5d = 1 THEN 1.0 ELSE 0.0 END) as hit_rate_5d,
+                   AVG(sp.actual_alpha_5d) as avg_alpha_5d,
+                   AVG(CASE WHEN sp.hit_20d = 1 THEN 1.0 ELSE 0.0 END) as hit_rate_20d,
+                   AVG(sp.actual_alpha_20d) as avg_alpha_20d
+            FROM signal_performance sp
+            JOIN alpha_signals a ON sp.signal_id = a.id
+            WHERE sp.hit_5d IS NOT NULL
+            GROUP BY a.politician_name
+            HAVING total_signals >= ?
+            ORDER BY hit_rate_5d DESC, avg_alpha_5d DESC
+            LIMIT ?
+        """, (min_signals, limit)).fetchall()
+
+        return {
+            "min_signals": min_signals,
+            "performers": rows_to_dicts(rows),
+        }
+    finally:
+        conn.close()
+
+
+# ── 23. GET /api/flow/weekly — 國會每週淨買賣壓力 ──
 @app.get("/api/flow/weekly", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Trades"])
 def weekly_flow(
     weeks: int = Query(26, ge=4, le=104, description="回溯週數"),
