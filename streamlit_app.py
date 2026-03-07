@@ -2160,6 +2160,82 @@ def page_signal_performance():
                     st.plotly_chart(fig_mf, use_container_width=True)
         st.caption("哪個因子最能預測實際 alpha？r 越接近 1 或 -1 越有預測力。")
 
+    # VIX Zone Performance
+    vix_perf = query_db("""
+        SELECT e.vix_zone,
+               COUNT(*) as n,
+               AVG(s.actual_alpha_5d) as avg_alpha,
+               AVG(CASE WHEN s.hit_5d = 1 THEN 1.0 ELSE 0.0 END) as hit_rate
+        FROM enhanced_signals e
+        JOIN signal_performance s ON CAST(e.trade_id AS TEXT) = CAST(s.signal_id AS TEXT)
+        WHERE e.vix_zone IS NOT NULL AND s.actual_alpha_5d IS NOT NULL
+        GROUP BY e.vix_zone
+        ORDER BY n DESC
+    """)
+    if not vix_perf.empty:
+        st.subheader("VIX Zone Performance")
+        # Best zone metric
+        best_idx = vix_perf["avg_alpha"].idxmax()
+        best_zone = vix_perf.loc[best_idx, "vix_zone"]
+        best_alpha = vix_perf.loc[best_idx, "avg_alpha"]
+        best_hr = vix_perf.loc[best_idx, "hit_rate"] * 100
+        best_n = int(vix_perf.loc[best_idx, "n"])
+        vz_m1, vz_m2, vz_m3 = st.columns(3)
+        vz_m1.metric("Best VIX Zone", best_zone.replace("_", " ").title())
+        vz_m2.metric("Avg Alpha (5d)", f"{best_alpha:+.2f}%", help=f"n={best_n}")
+        vz_m3.metric("Hit Rate", f"{best_hr:.1f}%", help=f"n={best_n}")
+
+        from plotly.subplots import make_subplots
+        fig_vz = make_subplots(specs=[[{"secondary_y": True}]])
+        fig_vz.add_trace(
+            go.Bar(
+                x=vix_perf["vix_zone"], y=vix_perf["avg_alpha"],
+                name="Avg Alpha 5d (%)",
+                marker_color="#00d4aa",
+                text=[f"{v:+.2f}%" for v in vix_perf["avg_alpha"]],
+                textposition="outside",
+                textfont=dict(color="#00d4aa"),
+            ),
+            secondary_y=False,
+        )
+        fig_vz.add_trace(
+            go.Bar(
+                x=vix_perf["vix_zone"], y=vix_perf["hit_rate"] * 100,
+                name="Hit Rate (%)",
+                marker_color="#ff6b6b",
+                text=[f"{v*100:.0f}%" for v in vix_perf["hit_rate"]],
+                textposition="outside",
+                textfont=dict(color="#ff6b6b"),
+                opacity=0.7,
+            ),
+            secondary_y=True,
+        )
+        fig_vz.update_layout(
+            barmode="group",
+            height=350,
+            margin=dict(t=30, b=40),
+            paper_bgcolor="#0e1117",
+            plot_bgcolor="#0e1117",
+            font=dict(color="white"),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            xaxis=dict(gridcolor="rgba(148,163,184,0.1)"),
+        )
+        fig_vz.update_yaxes(
+            title_text="Avg Alpha (%)", secondary_y=False,
+            gridcolor="rgba(148,163,184,0.1)",
+        )
+        fig_vz.update_yaxes(
+            title_text="Hit Rate (%)", secondary_y=True,
+            gridcolor="rgba(148,163,184,0.1)", range=[0, 100],
+        )
+        # Add annotation with sample sizes
+        annotations_text = " | ".join([f"{row['vix_zone']}: n={int(row['n'])}" for _, row in vix_perf.iterrows()])
+        st.plotly_chart(fig_vz, use_container_width=True)
+        st.caption(f"Sample sizes: {annotations_text}. VIX Goldilocks Zone (14-16) historically yields highest alpha (RB-004).")
+    else:
+        st.subheader("VIX Zone Performance")
+        st.info("No VIX zone data available. Run `python -m src.signal_enhancer` and `python -m src.signal_tracker` first.")
+
     # Performance table
     st.subheader("績效明細")
     display_cols = ["ticker", "politician_name", "direction", "signal_strength", "confidence",
