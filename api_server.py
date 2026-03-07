@@ -49,7 +49,7 @@ app = FastAPI(
         "認證：設定 `X-API-Key` header（若伺服器啟用 API_SERVER_KEY）\n\n"
         f"⚠ {LEGAL_DISCLAIMER}"
     ),
-    version="2.1.0",
+    version="2.2.0",
     openapi_tags=[
         {"name": "Signals", "description": "Alpha 訊號與增強訊號"},
         {"name": "Portfolio", "description": "投資組合與板塊輪動"},
@@ -595,6 +595,70 @@ def list_rebalance_history(
         return paginated_response(rows_to_dicts(rows), total, clamp_limit(limit), offset)
     finally:
         conn.close()
+
+
+# ── 16. GET /api/performance/summary — 績效摘要 ──
+@app.get("/api/performance/summary", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Signals"])
+def performance_summary():
+    """聚合績效摘要：勝率、平均 alpha、最佳/最差表現"""
+    conn = get_db()
+    try:
+        stats_5d = conn.execute("""
+            SELECT COUNT(*) as n,
+                   AVG(actual_alpha_5d) as avg_alpha,
+                   SUM(CASE WHEN hit_5d = 1 THEN 1 ELSE 0 END) as hits,
+                   MAX(actual_alpha_5d) as best,
+                   MIN(actual_alpha_5d) as worst,
+                   AVG(max_favorable_excursion) as avg_mfe,
+                   AVG(max_adverse_excursion) as avg_mae
+            FROM signal_performance WHERE actual_alpha_5d IS NOT NULL
+        """).fetchone()
+
+        stats_20d = conn.execute("""
+            SELECT COUNT(*) as n,
+                   AVG(actual_alpha_20d) as avg_alpha,
+                   SUM(CASE WHEN hit_20d = 1 THEN 1 ELSE 0 END) as hits,
+                   MAX(actual_alpha_20d) as best,
+                   MIN(actual_alpha_20d) as worst
+            FROM signal_performance WHERE actual_alpha_20d IS NOT NULL
+        """).fetchone()
+
+        total = conn.execute("SELECT COUNT(*) FROM signal_performance").fetchone()[0]
+
+        def safe(row, idx):
+            v = row[idx]
+            return round(v, 4) if v is not None else None
+
+        return {
+            "data": {
+                "total_evaluated": total,
+                "five_day": {
+                    "n": stats_5d[0],
+                    "hit_rate": round(stats_5d[2] / stats_5d[0], 4) if stats_5d[0] else None,
+                    "avg_alpha_pct": safe(stats_5d, 1),
+                    "best_alpha_pct": safe(stats_5d, 3),
+                    "worst_alpha_pct": safe(stats_5d, 4),
+                    "avg_mfe_pct": safe(stats_5d, 5),
+                    "avg_mae_pct": safe(stats_5d, 6),
+                },
+                "twenty_day": {
+                    "n": stats_20d[0],
+                    "hit_rate": round(stats_20d[2] / stats_20d[0], 4) if stats_20d[0] else None,
+                    "avg_alpha_pct": safe(stats_20d, 1),
+                    "best_alpha_pct": safe(stats_20d, 3),
+                    "worst_alpha_pct": safe(stats_20d, 4),
+                },
+            }
+        }
+    finally:
+        conn.close()
+
+
+# ── Root health endpoint (for Docker healthcheck at /health) ──
+@app.get("/health", tags=["System"])
+def health_root():
+    """Alias for /api/health — used by Docker healthcheck"""
+    return health_check()
 
 
 # ── 主程式入口 ──
