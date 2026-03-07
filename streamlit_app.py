@@ -1141,6 +1141,44 @@ def page_convergence():
         fig.update_layout(margin=dict(t=20, b=40), height=350)
         st.plotly_chart(fig, width="stretch")
 
+    # ── Convergence Signal Timeline (weekly line chart) ──
+    st.subheader("Convergence Signal Timeline")
+    timeline_df = query_db("""
+        SELECT strftime('%Y-W%W', detected_at) as week,
+               direction,
+               COUNT(*) as cnt
+        FROM convergence_signals
+        WHERE detected_at >= date('now', '-180 days')
+        GROUP BY week, direction
+        ORDER BY week
+    """)
+    if not timeline_df.empty:
+        color_map = {"Buy": "#10b981", "Sale": "#ef4444"}
+        fig_tl = go.Figure()
+        for direction in timeline_df["direction"].unique():
+            subset = timeline_df[timeline_df["direction"] == direction]
+            fig_tl.add_trace(go.Scatter(
+                x=subset["week"],
+                y=subset["cnt"],
+                mode="lines+markers",
+                name=direction,
+                line=dict(color=color_map.get(direction, "#38bdf8"), width=2),
+                marker=dict(size=6),
+            ))
+        fig_tl.update_layout(
+            height=350,
+            margin=dict(t=20, b=40, l=60, r=20),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#e2e8f0"),
+            xaxis=dict(title="Week", gridcolor="rgba(148,163,184,0.1)"),
+            yaxis=dict(title="Signal Count", gridcolor="rgba(148,163,184,0.1)"),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        )
+        st.plotly_chart(fig_tl, use_container_width=True)
+    else:
+        st.info("過去 180 天無匯聚信號資料")
+
 
 # ══════════════════════════════════════════════
 # Page 6: 交易瀏覽器
