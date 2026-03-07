@@ -259,7 +259,9 @@ def render_sidebar():
     st.sidebar.markdown("---")
     st.sidebar.markdown(
         '<div style="text-align:center;color:#475569;font-size:0.7rem;">'
-        'PAM v2.1 | Research Use Only<br>Not Investment Advice</div>',
+        'PAM v2.3 | Research Use Only<br>Not Investment Advice<br>'
+        '<a href="http://localhost:8000/docs" target="_blank" style="color:#38bdf8;">API Docs (Swagger)</a>'
+        '</div>',
         unsafe_allow_html=True,
     )
 

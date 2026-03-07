@@ -728,6 +728,71 @@ def health_root():
     return health_check()
 
 
+# ── 18. GET /api/daily-briefing — 每日晨報 ──
+@app.get("/api/daily-briefing", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["System"])
+def daily_briefing():
+    """每日晨報 — 一個 API 取得所有開盤前決策資訊"""
+    conn = get_db()
+    try:
+        # Top signals (PACS-ranked)
+        top_signals = conn.execute("""
+            SELECT e.ticker, e.politician_name, e.chamber, e.direction,
+                   e.enhanced_strength, e.pacs_score, e.vix_zone, e.insider_confirmed
+            FROM enhanced_signals e
+            WHERE e.direction = 'LONG'
+            ORDER BY e.pacs_score DESC
+            LIMIT 5
+        """).fetchall()
+
+        # Fresh convergences
+        convergences = conn.execute("""
+            SELECT ticker, direction, politician_count, score
+            FROM convergence_signals
+            WHERE detected_at >= date('now', '-7 days')
+            ORDER BY score DESC LIMIT 5
+        """).fetchall()
+
+        # Signal freshness
+        freshness = conn.execute("""
+            SELECT
+                SUM(CASE WHEN julianday('now') - julianday(ct.filing_date) <= 20 THEN 1 ELSE 0 END) as fresh,
+                SUM(CASE WHEN julianday('now') - julianday(ct.filing_date) BETWEEN 20 AND 40 THEN 1 ELSE 0 END) as decaying,
+                SUM(CASE WHEN julianday('now') - julianday(ct.filing_date) > 40 THEN 1 ELSE 0 END) as expired
+            FROM alpha_signals a
+            JOIN congress_trades ct ON a.trade_id = ct.id
+            WHERE ct.filing_date IS NOT NULL
+        """).fetchone()
+
+        # Performance summary
+        perf = conn.execute("""
+            SELECT COUNT(*) as n, AVG(hit_5d) as hr5, AVG(actual_alpha_5d) as aa5
+            FROM signal_performance WHERE hit_5d IS NOT NULL
+        """).fetchone()
+
+        # System stats
+        trades = conn.execute("SELECT COUNT(*) FROM congress_trades").fetchone()[0]
+        signals = conn.execute("SELECT COUNT(*) FROM alpha_signals").fetchone()[0]
+
+        return {
+            "date": datetime.now().strftime("%Y-%m-%d"),
+            "top_picks": rows_to_dicts(top_signals),
+            "convergences": rows_to_dicts(convergences),
+            "freshness": {
+                "fresh": freshness[0] or 0,
+                "decaying": freshness[1] or 0,
+                "expired": freshness[2] or 0,
+            },
+            "performance": {
+                "evaluated": perf[0],
+                "hit_rate_5d": round(perf[1] * 100, 1) if perf[1] else None,
+                "avg_alpha_5d": round(perf[2], 2) if perf[2] else None,
+            },
+            "system": {"trades": trades, "signals": signals},
+        }
+    finally:
+        conn.close()
+
+
 # ── 主程式入口 ──
 if __name__ == "__main__":
     import uvicorn
