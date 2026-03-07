@@ -4,6 +4,80 @@ Research findings organized by RB (Research Brief) number.
 
 ---
 
+## 2026-03-07 RB-025: Alpha Time-Decay (Trading Day vs Filing Day)
+
+**Hypothesis**: If alpha decays from transaction_date (as SSRN Ozlen & Batumoglu 2025 claims 70-80% gone by Day+1), then trades with shorter filing_lag should show LARGER post-filing CAR, because the filing is closer to the information event.
+**Type**: ALPHA FACTOR
+**Result**: REJECT (pure time-decay) / CONDITIONAL ADOPT (Late >45d penalty)
+
+### Data Coverage
+- N=17,480 trades with non-null CAR (16,882 with all fields non-null for stats)
+- Buy=17,205, Sale=275
+- Filing lag range: 0-999 days, median ~25 days
+- Source: fama_french_results table (FF3-adjusted CARs measured from filing_date)
+
+### Filing Lag Group Results (Buy Only, FF3-adjusted)
+
+| Group | N | Avg Lag | FF3_CAR_5d | FF3_CAR_20d | Win Rate 20d |
+|-------|---|---------|-----------|------------|-------------|
+| Fast (<=7d) | 882 | 4.5d | -0.002% | +0.017% | 49.9% |
+| Medium (8-15d) | 2,689 | 11.8d | -0.011% | +0.176% | 50.3% |
+| **Normal (16-30d)** | **7,078** | **23.5d** | **-0.073%** | **+0.271%** | **50.8%** |
+| Slow (31-45d) | 5,009 | 36.3d | -0.127% | +0.140% | 51.9% |
+| Late (>45d) | 1,547 | 209.8d | +0.078% | -0.237% | 47.3% |
+
+### Fine-Grained Monotonicity (Buy Only)
+
+| Lag Range | N | FF3_5d | FF3_20d |
+|-----------|---|--------|---------|
+| 0-5d | 466 | +0.236% | +0.451% |
+| 6-10d | 1,409 | -0.054% | +0.077% |
+| 11-15d | 1,655 | -0.039% | +0.104% |
+| 16-20d | 2,020 | -0.180% | +0.096% |
+| 21-30d | 4,948 | -0.055% | +0.343% |
+| 31-45d | 4,937 | -0.115% | +0.140% |
+| 46-90d | 519 | +0.382% | +0.165% |
+| 91-999d | 926 | -0.117% | -0.463% |
+
+### Statistical Tests
+
+| Test | Metric | Result | p-value | Sig |
+|------|--------|--------|---------|-----|
+| Spearman (lag vs CAR, Buy) | ff3_car_5d | rho=+0.015 | 0.048 | * |
+| Spearman (lag vs CAR, Buy) | ff3_car_20d | rho=-0.002 | 0.753 | n.s. |
+| Kruskal-Wallis (5 groups, Buy) | ff3_car_5d | H=4.77 | 0.312 | n.s. |
+| Kruskal-Wallis (5 groups, Buy) | ff3_car_20d | H=6.98 | 0.137 | n.s. |
+| Mann-Whitney Fast vs Normal | ff3_car_20d | +0.017 vs +0.271% | 0.224 | n.s. |
+| Mann-Whitney Fast vs Slow | ff3_car_20d | +0.017 vs +0.140% | 0.302 | n.s. |
+| Mann-Whitney Normal vs Late (one-sided) | ff3_car_20d | +0.271 vs -0.237% | 0.008 | ** |
+| OLS regression (lag -> ff3_20d, Buy) | slope | -0.001%/day | 0.102 | n.s. |
+| Cohen's d (Fast vs Normal) | ff3_car_20d | d=-0.032 | — | negligible |
+| Cohen's d (Normal vs Late) | ff3_car_20d | d=+0.063 | — | negligible |
+
+### Key Findings
+
+1. **Pure time-decay hypothesis REJECTED**: Fast filers (<=7d) do NOT show higher alpha than Normal filers (16-30d). Normal filers have the highest 20d alpha (+0.271%). The relationship is non-monotonic.
+2. **Late filers (>45d) are the only significantly worse group**: Normal vs Late is significant (p=0.008, one-sided), but the effect size is negligible (Cohen's d=0.063).
+3. **Spearman correlation is essentially zero** (rho=-0.002 for 20d, p=0.75) — filing lag has no linear relationship with alpha.
+4. **Super-fast filers (0-5d)** show +0.451% mean FF3_20d but high variance (std=8.25%), driven by small N=468 and dominated by Marjorie Taylor Greene (N=270). Not robust.
+5. **Consistent with RB-015** (N=600, p=0.95): Both studies independently confirm filing lag is not a useful linear predictor of alpha.
+
+### SSRN Comparison
+
+The SSRN finding (70-80% alpha gone by Day+1 from trade date) may be true for corporate insiders, but congressional trades are fundamentally different:
+- Congress trades based on **policy/regulatory foresight**, not earnings surprises
+- Policy effects unfold over weeks/months, not days
+- The "information" in a congressional trade may not even exist at trade date — it's a directional bet on future policy
+
+### PACS Recommendation
+
+- **Current**: filing_lag_inverse weight = 25% of PACS formula
+- **Finding**: Linear filing_lag is NOT predictive (p=0.75)
+- **Recommendation**: REDUCE filing_lag_inverse from 25% to 10%, convert to binary penalty (only penalize Late >45d filings). Redistribute 15% to signal_strength (proven predictor).
+- **Alternative**: Use categorical encoding: Normal/Medium = 1.0x, Late >45d = 0.7x penalty
+
+---
+
 ## 2026-03-07 RB-024: VIX Regime Alpha Validation (Updated Dataset)
 
 **Hypothesis**: VIX low-volatility periods (<20) produce significantly higher signal alpha than high-volatility periods (>=20)
