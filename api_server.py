@@ -49,7 +49,7 @@ app = FastAPI(
         "認證：設定 `X-API-Key` header（若伺服器啟用 API_SERVER_KEY）\n\n"
         f"⚠ {LEGAL_DISCLAIMER}"
     ),
-    version="2.2.0",
+    version="2.3.0",
     openapi_tags=[
         {"name": "Signals", "description": "Alpha 訊號與增強訊號"},
         {"name": "Portfolio", "description": "投資組合與板塊輪動"},
@@ -512,6 +512,44 @@ def list_enhanced_signals(
             params + [clamp_limit(limit), offset],
         ).fetchall()
         return paginated_response(rows_to_dicts(rows), total, clamp_limit(limit), offset)
+    finally:
+        conn.close()
+
+
+# ── 12b. GET /api/signals/aging — 訊號新鮮度分析 ──
+@app.get("/api/signals/aging", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Signals"])
+def signal_aging_summary():
+    """訊號新鮮度分析 — FRESH/DECAYING/EXPIRED 分類"""
+    conn = get_db()
+    try:
+        rows = conn.execute("""
+            SELECT a.id, a.ticker, a.politician_name, a.direction, a.signal_strength,
+                   a.created_at,
+                   ct.filing_date,
+                   CAST(julianday('now') - julianday(ct.filing_date) AS INTEGER) as days_since_filing,
+                   CASE
+                       WHEN julianday('now') - julianday(ct.filing_date) <= 20 THEN 'FRESH'
+                       WHEN julianday('now') - julianday(ct.filing_date) <= 40 THEN 'DECAYING'
+                       ELSE 'EXPIRED'
+                   END as freshness
+            FROM alpha_signals a
+            LEFT JOIN congress_trades ct ON a.trade_id = ct.id
+            WHERE ct.filing_date IS NOT NULL
+            ORDER BY ct.filing_date DESC
+        """).fetchall()
+
+        signals = rows_to_dicts(rows)
+        summary = {"FRESH": 0, "DECAYING": 0, "EXPIRED": 0}
+        for s in signals:
+            tier = s.get("freshness", "EXPIRED")
+            summary[tier] = summary.get(tier, 0) + 1
+
+        return {
+            "summary": summary,
+            "total": len(signals),
+            "fresh_pct": round(summary["FRESH"] / max(len(signals), 1) * 100, 1),
+            "signals": signals[:50],  # top 50 most recent
+        }
     finally:
         conn.close()
 
