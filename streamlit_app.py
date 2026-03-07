@@ -2233,6 +2233,54 @@ def page_social_intelligence():
                 hide_index=True,
             )
 
+    # Author Type and Impact Score charts
+    st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
+    social_ch1, social_ch2 = st.columns(2)
+
+    with social_ch1:
+        st.subheader("Author Type Breakdown")
+        author_type_df = query_db("""
+            SELECT
+                COALESCE(sp.author_type, 'unknown') as author_type,
+                COUNT(*) as cnt
+            FROM social_posts sp
+            GROUP BY author_type
+        """)
+        if not author_type_df.empty:
+            type_colors = {"politician": COLORS["primary"], "kol": COLORS["purple"],
+                          "media": COLORS["green"], "unknown": "#64748b"}
+            fig_at = go.Figure(go.Pie(
+                labels=author_type_df["author_type"],
+                values=author_type_df["cnt"],
+                marker_colors=[type_colors.get(t, "#94a3b8") for t in author_type_df["author_type"]],
+                hole=0.4,
+            ))
+            fig_at.update_layout(height=280, margin=dict(t=10, b=10),
+                                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            st.plotly_chart(fig_at, use_container_width=True)
+
+    with social_ch2:
+        st.subheader("Impact Score Distribution")
+        impact_df = query_db("""
+            SELECT impact_score FROM social_signals WHERE impact_score IS NOT NULL
+        """)
+        if not impact_df.empty:
+            fig_imp = go.Figure(go.Histogram(
+                x=impact_df["impact_score"],
+                nbinsx=10,
+                marker_color=COLORS["purple"],
+            ))
+            fig_imp.update_layout(
+                height=280, margin=dict(t=10, b=40),
+                xaxis_title="Impact Score (0-10)",
+                yaxis_title="Count",
+                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="#e2e8f0"),
+            )
+            fig_imp.add_vline(x=7, line_dash="dash", line_color=COLORS["red"],
+                             annotation_text="Alpha Threshold")
+            st.plotly_chart(fig_imp, use_container_width=True)
+
     # Ticker mentions from social signals
     ticker_mentions_df = query_db("""
         SELECT tickers_implied FROM social_signals
