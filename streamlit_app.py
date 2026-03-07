@@ -2236,6 +2236,100 @@ def page_signal_performance():
         st.subheader("VIX Zone Performance")
         st.info("No VIX zone data available. Run `python -m src.signal_enhancer` and `python -m src.signal_tracker` first.")
 
+    # ── Politician Alpha Scatter Plot ──
+    st.subheader("Politician Alpha Performance")
+    pol_alpha_df = query_db("""
+        SELECT sp.politician_name,
+               COUNT(*) as signal_count,
+               AVG(sp.actual_alpha_5d) as avg_alpha,
+               AVG(CASE WHEN sp.hit_5d=1 THEN 1.0 ELSE 0.0 END) as hit_rate
+        FROM signal_performance sp
+        WHERE sp.politician_name IS NOT NULL
+        GROUP BY sp.politician_name
+        HAVING COUNT(*) >= 5
+    """)
+    if not pol_alpha_df.empty:
+        # Attach chamber info from alpha_signals
+        chamber_df = query_db("""
+            SELECT DISTINCT politician_name, chamber
+            FROM alpha_signals
+            WHERE politician_name IS NOT NULL AND chamber IS NOT NULL
+        """)
+        if not chamber_df.empty:
+            chamber_map = dict(zip(chamber_df["politician_name"], chamber_df["chamber"]))
+            pol_alpha_df["chamber"] = pol_alpha_df["politician_name"].map(chamber_map).fillna("Unknown")
+        else:
+            pol_alpha_df["chamber"] = "Unknown"
+
+        # Top 5 by avg_alpha for annotation
+        top5 = pol_alpha_df.nlargest(5, "avg_alpha")
+
+        fig_pol = go.Figure()
+
+        # Main scatter
+        fig_pol.add_trace(go.Scatter(
+            x=pol_alpha_df["signal_count"],
+            y=pol_alpha_df["avg_alpha"],
+            mode="markers",
+            marker=dict(
+                size=pol_alpha_df["hit_rate"] * 30,
+                color=pol_alpha_df["avg_alpha"],
+                colorscale="RdYlGn",
+                showscale=True,
+                colorbar=dict(title="Alpha %"),
+                line=dict(width=1, color="rgba(255,255,255,0.3)"),
+                sizemin=4,
+            ),
+            customdata=pol_alpha_df[["politician_name", "signal_count", "avg_alpha", "hit_rate", "chamber"]].values,
+            hovertemplate=(
+                "<b>%{customdata[0]}</b> (%{customdata[4]})<br>"
+                "Signals: %{customdata[1]}<br>"
+                "Avg Alpha 5d: %{customdata[2]:.2f}%<br>"
+                "Hit Rate: %{customdata[3]:.1%}<br>"
+                "<extra></extra>"
+            ),
+        ))
+
+        # Annotate top 5
+        fig_pol.add_trace(go.Scatter(
+            x=top5["signal_count"],
+            y=top5["avg_alpha"],
+            mode="text",
+            text=top5["politician_name"],
+            textposition="top center",
+            textfont=dict(color="white", size=10),
+            showlegend=False,
+            hoverinfo="skip",
+        ))
+
+        # Zero line
+        fig_pol.add_hline(y=0, line_dash="dash", line_color="rgba(148,163,184,0.4)")
+
+        fig_pol.update_layout(
+            height=450,
+            paper_bgcolor="#0e1117",
+            plot_bgcolor="#0e1117",
+            font=dict(color="white"),
+            xaxis=dict(
+                title="Number of Signals",
+                gridcolor="rgba(148,163,184,0.1)",
+            ),
+            yaxis=dict(
+                title="Average Alpha 5d (%)",
+                gridcolor="rgba(148,163,184,0.1)",
+            ),
+            margin=dict(t=30, b=40),
+            showlegend=False,
+        )
+        st.plotly_chart(fig_pol, use_container_width=True)
+        st.caption(
+            f"Bubble size = hit rate (larger = higher). "
+            f"Showing {len(pol_alpha_df)} politicians with 5+ tracked signals. "
+            f"Top 5 alpha performers labelled. Color: red = negative alpha, green = positive."
+        )
+    else:
+        st.info("Not enough data for Politician Alpha scatter. Need politicians with 5+ evaluated signals. Run `python -m src.signal_tracker` first.")
+
     # Performance table
     st.subheader("績效明細")
     display_cols = ["ticker", "politician_name", "direction", "signal_strength", "confidence",
