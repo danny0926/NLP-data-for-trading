@@ -49,7 +49,7 @@ app = FastAPI(
         "認證：設定 `X-API-Key` header（若伺服器啟用 API_SERVER_KEY）\n\n"
         f"⚠ {LEGAL_DISCLAIMER}"
     ),
-    version="2.3.0",
+    version="2.4.0",
     openapi_tags=[
         {"name": "Signals", "description": "Alpha 訊號與增強訊號"},
         {"name": "Portfolio", "description": "投資組合與板塊輪動"},
@@ -789,6 +789,129 @@ def daily_briefing():
             },
             "system": {"trades": trades, "signals": signals},
         }
+    finally:
+        conn.close()
+
+
+# ── 19. GET /api/factor-correlation — 因子相關性分析 ──
+@app.get("/api/factor-correlation", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Signals"])
+def factor_correlation():
+    """因子相關性矩陣 — 信號因子 vs 實際 alpha 的 r-value"""
+    conn = get_db()
+    try:
+        rows = conn.execute("""
+            SELECT sp.confidence, sp.signal_strength, sp.actual_alpha_5d, sp.actual_alpha_20d,
+                   sq.sqs, sq.actionability, sq.timeliness, sq.conviction,
+                   sq.information_edge, sq.market_impact
+            FROM signal_performance sp
+            LEFT JOIN signal_quality_scores sq ON sp.signal_id = sq.trade_id
+            WHERE sp.actual_alpha_5d IS NOT NULL
+        """).fetchall()
+
+        if len(rows) < 5:
+            return {"error": "Insufficient data", "n": len(rows)}
+
+        import numpy as np
+        data = np.array([[r[i] if r[i] is not None else 0 for i in range(10)] for r in rows])
+        factors = ["confidence", "signal_strength", "actual_alpha_5d", "actual_alpha_20d",
+                    "sqs", "actionability", "timeliness", "conviction",
+                    "information_edge", "market_impact"]
+
+        correlations = {}
+        for target in ["actual_alpha_5d", "actual_alpha_20d"]:
+            ti = factors.index(target)
+            target_col = data[:, ti]
+            corr = {}
+            for i, fname in enumerate(factors):
+                if fname in ("actual_alpha_5d", "actual_alpha_20d"):
+                    continue
+                col = data[:, i]
+                if np.std(col) > 0 and np.std(target_col) > 0:
+                    r = float(np.corrcoef(col, target_col)[0, 1])
+                    corr[fname] = round(r, 4)
+            correlations[target] = corr
+
+        return {"n": len(rows), "correlations": correlations}
+    finally:
+        conn.close()
+
+
+# ── 20. GET /api/social/ticker-mentions — 社群 Ticker 提及頻率 ──
+@app.get("/api/social/ticker-mentions", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Social"])
+def social_ticker_mentions(
+    limit: int = Query(20, ge=1, le=100, description="回傳筆數"),
+):
+    """社群 Ticker 提及頻率 — 從 social_signals 解析 tickers_implied"""
+    conn = get_db()
+    try:
+        rows = conn.execute("""
+            SELECT tickers_implied, tickers_explicit FROM social_signals
+            WHERE tickers_implied IS NOT NULL OR tickers_explicit IS NOT NULL
+        """).fetchall()
+
+        import json as _json
+        ticker_counts: Dict[str, int] = defaultdict(int)
+        for row in rows:
+            for col_val in row:
+                if not col_val:
+                    continue
+                try:
+                    tickers = _json.loads(col_val) if isinstance(col_val, str) else col_val
+                    if isinstance(tickers, list):
+                        for t in tickers:
+                            if isinstance(t, str) and len(t) <= 6:
+                                ticker_counts[t.upper()] += 1
+                except (ValueError, TypeError):
+                    for t in str(col_val).replace("[", "").replace("]", "").replace("'", "").replace('"', '').split(","):
+                        t = t.strip().upper()
+                        if t and len(t) <= 6:
+                            ticker_counts[t] += 1
+
+        sorted_tickers = sorted(ticker_counts.items(), key=lambda x: -x[1])[:limit]
+        return {
+            "total_signals": len(rows),
+            "unique_tickers": len(ticker_counts),
+            "mentions": [{"ticker": t, "count": c} for t, c in sorted_tickers],
+        }
+    finally:
+        conn.close()
+
+
+# ── 21. GET /api/performance/seasonal — 季節性分析 ──
+@app.get("/api/performance/seasonal", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Signals"])
+def seasonal_analysis():
+    """季節性分析 — 各月份的平均 alpha 和勝率"""
+    conn = get_db()
+    try:
+        rows = conn.execute("""
+            SELECT
+                CAST(strftime('%m', signal_date) AS INTEGER) as month,
+                COUNT(*) as n,
+                AVG(actual_alpha_5d) as avg_alpha_5d,
+                AVG(actual_alpha_20d) as avg_alpha_20d,
+                AVG(CASE WHEN hit_5d = 1 THEN 1.0 ELSE 0.0 END) as hit_rate_5d,
+                AVG(CASE WHEN hit_20d = 1 THEN 1.0 ELSE 0.0 END) as hit_rate_20d
+            FROM signal_performance
+            WHERE signal_date IS NOT NULL AND actual_alpha_5d IS NOT NULL
+            GROUP BY month
+            ORDER BY month
+        """).fetchall()
+
+        month_names = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                       "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        result = []
+        for row in rows:
+            m = row[0]
+            result.append({
+                "month": m,
+                "month_name": month_names[m] if 1 <= m <= 12 else str(m),
+                "n": row[1],
+                "avg_alpha_5d": round(row[2], 4) if row[2] else None,
+                "avg_alpha_20d": round(row[3], 4) if row[3] else None,
+                "hit_rate_5d": round(row[4] * 100, 1) if row[4] is not None else None,
+                "hit_rate_20d": round(row[5] * 100, 1) if row[5] is not None else None,
+            })
+        return {"months": result, "total": sum(r["n"] for r in result)}
     finally:
         conn.close()
 
