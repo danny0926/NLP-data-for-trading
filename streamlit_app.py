@@ -746,6 +746,38 @@ def page_alpha_signals(start_date: str, end_date: str, chambers: List[str]):
     fig.update_layout(margin=dict(t=30, b=40), height=350)
     st.plotly_chart(fig, width="stretch")
 
+    # Signal Generation Calendar Heatmap
+    st.subheader("Signal Generation Calendar")
+    cal_df = query_db("""
+        SELECT DATE(created_at) as date, COUNT(*) as cnt
+        FROM alpha_signals
+        WHERE created_at >= DATE('now', '-90 days')
+        GROUP BY DATE(created_at)
+        ORDER BY date
+    """)
+    if not cal_df.empty:
+        cal_df["date"] = pd.to_datetime(cal_df["date"])
+        cal_df["weekday"] = cal_df["date"].dt.dayofweek  # 0=Mon
+        cal_df["week"] = cal_df["date"].dt.isocalendar().week.astype(int)
+        day_labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+        fig_cal = go.Figure(go.Heatmap(
+            x=cal_df["week"],
+            y=[day_labels[d] for d in cal_df["weekday"]],
+            z=cal_df["cnt"],
+            colorscale=[[0, "#1e293b"], [0.5, "#6366f1"], [1, "#a78bfa"]],
+            text=[f"{d.strftime('%m/%d')}: {c}" for d, c in zip(cal_df["date"], cal_df["cnt"])],
+            hovertemplate="%{text}<extra></extra>",
+        ))
+        fig_cal.update_layout(
+            height=220, margin=dict(t=10, b=30, l=60),
+            yaxis=dict(autorange="reversed"),
+            xaxis_title="Week #",
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#e2e8f0"),
+        )
+        st.plotly_chart(fig_cal, use_container_width=True)
+
 
 # ══════════════════════════════════════════════
 # Page 3: 投資組合
