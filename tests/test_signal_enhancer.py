@@ -223,3 +223,105 @@ class TestVIXZones:
         for vix in [0, 5, 10, 13, 14, 15, 16, 19, 20, 29, 30, 50, 99]:
             result = detector.classify_regime(vix_value=vix)
             assert result["zone"] != "unknown"
+
+
+# ─────────────────────────────────────────
+# Ticker Familiarity Tests (RB-021)
+# ─────────────────────────────────────────
+
+class TestTickerFamiliarity:
+    """Tests for ticker familiarity bonus in PACS scoring (RB-021).
+
+    RB-021: repeat trades 3+ on same ticker show +0.70% vs -1.04% (p=0.045).
+    Bonus tiers: 0-2 → 0, 3-4 → 0.05, 5+ → 0.08.
+    """
+
+    def _make_enhancer(self):
+        return SignalEnhancer(db_path=":memory:")
+
+    def _base_signal(self):
+        return {"signal_strength": 0.8, "filing_lag_days": 15}
+
+    def test_familiarity_bonus_zero(self):
+        """ticker_trade_count=0 → bonus=0."""
+        enhancer = self._make_enhancer()
+        _, components = enhancer._calc_pacs_score(
+            self._base_signal(), None, None, None, ticker_trade_count=0
+        )
+        assert components["ticker_familiarity_bonus"] == 0.0
+        assert components["ticker_trade_count"] == 0
+
+    def test_familiarity_bonus_one(self):
+        """ticker_trade_count=1 → bonus=0."""
+        enhancer = self._make_enhancer()
+        _, components = enhancer._calc_pacs_score(
+            self._base_signal(), None, None, None, ticker_trade_count=1
+        )
+        assert components["ticker_familiarity_bonus"] == 0.0
+
+    def test_familiarity_bonus_two(self):
+        """ticker_trade_count=2 → bonus=0."""
+        enhancer = self._make_enhancer()
+        _, components = enhancer._calc_pacs_score(
+            self._base_signal(), None, None, None, ticker_trade_count=2
+        )
+        assert components["ticker_familiarity_bonus"] == 0.0
+
+    def test_familiarity_bonus_three(self):
+        """ticker_trade_count=3 → bonus=0.05."""
+        enhancer = self._make_enhancer()
+        _, components = enhancer._calc_pacs_score(
+            self._base_signal(), None, None, None, ticker_trade_count=3
+        )
+        assert components["ticker_familiarity_bonus"] == 0.05
+
+    def test_familiarity_bonus_four(self):
+        """ticker_trade_count=4 → bonus=0.05."""
+        enhancer = self._make_enhancer()
+        _, components = enhancer._calc_pacs_score(
+            self._base_signal(), None, None, None, ticker_trade_count=4
+        )
+        assert components["ticker_familiarity_bonus"] == 0.05
+
+    def test_familiarity_bonus_five(self):
+        """ticker_trade_count=5 → bonus=0.08."""
+        enhancer = self._make_enhancer()
+        _, components = enhancer._calc_pacs_score(
+            self._base_signal(), None, None, None, ticker_trade_count=5
+        )
+        assert components["ticker_familiarity_bonus"] == 0.08
+
+    def test_familiarity_bonus_ten(self):
+        """ticker_trade_count=10 → bonus=0.08 (same as 5+)."""
+        enhancer = self._make_enhancer()
+        _, components = enhancer._calc_pacs_score(
+            self._base_signal(), None, None, None, ticker_trade_count=10
+        )
+        assert components["ticker_familiarity_bonus"] == 0.08
+
+    def test_pacs_cap_with_bonus(self):
+        """High PACS base + familiarity bonus must not exceed 1.0."""
+        enhancer = self._make_enhancer()
+        # Max out everything: high strength, low lag, options, convergence, contract, familiarity
+        signal = {"signal_strength": 5.0, "filing_lag_days": 0}
+        pacs, components = enhancer._calc_pacs_score(
+            signal,
+            {"sentiment": 1.0},          # max options
+            {"score": 5.0},              # max convergence
+            {"max_amount": 200_000_000}, # max contract bonus (0.2)
+            ticker_trade_count=10,       # max familiarity bonus (0.08)
+        )
+        assert pacs <= 1.0
+
+    def test_familiarity_bonus_additive(self):
+        """Familiarity bonus is additive, not multiplicative."""
+        enhancer = self._make_enhancer()
+        sig = self._base_signal()
+        pacs_no_fam, _ = enhancer._calc_pacs_score(
+            sig, None, None, None, ticker_trade_count=0
+        )
+        pacs_with_fam, _ = enhancer._calc_pacs_score(
+            sig, None, None, None, ticker_trade_count=5
+        )
+        # Difference should be exactly the bonus value (0.08), not scaled
+        assert pacs_with_fam - pacs_no_fam == pytest.approx(0.08, abs=1e-4)
