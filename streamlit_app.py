@@ -1621,6 +1621,58 @@ def page_signal_performance():
         )
         st.plotly_chart(fig_tier, width="stretch")
 
+    # Filing Weekday Performance Heatmap
+    heatmap_df = query_db("""
+        SELECT sp.signal_date, sp.hit_5d, sp.actual_alpha_5d
+        FROM signal_performance sp
+        WHERE sp.signal_date IS NOT NULL AND sp.hit_5d IS NOT NULL
+    """)
+    if not heatmap_df.empty:
+        st.subheader("Filing Weekday Performance Heatmap")
+        st.caption("Hit rate by day of week — which filing days produce the best signals?")
+        import pandas as pd
+        heatmap_df["signal_date"] = pd.to_datetime(heatmap_df["signal_date"], errors="coerce")
+        heatmap_df = heatmap_df.dropna(subset=["signal_date"])
+        if not heatmap_df.empty:
+            heatmap_df["weekday"] = heatmap_df["signal_date"].dt.day_name()
+            heatmap_df["month"] = heatmap_df["signal_date"].dt.strftime("%Y-%m")
+            weekday_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+            pivot = heatmap_df.groupby(["weekday", "month"]).agg(
+                hit_rate=("hit_5d", "mean"),
+                n=("hit_5d", "count"),
+            ).reset_index()
+            pivot = pivot[pivot["weekday"].isin(weekday_order)]
+            if not pivot.empty:
+                pivot_table = pivot.pivot(index="weekday", columns="month", values="hit_rate")
+                pivot_table = pivot_table.reindex(weekday_order)
+                fig_heat = go.Figure(data=go.Heatmap(
+                    z=pivot_table.values * 100,
+                    x=pivot_table.columns.tolist(),
+                    y=pivot_table.index.tolist(),
+                    colorscale=[[0, COLORS["red"]], [0.5, "#334155"], [1, COLORS["green"]]],
+                    zmid=50,
+                    text=[[f"{v:.0f}%" if not pd.isna(v) else "" for v in row] for row in pivot_table.values * 100],
+                    texttemplate="%{text}",
+                    hovertemplate="Weekday: %{y}<br>Month: %{x}<br>Hit Rate: %{z:.1f}%<extra></extra>",
+                ))
+                fig_heat.update_layout(
+                    height=280, margin=dict(t=30, b=40),
+                    xaxis_title="Month", yaxis_title="Filing Day",
+                    paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                    font=dict(color="#e2e8f0"),
+                )
+                st.plotly_chart(fig_heat, use_container_width=True)
+
+                # Summary: best weekday
+                weekday_stats = heatmap_df.groupby("weekday").agg(
+                    hit_rate=("hit_5d", "mean"),
+                    avg_alpha=("actual_alpha_5d", "mean"),
+                    n=("hit_5d", "count"),
+                ).reindex(weekday_order)
+                best_day = weekday_stats["hit_rate"].idxmax()
+                best_hr = weekday_stats.loc[best_day, "hit_rate"] * 100
+                st.info(f"Best filing day: **{best_day}** ({best_hr:.1f}% hit rate, n={int(weekday_stats.loc[best_day, 'n'])})")
+
     # Amount Range Performance
     amt_perf = query_db("""
         SELECT ct.amount_range, COUNT(*) as n,
