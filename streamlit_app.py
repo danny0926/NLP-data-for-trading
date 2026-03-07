@@ -530,6 +530,39 @@ def page_overview(start_date: str, end_date: str, chambers: List[str]):
     else:
         st.info("No trades in current date range")
 
+    # Net Congressional Flow
+    flow_df = query_db("""
+        SELECT strftime('%Y-W%W', transaction_date) as week,
+               SUM(CASE WHEN transaction_type IN ('Purchase','Buy') THEN 1 ELSE 0 END) as buys,
+               SUM(CASE WHEN transaction_type IN ('Sale','Sale (Full)','Sale (Partial)','Sell') THEN 1 ELSE 0 END) as sells
+        FROM congress_trades
+        WHERE transaction_date >= date('now', '-180 days')
+        GROUP BY week ORDER BY week
+    """)
+    if not flow_df.empty:
+        st.subheader("國會淨買賣壓力 (Net Flow)")
+        flow_df["net"] = flow_df["buys"] - flow_df["sells"]
+        flow_df["color"] = flow_df["net"].apply(lambda x: COLORS["green"] if x > 0 else COLORS["red"])
+        fig_flow = go.Figure()
+        fig_flow.add_trace(go.Bar(
+            x=flow_df["week"], y=flow_df["net"],
+            marker_color=flow_df["color"].tolist(),
+            name="Net Flow",
+            hovertemplate="Week: %{x}<br>Net: %{y}<br>Buys: %{customdata[0]}<br>Sells: %{customdata[1]}",
+            customdata=flow_df[["buys", "sells"]].values,
+        ))
+        fig_flow.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5)
+        fig_flow.update_layout(
+            height=300, margin=dict(t=20, b=40),
+            xaxis_title="Week", yaxis_title="Net Flow (Buys - Sells)",
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#e2e8f0"),
+            xaxis=dict(gridcolor="rgba(148,163,184,0.1)"),
+            yaxis=dict(gridcolor="rgba(148,163,184,0.1)"),
+        )
+        st.plotly_chart(fig_flow, use_container_width=True)
+        st.caption("正值=淨買入(Bullish)，負值=淨賣出(Bearish)。Unusual Whales 2025 報告顯示國會整體淨賣出 $45M。")
+
     # Footer
     st.markdown(
         '<div class="footer-text">'

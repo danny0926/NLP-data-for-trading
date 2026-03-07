@@ -278,6 +278,49 @@ New module: `src/etl/capitoltrades_bulk.py`
 
 ---
 
+## 2026-03-07 RB-015 Mini: Filing Lag Speed vs Alpha (25K Dataset)
+
+**Hypothesis**: Faster filers generate higher alpha (validates "Death of Insider Trading Alpha" paper)
+**Result**: NOT SIGNIFICANT (p=0.95)
+
+| Filing Lag | N | CAR_5d | CAR_20d |
+|-----------|---|--------|---------|
+| Fast (<=7d) | 882 | -0.208% | -0.275% |
+| Medium (8-15d) | 2,689 | +0.032% | +0.221% |
+| Normal (16-30d) | 7,078 | -0.001% | +0.256% |
+| Slow (31-45d) | 5,009 | -0.137% | +0.076% |
+| Late (>45d) | 1,547 | +0.305% | +0.095% |
+
+- Fast(<=15d) vs Slow(>30d): t=0.058, p=0.953 — NO significant difference
+- Normal filers (16-30d) show best 20d alpha (+0.256%)
+- Conclusion: Filing speed alone is not an alpha factor in the full dataset. The alpha is in the TRADE itself, not the disclosure timing. Current PACS filing_lag component may need revision.
+
+---
+
+## 2026-03-07 RB-015b Mini: Trade Size vs Alpha (25K Dataset)
+
+**Hypothesis**: Larger trades signal higher conviction and generate more alpha
+**Result**: PARTIALLY CONFIRMED — very large trades show outsized alpha
+
+| Amount Range | N | CAR_5d | CAR_20d |
+|-------------|---|--------|---------|
+| < $1K | 16 | -2.345% | -0.151% |
+| $1K-$15K | 13,199 | -0.005% | +0.178% |
+| $15K-$50K | 2,697 | -0.050% | -0.039% |
+| $50K-$100K | 722 | -0.085% | +0.136% |
+| $100K-$250K | 411 | -0.176% | +0.451% |
+| $250K-$500K | 90 | +0.057% | +0.106% |
+| $500K-$1M | 35 | +0.158% | +0.825% |
+| $1M-$5M | 28 | +1.084% | +4.407% |
+| $5M-$25M | 7 | +0.878% | +1.349% |
+
+- Very large trades ($1M+) show massive alpha (+4.4% 20d), but N is very small (28)
+- REVISES RB-001: The "$15K-$50K sweet spot" does NOT hold in the full 25K dataset
+- Small caveat: Large-N ranges ($1K-$15K) show near-zero alpha, diluting averages
+- **Action**: Consider adding a "whale trade" flag for $500K+ buys in signal_enhancer
+
+---
+
 ## 2026-03-07 RB-014: Committee Leadership Alpha Re-test (25K Dataset)
 
 **Hypothesis**: Committee chairs/ranking members generate higher alpha than non-leaders

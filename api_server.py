@@ -916,6 +916,42 @@ def seasonal_analysis():
         conn.close()
 
 
+# ── 22. GET /api/flow/weekly — 國會每週淨買賣壓力 ──
+@app.get("/api/flow/weekly", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Trades"])
+def weekly_flow(
+    weeks: int = Query(26, ge=4, le=104, description="回溯週數"),
+):
+    """國會每週淨買賣壓力 — 買入筆數減賣出筆數，偵測 regime shift"""
+    conn = get_db()
+    try:
+        rows = conn.execute("""
+            SELECT strftime('%Y-W%W', transaction_date) as week,
+                   SUM(CASE WHEN transaction_type IN ('Purchase','Buy') THEN 1 ELSE 0 END) as buys,
+                   SUM(CASE WHEN transaction_type IN ('Sale','Sale (Full)','Sale (Partial)','Sell') THEN 1 ELSE 0 END) as sells,
+                   COUNT(*) as total
+            FROM congress_trades
+            WHERE transaction_date >= date('now', ? || ' days')
+            GROUP BY week
+            ORDER BY week
+        """, (str(-weeks * 7),)).fetchall()
+
+        result = []
+        for row in rows:
+            buys, sells = row[1], row[2]
+            net = buys - sells
+            result.append({
+                "week": row[0],
+                "buys": buys,
+                "sells": sells,
+                "total": row[3],
+                "net_flow": net,
+                "sentiment": "BULLISH" if net > 0 else ("BEARISH" if net < 0 else "NEUTRAL"),
+            })
+        return {"weeks": result, "total_weeks": len(result)}
+    finally:
+        conn.close()
+
+
 # ── 主程式入口 ──
 if __name__ == "__main__":
     import uvicorn
