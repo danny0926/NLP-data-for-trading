@@ -477,3 +477,31 @@ Cohen's d (5d): -0.027 (negligible effect size)
 - Politician-level analysis is too noisy (N=24, p=0.32) — insufficient power
 - **Verdict: CONDITIONAL ADOPT** — ticker familiarity is a valid alpha factor. Consider adding as a bonus in PACS scoring for politicians with 3+ trades in the same ticker. Needs larger signal_performance dataset to confirm at politician level.
 
+---
+
+## 2026-03-07 RB-022: Filing Weekday Alpha Pattern
+
+**Hypothesis**: Filing day of week predicts signal alpha
+**Type**: ALPHA
+**Status**: CONDITIONAL SHELVE
+
+### Data (N=493 signals)
+| Weekday | N | HR_5d | Alpha_5d |
+|---------|---|-------|----------|
+| Monday | 112 | 56.2% | +0.705% |
+| Tuesday | 26 | 73.1% | +2.133% |
+| Wednesday | 39 | 59.0% | +1.521% |
+| Thursday | 8 | 87.5% | +0.929% |
+| Friday | 308 | 47.7% | -0.109% |
+
+### Statistical Tests
+- Kruskal-Wallis H=9.199, p=0.056 (marginal, not significant at 5%)
+- Tuesday vs Friday: Mann-Whitney U=5111, p=0.019 (significant pairwise)
+
+### Findings
+- Clear pattern: mid-week filings (Tue-Thu) outperform Monday and especially Friday
+- Tuesday stands out: 73.1% HR with +2.13% alpha, but small N=26
+- Friday dominates volume (308/493 = 62%) but has worst performance
+- Possible explanation: Friday filings are "dump" filings (bad news buried before weekend)
+- **Verdict: CONDITIONAL SHELVE** — suggestive pattern but underpowered (Tuesday N=26, Thursday N=8). Kruskal-Wallis p=0.056 just misses significance. Revisit when signal_performance N > 1000.
+
