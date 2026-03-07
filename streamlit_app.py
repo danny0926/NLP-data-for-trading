@@ -1139,6 +1139,32 @@ def page_signal_quality():
         )
         st.plotly_chart(fig, width="stretch")
 
+    # SQS vs Actual Performance correlation (if signal_performance data exists)
+    sqs_perf = query_db("""
+        SELECT s.sqs, s.grade, sp.hit_5d, sp.actual_alpha_5d
+        FROM signal_quality_scores s
+        JOIN alpha_signals a ON s.trade_id = a.trade_id
+        JOIN signal_performance sp ON sp.signal_id = a.id
+        WHERE sp.hit_5d IS NOT NULL AND s.sqs IS NOT NULL
+    """)
+    if not sqs_perf.empty and len(sqs_perf) >= 10:
+        st.subheader("SQS vs 實際表現 (驗證)")
+        st.caption("RB-006 發現: SQS conviction 與實際 alpha 呈負相關 (r=-0.50)")
+        fig_sqs_perf = px.scatter(
+            sqs_perf, x="sqs", y="actual_alpha_5d",
+            color="grade",
+            color_discrete_map={"Gold": COLORS["yellow"], "Silver": "#94a3b8",
+                                "Bronze": COLORS["orange"], "Discard": "#475569"},
+            labels={"sqs": "SQS Score", "actual_alpha_5d": "Actual Alpha 5d (%)"},
+            trendline="ols",
+        )
+        fig_sqs_perf.update_layout(
+            height=350, margin=dict(t=20, b=40),
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#e2e8f0"),
+        )
+        st.plotly_chart(fig_sqs_perf, use_container_width=True)
+
     # Top quality signals table
     st.subheader("最高品質訊號")
     top_sqs = sqs_df.head(20)[["ticker", "politician_name", "sqs", "grade",
