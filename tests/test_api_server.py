@@ -500,6 +500,19 @@ class TestSystemEndpoints:
         assert "congress_trades" in data["stages"]
 
 
+class TestAlertsEndpoint:
+    def test_alerts_preview(self, client):
+        r = client.get("/api/alerts?days=7")
+        assert r.status_code == 200
+        data = r.json()
+        assert "total" in data
+        assert "alerts" in data
+
+    def test_alerts_default(self, client):
+        r = client.get("/api/alerts")
+        assert r.status_code == 200
+
+
 class TestTimelineAndLeaderboard:
     def test_signal_timeline(self, client):
         r = client.get("/api/signals/timeline?days=30")

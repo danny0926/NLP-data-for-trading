@@ -1153,7 +1153,30 @@ def pipeline_status():
         conn.close()
 
 
-# ── 29. GET /api/politicians/leaderboard — 政治人物排行榜 ──
+# ── 29. GET /api/alerts — 智慧告警預覽 ──
+@app.get("/api/alerts", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["System"])
+def alerts_preview(
+    days: int = Query(3, ge=1, le=30, description="回溯天數"),
+):
+    """智慧告警預覽 — 顯示當前觸發的告警（不發送通知）"""
+    try:
+        from src.smart_alerts import SmartAlertSystem
+        system = SmartAlertSystem(db_path=DB_PATH, days=days)
+        alerts = system.run_all_checks()
+        return {
+            "total": len(alerts),
+            "days": days,
+            "alerts": alerts[:50],  # Cap at 50
+            "categories": {
+                cat: len([a for a in alerts if a.get("type") == cat])
+                for cat in ["high_alpha", "convergence", "large_trade", "top_politician", "urgent_filing"]
+            },
+        }
+    except Exception as e:
+        return {"total": 0, "days": days, "alerts": [], "error": str(e)}
+
+
+# ── 30. GET /api/politicians/leaderboard — 政治人物排行榜 ──
 @app.get("/api/politicians/leaderboard", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Politicians"])
 def politician_leaderboard(
     limit: int = Query(20, ge=5, le=100),
