@@ -398,6 +398,34 @@ def page_overview(start_date: str, end_date: str, chambers: List[str]):
     with src4:
         st.metric("Convergence Events", f"{convergence}")
 
+    # Data Freshness
+    st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
+    st.subheader("Data Freshness")
+    fresh_df = query_db("""
+        SELECT
+            MAX(transaction_date) as latest_trade,
+            MAX(filing_date) as latest_filing,
+            CAST(julianday('now') - julianday(MAX(filing_date)) AS INTEGER) as days_since_filing,
+            CAST(julianday('now') - julianday(MAX(transaction_date)) AS INTEGER) as days_since_trade
+        FROM congress_trades
+    """)
+    if not fresh_df.empty:
+        fc1, fc2, fc3, fc4 = st.columns(4)
+        latest_trade = fresh_df.iloc[0]["latest_trade"]
+        latest_filing = fresh_df.iloc[0]["latest_filing"]
+        days_trade = int(fresh_df.iloc[0]["days_since_trade"]) if pd.notna(fresh_df.iloc[0]["days_since_trade"]) else 999
+        days_filing = int(fresh_df.iloc[0]["days_since_filing"]) if pd.notna(fresh_df.iloc[0]["days_since_filing"]) else 999
+        fc1.metric("Latest Trade", str(latest_trade)[:10] if latest_trade else "N/A")
+        fc2.metric("Latest Filing", str(latest_filing)[:10] if latest_filing else "N/A")
+        freshness_status = "FRESH" if days_filing <= 7 else ("STALE" if days_filing <= 30 else "OUTDATED")
+        freshness_color = "#4ade80" if freshness_status == "FRESH" else ("#fbbf24" if freshness_status == "STALE" else "#f87171")
+        fc3.metric("Filing Age", f"{days_filing}d")
+        fc4.markdown(
+            f'<div style="background:{freshness_color};color:#000;font-weight:700;text-align:center;'
+            f'border-radius:8px;padding:0.5rem;margin-top:0.5rem;">{freshness_status}</div>',
+            unsafe_allow_html=True,
+        )
+
     # Filing lag distribution
     st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
     st.subheader("Filing Lag 分布 (交易日→申報日)")
