@@ -3,7 +3,7 @@
   "start_time_utc": "2026-03-07T01:40:11.541597",
   "deadline_utc": "2026-03-07T09:40:11.541597",
   "duration_hours": 8,
-  "context_window": 4,
+  "context_window": 5,
   "status": "RUNNING",
   "tasks_completed": [
     "Task 5-7: Performance validation",

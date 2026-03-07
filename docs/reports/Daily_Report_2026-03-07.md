@@ -1,7 +1,7 @@
 # Political Alpha Monitor -- Daily Report (2026-03-07)
 
 
-> 報告生成時間: 2026-03-07 10:35:14  
+> 報告生成時間: 2026-03-07 10:57:46  
 > 資料來源: congress_trades, ai_intelligence_signals, signal_quality_scores, convergence_signals, politician_rankings, extraction_log
 
 ## 1. 執行摘要 (Executive Summary)

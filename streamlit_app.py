@@ -530,6 +530,30 @@ def page_overview(start_date: str, end_date: str, chambers: List[str]):
     else:
         st.info("No trades in current date range")
 
+    # Weekly Signal Production Trend
+    weekly_trend = query_db("""
+        SELECT strftime('%Y-W%W', created_at) as week, COUNT(*) as signals
+        FROM alpha_signals
+        WHERE created_at >= date('now', '-180 days')
+        GROUP BY week ORDER BY week
+    """)
+    if not weekly_trend.empty and len(weekly_trend) >= 2:
+        st.subheader("每週信號產出趨勢")
+        fig_trend = px.line(
+            weekly_trend, x="week", y="signals",
+            markers=True,
+            color_discrete_sequence=[COLORS["primary"]],
+            labels={"week": "Week", "signals": "Signals Generated"},
+        )
+        fig_trend.update_layout(
+            height=250, margin=dict(t=20, b=40),
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#e2e8f0"),
+            xaxis=dict(gridcolor="rgba(148,163,184,0.1)"),
+            yaxis=dict(gridcolor="rgba(148,163,184,0.1)"),
+        )
+        st.plotly_chart(fig_trend, use_container_width=True)
+
     # Party Breakdown
     party_df = query_db("""
         SELECT party, COUNT(*) as signals,
@@ -1769,6 +1793,58 @@ def page_signal_performance():
         )
         st.plotly_chart(fig_amt, use_container_width=True)
         st.caption("RB-015b: $1M+ trades 顯示 +4.4% 20d alpha（但 N=28，小樣本警告）。$15K-$50K 在大樣本中 alpha 接近零。")
+
+    # VIX Zone Distribution
+    vix_df = query_db("SELECT vix_zone, COUNT(*) as cnt FROM enhanced_signals WHERE vix_zone IS NOT NULL GROUP BY vix_zone ORDER BY cnt DESC")
+    if not vix_df.empty:
+        vz1, vz2 = st.columns(2)
+        with vz1:
+            st.subheader("VIX Zone 分布")
+            vix_colors = {
+                "goldilocks": COLORS["green"], "ultra_low": COLORS["yellow"],
+                "moderate": COLORS["orange"], "high": COLORS["red"],
+                "extreme": "#7f1d1d", "low": COLORS["primary"],
+            }
+            fig_vix = px.pie(
+                vix_df, names="vix_zone", values="cnt",
+                color="vix_zone",
+                color_discrete_map=vix_colors,
+            )
+            fig_vix.update_layout(height=280, margin=dict(t=20, b=20))
+            st.plotly_chart(fig_vix, use_container_width=True)
+        with vz2:
+            # PACS Q1 vs Q4 performance
+            pacs_perf = query_db("""
+                SELECT
+                    CASE
+                        WHEN e.pacs_score >= (SELECT pacs_score FROM enhanced_signals ORDER BY pacs_score DESC LIMIT 1 OFFSET (SELECT COUNT(*)/4 FROM enhanced_signals)) THEN 'Q1 (Top 25%)'
+                        WHEN e.pacs_score <= (SELECT pacs_score FROM enhanced_signals ORDER BY pacs_score ASC LIMIT 1 OFFSET (SELECT COUNT(*)/4 FROM enhanced_signals)) THEN 'Q4 (Bottom 25%)'
+                        ELSE 'Q2-Q3 (Middle)'
+                    END as quartile,
+                    AVG(sp.actual_alpha_5d) * 100 as avg_alpha,
+                    AVG(CASE WHEN sp.hit_5d = 1 THEN 1.0 ELSE 0.0 END) * 100 as hit_rate,
+                    COUNT(*) as n
+                FROM signal_performance sp
+                JOIN alpha_signals a ON sp.signal_id = a.id
+                JOIN enhanced_signals e ON CAST(a.trade_id AS TEXT) = e.trade_id
+                WHERE sp.actual_alpha_5d IS NOT NULL AND e.pacs_score IS NOT NULL
+                GROUP BY quartile
+            """)
+            if not pacs_perf.empty:
+                st.subheader("PACS 分位績效")
+                fig_pq = px.bar(
+                    pacs_perf, x="quartile", y="avg_alpha",
+                    color="quartile",
+                    color_discrete_map={"Q1 (Top 25%)": COLORS["green"], "Q2-Q3 (Middle)": COLORS["primary"], "Q4 (Bottom 25%)": COLORS["red"]},
+                    text=[f"{v:.2f}%" for v in pacs_perf["avg_alpha"]],
+                    labels={"avg_alpha": "Avg Alpha 5d (%)", "quartile": "PACS Quartile"},
+                )
+                fig_pq.update_layout(height=280, margin=dict(t=20, b=40), showlegend=False,
+                                     paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                                     font=dict(color="#e2e8f0"))
+                fig_pq.update_traces(textposition="outside")
+                st.plotly_chart(fig_pq, use_container_width=True)
+                st.caption("RB-006 驗證: PACS Q1 應顯著高於 Q4 (Q1-Q4 spread 6.5%)")
 
     # Party Performance Comparison
     party_perf = query_db("""
