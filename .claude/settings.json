@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "PreCompact": [
+      {
+        "matcher": "auto",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"D:/VScode_project/NLP data for trading/.claude/hooks/pre_compact_backup.py\"",
+            "timeout": 10000
+          }
+        ]
+      },
+      {
+        "matcher": "manual",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"D:/VScode_project/NLP data for trading/.claude/hooks/pre_compact_backup.py\"",
+            "timeout": 10000
+          }
+        ]
+      }
+    ]
+  }
+}
