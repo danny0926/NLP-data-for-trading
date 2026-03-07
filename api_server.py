@@ -949,7 +949,39 @@ def top_performers(
         conn.close()
 
 
-# ── 23. GET /api/flow/weekly — 國會每週淨買賣壓力 ──
+# ── 23. GET /api/tickers/concentration — Ticker 集中度分析 ──
+@app.get("/api/tickers/concentration", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Trades"])
+def ticker_concentration(
+    limit: int = Query(20, ge=5, le=100, description="回傳筆數"),
+    days: int = Query(365, ge=30, le=1095, description="回溯天數"),
+):
+    """Ticker 集中度 — 國會最關注的股票，含 buy/sell 比"""
+    conn = get_db()
+    try:
+        rows = conn.execute("""
+            SELECT ticker, COUNT(*) as total,
+                   SUM(CASE WHEN transaction_type IN ('Purchase','Buy') THEN 1 ELSE 0 END) as buys,
+                   SUM(CASE WHEN transaction_type NOT IN ('Purchase','Buy') THEN 1 ELSE 0 END) as sells,
+                   COUNT(DISTINCT politician_name) as politicians,
+                   COUNT(DISTINCT chamber) as chambers
+            FROM congress_trades
+            WHERE ticker IS NOT NULL AND ticker != ''
+              AND transaction_date >= date('now', ? || ' days')
+            GROUP BY ticker
+            HAVING total >= 3
+            ORDER BY total DESC
+            LIMIT ?
+        """, (str(-days), limit)).fetchall()
+
+        return {
+            "period_days": days,
+            "tickers": rows_to_dicts(rows),
+        }
+    finally:
+        conn.close()
+
+
+# ── 24. GET /api/flow/weekly — 國會每週淨買賣壓力 ──
 @app.get("/api/flow/weekly", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Trades"])
 def weekly_flow(
     weeks: int = Query(26, ge=4, le=104, description="回溯週數"),

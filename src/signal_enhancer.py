@@ -23,6 +23,7 @@ Research Brief: RB-008
 
 import argparse
 import logging
+import os
 import sqlite3
 import time
 from collections import defaultdict
@@ -602,6 +603,7 @@ class SignalEnhancer:
             "decay_factor REAL DEFAULT 1.0",
             "insider_confirmed INTEGER DEFAULT 0",
             "whale_trade INTEGER DEFAULT 0",
+            "party TEXT DEFAULT ''",
         ]:
             try:
                 cursor.execute(f"ALTER TABLE enhanced_signals ADD COLUMN {col_def}")
@@ -714,6 +716,43 @@ class SignalEnhancer:
                 logger.info(f"  Whale trades: {whale_count} signals marked ($500K+)")
         except Exception:
             pass
+
+        # 填入 party affiliation (from legislators YAML)
+        try:
+            import yaml
+            yaml_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "legislators-current.yaml")
+            if os.path.exists(yaml_path):
+                with open(yaml_path, "r", encoding="utf-8") as f:
+                    legislators = yaml.safe_load(f)
+                name_to_party = {}
+                for leg in legislators:
+                    official = leg["name"].get("official_full", f"{leg['name'].get('first','')} {leg['name'].get('last','')}")
+                    last = leg["name"].get("last", "")
+                    first = leg["name"].get("first", "")
+                    terms = leg.get("terms", [])
+                    party = terms[-1].get("party", "") if terms else ""
+                    name_to_party[official.lower()] = party
+                    name_to_party[f"{first} {last}".lower()] = party
+
+                # Update enhanced_signals where party is empty
+                unnamed = cursor.execute("SELECT DISTINCT politician_name FROM enhanced_signals WHERE party = '' OR party IS NULL").fetchall()
+                party_updated = 0
+                for (pol_name,) in unnamed:
+                    pn = pol_name.lower().strip()
+                    party = name_to_party.get(pn, "")
+                    if not party:
+                        parts = set(pn.split())
+                        for key, p in name_to_party.items():
+                            if len(parts & set(key.split())) >= 2:
+                                party = p
+                                break
+                    if party:
+                        cursor.execute("UPDATE enhanced_signals SET party = ? WHERE politician_name = ?", (party, pol_name))
+                        party_updated += 1
+                if party_updated > 0:
+                    logger.info(f"  Party affiliation: {party_updated} politicians mapped")
+        except Exception as e:
+            logger.debug(f"  Party mapping skipped: {e}")
 
         conn.commit()
         conn.close()

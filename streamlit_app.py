@@ -530,6 +530,39 @@ def page_overview(start_date: str, end_date: str, chambers: List[str]):
     else:
         st.info("No trades in current date range")
 
+    # Party Breakdown
+    party_df = query_db("""
+        SELECT party, COUNT(*) as signals,
+               AVG(enhanced_strength) as avg_strength,
+               AVG(pacs_score) as avg_pacs
+        FROM enhanced_signals
+        WHERE party != '' AND party IS NOT NULL
+        GROUP BY party ORDER BY signals DESC
+    """)
+    if not party_df.empty:
+        st.subheader("黨派信號分布")
+        pcol1, pcol2 = st.columns(2)
+        with pcol1:
+            fig_party = px.pie(
+                party_df, names="party", values="signals",
+                color="party",
+                color_discrete_map={"Republican": "#ef4444", "Democrat": "#3b82f6", "Independent": "#a855f7"},
+            )
+            fig_party.update_layout(height=250, margin=dict(t=20, b=20))
+            st.plotly_chart(fig_party, use_container_width=True)
+        with pcol2:
+            fig_pbar = px.bar(
+                party_df, x="party", y=["avg_strength", "avg_pacs"],
+                barmode="group",
+                color_discrete_sequence=[COLORS["green"], COLORS["purple"]],
+                labels={"value": "Score", "variable": "Metric", "party": "Party"},
+            )
+            fig_pbar.update_layout(height=250, margin=dict(t=20, b=20),
+                                   paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                                   font=dict(color="#e2e8f0"))
+            st.plotly_chart(fig_pbar, use_container_width=True)
+        st.caption("RB-016: 共和黨短期(5d) alpha 略高 (p=0.02)，但 20d 無顯著差異。")
+
     # Net Congressional Flow
     flow_df = query_db("""
         SELECT strftime('%Y-W%W', transaction_date) as week,
