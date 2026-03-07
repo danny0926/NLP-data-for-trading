@@ -994,6 +994,31 @@ def page_trade_explorer(start_date: str, end_date: str, chambers: List[str]):
                 height=300,
             )
             st.plotly_chart(fig, width="stretch")
+
+        # Monthly trading activity heatmap
+        st.subheader("交易活動熱力圖")
+        trades_df["month"] = trades_df["transaction_date_dt"].dt.strftime("%Y-%m")
+        trades_df["weekday"] = trades_df["transaction_date_dt"].dt.day_name()
+        weekday_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+        hm_df = trades_df[trades_df["weekday"].isin(weekday_order)].copy()
+        if not hm_df.empty:
+            heatmap = hm_df.groupby(["weekday", "month"]).size().reset_index(name="count")
+            heatmap_pivot = heatmap.pivot(index="weekday", columns="month", values="count").fillna(0)
+            heatmap_pivot = heatmap_pivot.reindex(weekday_order)
+            fig_hm = go.Figure(data=go.Heatmap(
+                z=heatmap_pivot.values,
+                x=heatmap_pivot.columns.tolist(),
+                y=heatmap_pivot.index.tolist(),
+                colorscale="Blues",
+                hovertemplate="Day: %{y}<br>Month: %{x}<br>Trades: %{z}<extra></extra>",
+            ))
+            fig_hm.update_layout(
+                height=280, margin=dict(t=30, b=40),
+                xaxis_title="Month", yaxis_title="Day of Week",
+                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="#e2e8f0"),
+            )
+            st.plotly_chart(fig_hm, use_container_width=True)
     else:
         st.info("目前篩選條件下無交易資料")
 
