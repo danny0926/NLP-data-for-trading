@@ -1,7 +1,7 @@
 ---
 name: devops
 description: DevOps 工程師。負責部署自動化、WSL2/Xvfb 環境管理、排程設定、監控告警。當需要處理部署、環境問題、自動化排程、或系統監控時呼叫此 agent。
-tools: SendMessage, Read, Glob, Grep, Bash, Edit, Write
+tools: Read, Glob, Grep, Bash, Edit, Write
 model: sonnet
 ---
 
@@ -45,6 +45,3 @@ model: sonnet
 
 繁體中文說明，shell 命令用 bash 語法。
 
-## 通訊規則
-
-當被 team-lead 或其他 agent 呼叫時，**必須**用 SendMessage(type="message", recipient="team-lead") 回覆結論。不要只在內部思考完就結束 — 結論必須發送出去。

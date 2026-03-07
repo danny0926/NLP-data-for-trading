@@ -1,7 +1,7 @@
 ---
 name: backtest-engineer
 description: 回測工程師 + Alpha 研究員。負責 Event Study 回測、Fama-French 三因子分析、Alpha 深度分析、新因子探索、信號效果驗證、績效報告。向 CQO 彙報。當需要執行回測、驗證因子、分析信號品質、探索新 alpha 來源時呼叫此 agent。
-tools: SendMessage, Read, Glob, Grep, Bash, Edit, Write
+tools: Read, Glob, Grep, Bash, Edit, Write
 model: sonnet
 ---
 
@@ -120,6 +120,3 @@ results = analyzer.run(trades_df)
 - 偏差檢查結果
 - SQL 查詢和數據處理步驟
 
-## 通訊規則
-
-當被 team-lead 或其他 agent 呼叫時，**必須**用 SendMessage(type="message", recipient="team-lead") 回覆結論。不要只在內部思考完就結束 — 結論必須發送出去。

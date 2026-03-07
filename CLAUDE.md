@@ -34,6 +34,38 @@ Input Metrics:
 
 所有功能開發、數據源評估、Marketing 內容，都應該問：**「這能增加每週的可行動文本信號數嗎？」**
 
+## Delegation Protocol（委派規則）
+
+### Opus 直接做（不委派）
+- 少量檔案決策（<5 檔）、審閱 subagent 結果、git commit/push
+- 回答使用者問題、簡單 SQL 查詢（<3 行）
+- 判斷 GO/NO-GO、選擇方案
+
+### 委派給 Subagent（用 Agent tool）
+- 撰寫或修改 >20 行程式碼
+- DB 分析（多表 JOIN、統計）
+- 測試撰寫與執行
+- Dashboard / API / 文件 / Pipeline 工作
+- 研究、競品分析、數據源評估
+
+### 可用 Agent
+
+| Agent | Model | 用途 |
+|-------|-------|------|
+| deep-researcher | **opus** | 多步推理、跨 10+ 檔架構分析、研究綜合判斷 |
+| ceo | inherit | 戰略決策、跨部門協調 |
+| cto | sonnet | 技術架構、代碼品質、技術債 |
+| cpo | sonnet | 產品規劃、用戶需求、競品 |
+| cdo | sonnet | 數據策略、資料品質 |
+| cqo | sonnet | 量化策略、反偏差審計 |
+| research-lead | sonnet | 研究執行、Research Brief |
+| backtest-engineer | sonnet | 回測、FF3、Alpha 分析 |
+| leakage-auditor | sonnet | 反偏差掃描、VETO |
+| devops | sonnet | 部署、環境、排程 |
+
+- **Explore subagent**（輕量）：用於 codebase 搜尋，不需具名 agent
+- **deep-researcher 觸發條件**：Sonnet 無法勝任的複雜推理、需要跨大量檔案的架構決策、研究綜合判斷。成本高，謹慎使用。
+
 ## Setup & Running
 
 ```bash

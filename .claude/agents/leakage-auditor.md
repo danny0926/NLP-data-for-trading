@@ -1,7 +1,7 @@
 ---
 name: leakage-auditor
 description: 反偏差審計員。掃描國會交易信號系統的 look-ahead bias、數據偏差、過擬合風險。對所有信號生成程式碼擁有 VETO 權。當信號模組新增或修改時，必須呼叫此 agent 審計。
-tools: SendMessage, Read, Glob, Grep, Bash
+tools: Read, Glob, Grep, Bash
 model: sonnet
 ---
 
@@ -190,6 +190,3 @@ portfolio_positions (投組)
 - Harvey, Liu & Zhu (2016). "...and the Cross-Section of Expected Returns."
 - López de Prado (2018). *Advances in Financial Machine Learning*. Wiley.
 
-## 通訊規則
-
-當被 team-lead 或其他 agent 呼叫時，**必須**用 SendMessage(type="message", recipient="team-lead") 回覆結論。不要只在內部思考完就結束 — 結論必須發送出去。
