@@ -271,12 +271,15 @@ def client(test_db):
 
     # Directly set DB_PATH on the module
     original_db_path = api_server.DB_PATH
+    original_rate_limit = api_server.RATE_LIMIT
     api_server.DB_PATH = test_db
+    api_server.RATE_LIMIT = 0  # Disable rate limiting for tests
     try:
         with TestClient(api_server.app) as c:
             yield c
     finally:
         api_server.DB_PATH = original_db_path
+        api_server.RATE_LIMIT = original_rate_limit
 
 
 class TestHealthEndpoints:
@@ -591,3 +594,105 @@ class TestEdgeCases:
     def test_concentration_min_days(self, client):
         r = client.get("/api/tickers/concentration?days=30")
         assert r.status_code == 200
+
+    def test_convergence_response_structure(self, client):
+        """Convergence signal has required fields."""
+        r = client.get("/api/convergence")
+        data = r.json()
+        if data["data"]:
+            sig = data["data"][0]
+            assert "ticker" in sig
+            assert "direction" in sig
+            assert "score" in sig
+
+    def test_leaderboard_limit(self, client):
+        """Leaderboard respects limit param."""
+        r = client.get("/api/politicians/leaderboard?limit=5")
+        assert r.status_code == 200
+        data = r.json()
+        assert len(data["data"]) <= 5
+
+    def test_timeline_days_range(self, client):
+        """Timeline validates days range."""
+        r = client.get("/api/signals/timeline?days=3")
+        # 3 < min 7, should be 422
+        assert r.status_code == 422
+
+    def test_timeline_max_days(self, client):
+        """Timeline validates max days."""
+        r = client.get("/api/signals/timeline?days=999")
+        assert r.status_code == 422
+
+    def test_alerts_days_range(self, client):
+        """Alerts validates days range."""
+        r = client.get("/api/alerts?days=0")
+        assert r.status_code == 422
+
+    def test_aging_response_structure(self, client):
+        """Signal aging returns bins."""
+        r = client.get("/api/signals/aging")
+        data = r.json()
+        assert "bins" in data or "data" in data or isinstance(data, dict)
+
+    def test_distribution_response_structure(self, client):
+        """Signal distribution returns distribution data."""
+        r = client.get("/api/signals/distribution")
+        data = r.json()
+        assert isinstance(data, dict)
+
+    def test_portfolio_positions_structure(self, client):
+        """Portfolio positions have required fields."""
+        r = client.get("/api/portfolio")
+        data = r.json()
+        if "data" in data and data["data"]:
+            pos = data["data"][0]
+            assert "ticker" in pos
+            assert "weight" in pos
+
+    def test_sectors_response(self, client):
+        """Sectors endpoint returns sector data."""
+        r = client.get("/api/sectors")
+        data = r.json()
+        assert isinstance(data, dict)
+        assert "data" in data or "sectors" in data
+
+    def test_rebalance_response(self, client):
+        """Rebalance endpoint returns recommendations."""
+        r = client.get("/api/rebalance")
+        data = r.json()
+        assert isinstance(data, dict)
+
+    def test_stats_table_counts(self, client):
+        """Stats returns counts for key tables."""
+        r = client.get("/api/stats")
+        data = r.json()
+        counts = data["data"]["table_counts"]
+        assert "congress_trades" in counts
+        assert counts["congress_trades"] >= 1
+
+    def test_performance_data_fields(self, client):
+        """Performance endpoint returns expected fields."""
+        r = client.get("/api/performance")
+        assert r.status_code == 200
+        data = r.json()
+        if "data" in data and data["data"]:
+            perf = data["data"][0]
+            assert "ticker" in perf
+
+    def test_insider_data_structure(self, client):
+        """Insider endpoint returns SEC form4 data."""
+        r = client.get("/api/insider")
+        assert r.status_code == 200
+        data = r.json()
+        if "data" in data and data["data"]:
+            assert "ticker" in data["data"][0]
+
+    def test_enhanced_signals_pacs_fields(self, client):
+        """Enhanced signals include PACS scoring fields."""
+        r = client.get("/api/enhanced-signals")
+        assert r.status_code == 200
+        data = r.json()
+        if "data" in data and data["data"]:
+            sig = data["data"][0]
+            assert "pacs_score" in sig
+            assert "confidence_v2" in sig

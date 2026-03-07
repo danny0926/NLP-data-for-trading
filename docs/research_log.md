@@ -445,3 +445,35 @@ Cohen's d (5d): -0.027 (negligible effect size)
 - Possible explanations: (1) insiders trade for diverse reasons (exercise, diversification), (2) time lag between Congress and insider filings reduces co-occurrence signal value
 - **Verdict: REJECT** — insider confirmation does not boost alpha. Keep as informational UI element but do not weight it in scoring.
 
+---
+
+## 2026-03-07 RB-021: Ticker Familiarity Alpha (Sector Concentration)
+
+**Hypothesis**: Politicians who repeatedly trade the same ticker generate higher alpha than first-time traders
+**Type**: ALPHA
+**Status**: CONDITIONAL ADOPT
+
+### Design
+- H0: No difference in CAR_5d between repeat (3+) vs first-time ticker trades
+- H1: Repeat ticker trades show higher alpha
+- Dataset: 496 signal_performance records with ticker frequency data
+
+### Data
+| Frequency | N | Mean Alpha_5d |
+|-----------|---|---------------|
+| First-time (1x) | 57 | -1.036% |
+| Twice (2x) | 98 | +0.225% |
+| Repeat (3+) | 341 | +0.704% |
+
+### Statistical Tests
+- Mann-Whitney U (3+ vs 1x): U=11330.5, p=0.045 (significant at 5%)
+- Spearman correlation (frequency vs alpha): r=0.145, p=0.0012 (significant)
+- Politician-level concentration (median-split): p=0.32 (not significant — too noisy)
+
+### Findings
+- **Signal-level analysis confirms**: repeat ticker trades significantly outperform first-time trades
+- Clear monotonic pattern: 1x (-1.04%) → 2x (+0.23%) → 3+ (+0.70%)
+- Spearman r=0.145 is modest but highly significant (p=0.001)
+- Politician-level analysis is too noisy (N=24, p=0.32) — insufficient power
+- **Verdict: CONDITIONAL ADOPT** — ticker familiarity is a valid alpha factor. Consider adding as a bonus in PACS scoring for politicians with 3+ trades in the same ticker. Needs larger signal_performance dataset to confirm at politician level.
+
