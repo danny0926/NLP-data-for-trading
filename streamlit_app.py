@@ -206,6 +206,7 @@ def render_sidebar():
             "Performance",
             "Sector Rotation",
             "Social Intelligence",
+            "Research Log",
         ],
     )
 
@@ -2448,9 +2449,83 @@ def main():
         page_sector_rotation()
     elif page == "Social Intelligence":
         page_social_intelligence()
+    elif page == "Research Log":
+        page_research_log()
 
     # ── Legal Disclaimer (every page) ──
     render_disclaimer()
+
+
+# ══════════════════════════════════════════════
+# Page 12: Research Log
+# ══════════════════════════════════════════════
+def page_research_log():
+    st.header("Research Log")
+    st.caption("Quantitative research briefs — hypothesis testing, backtesting, and signal validation")
+
+    import re
+    log_path = os.path.join(os.path.dirname(__file__), "docs", "research_log.md")
+    if not os.path.exists(log_path):
+        st.warning("Research log not found")
+        return
+
+    with open(log_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # Parse RB entries
+    briefs = []
+    pattern = r'##\s+\d{4}-\d{2}-\d{2}\s+(RB-\d+[a-z]?):\s*(.+?)(?=\n##\s+\d{4}|\Z)'
+    for match in re.finditer(pattern, content, re.DOTALL):
+        rb_id = match.group(1)
+        body = match.group(2).strip()
+        title = body.split("\n")[0].strip()
+        status = "UNKNOWN"
+        for s in ["ADOPT", "INTEGRATED", "REJECT", "SHELVE", "CONDITIONAL SHELVE", "CONFIRM SHELVE"]:
+            if s.upper() in body.upper():
+                status = s
+                break
+        briefs.append({"id": rb_id, "title": title, "status": status, "body": body})
+
+    if not briefs:
+        st.info("No research briefs found")
+        return
+
+    # Summary KPIs
+    status_counts = {}
+    for b in briefs:
+        status_counts[b["status"]] = status_counts.get(b["status"], 0) + 1
+
+    k1, k2, k3, k4 = st.columns(4)
+    k1.metric("Total Briefs", len(briefs))
+    k2.metric("Adopted", status_counts.get("ADOPT", 0) + status_counts.get("INTEGRATED", 0))
+    k3.metric("Shelved", sum(v for k, v in status_counts.items() if "SHELVE" in k))
+    k4.metric("Rejected", status_counts.get("REJECT", 0))
+
+    # Status distribution chart
+    status_colors = {
+        "ADOPT": COLORS["green"], "INTEGRATED": COLORS["green"],
+        "REJECT": COLORS["red"], "SHELVE": "#fbbf24",
+        "CONDITIONAL SHELVE": "#fb923c", "CONFIRM SHELVE": "#fbbf24",
+        "UNKNOWN": "#64748b",
+    }
+    if status_counts:
+        fig = go.Figure(go.Pie(
+            labels=list(status_counts.keys()),
+            values=list(status_counts.values()),
+            marker_colors=[status_colors.get(s, "#94a3b8") for s in status_counts.keys()],
+            hole=0.4,
+        ))
+        fig.update_layout(height=250, margin=dict(t=10, b=10),
+                          paper_bgcolor="rgba(0,0,0,0)")
+        st.plotly_chart(fig, use_container_width=True)
+
+    # Research brief cards
+    st.subheader("Research Briefs")
+    for b in briefs:
+        status_emoji = {"ADOPT": "✅", "INTEGRATED": "✅", "REJECT": "❌",
+                       "SHELVE": "⏸", "CONDITIONAL SHELVE": "🔶", "CONFIRM SHELVE": "⏸"}.get(b["status"], "❓")
+        with st.expander(f"{status_emoji} **{b['id']}**: {b['title'][:80]} — *{b['status']}*"):
+            st.markdown(b["body"][:1000])
 
 
 # ══════════════════════════════════════════════

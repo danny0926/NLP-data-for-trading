@@ -422,3 +422,26 @@ Cohen's d (5d): -0.027 (negligible effect size)
 - High variance suggests outlier-driven effect
 - **Verdict: CONDITIONAL SHELVE** — directionally positive but not conclusive. Could be useful as a weak signal multiplier (5-10% weight) in ensemble. Revisit with more data.
 
+---
+
+## 2026-03-07 RB-020: Insider Confirmation Alpha Boost
+
+**Hypothesis**: Signals where Congress + SEC Form 4 insider trade the same ticker (insider_confirmed=1) show higher alpha
+**Type**: ALPHA
+**Status**: REJECT
+
+### Data
+- Insider Confirmed: N=72, Mean_alpha=+41.9%, Median=+32.8%, HR=51.4%
+- Not Confirmed: N=460, Mean_alpha=+51.3%, Median=+29.9%, HR=53.3%
+
+### Statistical Test
+- T-test: t=-0.122, p=0.9029
+- Mann-Whitney U: p=0.9438
+- Cohen's d: -0.016 (negligible)
+
+### Findings
+- No statistically significant difference between insider-confirmed and non-confirmed signals
+- HR is marginally LOWER for confirmed signals (51.4% vs 53.3%)
+- Possible explanations: (1) insiders trade for diverse reasons (exercise, diversification), (2) time lag between Congress and insider filings reduces co-occurrence signal value
+- **Verdict: REJECT** — insider confirmation does not boost alpha. Keep as informational UI element but do not weight it in scoring.
+
