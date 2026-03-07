@@ -254,6 +254,35 @@ def get_politician_trades(
         conn.close()
 
 
+# ── 5b. GET /api/politicians/performance — 政治人物實際績效 ──
+@app.get("/api/politicians/performance", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Politicians"])
+def politician_performance(
+    min_signals: int = Query(5, ge=1, description="最少訊號數"),
+    limit: int = Query(20, ge=1, le=50),
+):
+    """根據 signal_performance 實際表現排名政治人物"""
+    conn = get_db()
+    try:
+        rows = conn.execute("""
+            SELECT a.politician_name, a.chamber, COUNT(*) as n_signals,
+                   AVG(sp.hit_5d) as hit_rate_5d,
+                   AVG(sp.actual_alpha_5d) as avg_alpha_5d,
+                   AVG(sp.actual_alpha_20d) as avg_alpha_20d,
+                   AVG(sp.max_favorable_excursion) as avg_mfe,
+                   AVG(sp.max_adverse_excursion) as avg_mae
+            FROM signal_performance sp
+            JOIN alpha_signals a ON sp.signal_id = a.id
+            WHERE sp.hit_5d IS NOT NULL AND a.politician_name IS NOT NULL
+            GROUP BY a.politician_name, a.chamber
+            HAVING COUNT(*) >= ?
+            ORDER BY AVG(sp.hit_5d) DESC
+            LIMIT ?
+        """, (min_signals, clamp_limit(limit))).fetchall()
+        return {"politicians": rows_to_dicts(rows), "min_signals": min_signals}
+    finally:
+        conn.close()
+
+
 # ── 6. GET /api/convergence — 收斂訊號 ──
 @app.get("/api/convergence", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Signals"])
 def list_convergence(
