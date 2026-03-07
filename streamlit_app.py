@@ -2330,6 +2330,111 @@ def page_signal_performance():
     else:
         st.info("Not enough data for Politician Alpha scatter. Need politicians with 5+ evaluated signals. Run `python -m src.signal_tracker` first.")
 
+    # ── Amount Bracket Performance ──
+    st.subheader("Amount Bracket Alpha")
+    amount_df = query_db("""
+        SELECT amount_range,
+               COUNT(*) as n,
+               AVG(ff3_car_20d) as avg_car_20d,
+               AVG(CASE WHEN ff3_car_20d > 0 THEN 1.0 ELSE 0.0 END) as hit_rate
+        FROM fama_french_results
+        WHERE transaction_type = 'Buy'
+          AND ff3_car_20d IS NOT NULL
+          AND amount_range IS NOT NULL
+        GROUP BY amount_range
+        HAVING COUNT(*) >= 5
+        ORDER BY n DESC
+    """)
+
+    if not amount_df.empty:
+        # Custom sort by amount size
+        amount_order = [
+            "$1,001 - $15,000",
+            "$1,001 -",
+            "$15,001 - $50,000",
+            "$15,001 -",
+            "$50,001 - $100,000",
+            "$50,001 -",
+            "$100,001 - $250,000",
+            "$100,001 -",
+            "$250,001 - $500,000",
+            "$250,001 -",
+            "$500,001 - $1,000,000",
+            "$500,001 -",
+            "$1,000,001 - $5,000,000",
+            "$1,000,001 -",
+            "$5,000,001 - $25,000,000",
+            "$5,000,001 -",
+            "$25,000,001 - $50,000,000",
+            "$25,000,001 -",
+            "Over $50,000,000",
+        ]
+        # Assign sort key: match against order list, unknowns go last
+        def _amount_sort_key(val):
+            for i, pattern in enumerate(amount_order):
+                if pattern in str(val):
+                    return i
+            return len(amount_order)
+
+        amount_df["_sort"] = amount_df["amount_range"].apply(_amount_sort_key)
+        amount_df = amount_df.sort_values("_sort", ascending=True)
+
+        # Convert to percentage
+        amount_df["avg_car_20d_pct"] = amount_df["avg_car_20d"] * 100
+        amount_df["hit_rate_pct"] = amount_df["hit_rate"] * 100
+
+        # Color: green for positive, red for negative
+        colors = amount_df["avg_car_20d_pct"].tolist()
+
+        fig_amt = go.Figure(go.Bar(
+            y=amount_df["amount_range"],
+            x=amount_df["avg_car_20d_pct"],
+            orientation="h",
+            marker=dict(
+                color=colors,
+                colorscale="RdYlGn",
+                cmin=min(colors) if colors else -1,
+                cmax=max(colors) if colors else 1,
+                line=dict(width=0.5, color="rgba(255,255,255,0.3)"),
+            ),
+            hovertemplate=(
+                "<b>%{y}</b><br>"
+                "Avg CAR 20d: %{x:.2f}%<br>"
+                "N: %{customdata[0]}<br>"
+                "Hit Rate: %{customdata[1]:.1f}%"
+                "<extra></extra>"
+            ),
+            customdata=list(zip(amount_df["n"], amount_df["hit_rate_pct"])),
+        ))
+
+        # Zero baseline
+        fig_amt.add_vline(x=0, line_dash="dash", line_color="rgba(148,163,184,0.5)")
+
+        fig_amt.update_layout(
+            height=400,
+            paper_bgcolor="#0e1117",
+            plot_bgcolor="#0e1117",
+            font=dict(color="white"),
+            xaxis=dict(
+                title="Avg FF3 CAR 20d (%)",
+                gridcolor="rgba(148,163,184,0.1)",
+                zeroline=False,
+            ),
+            yaxis=dict(
+                title="",
+                autorange="reversed",
+                gridcolor="rgba(148,163,184,0.1)",
+            ),
+            margin=dict(t=20, b=40, l=180),
+        )
+        st.plotly_chart(fig_amt, use_container_width=True)
+        st.caption(
+            "Based on Fama-French 3-factor adjusted 20-day CAR. "
+            "RB-026: $500K+ trades show higher alpha but small sample."
+        )
+    else:
+        st.info("No amount bracket data available. Run `python run_fama_french_backtest.py` to generate FF3 results.")
+
     # Performance table
     st.subheader("績效明細")
     display_cols = ["ticker", "politician_name", "direction", "signal_strength", "confidence",
