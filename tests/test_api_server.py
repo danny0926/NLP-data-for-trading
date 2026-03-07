@@ -500,6 +500,25 @@ class TestSystemEndpoints:
         assert "congress_trades" in data["stages"]
 
 
+class TestTimelineAndLeaderboard:
+    def test_signal_timeline(self, client):
+        r = client.get("/api/signals/timeline?days=30")
+        assert r.status_code == 200
+        data = r.json()
+        assert "timeline" in data
+        assert "total_signals" in data
+
+    def test_signal_timeline_default(self, client):
+        r = client.get("/api/signals/timeline")
+        assert r.status_code == 200
+
+    def test_politician_leaderboard(self, client):
+        r = client.get("/api/politicians/leaderboard")
+        assert r.status_code == 200
+        data = r.json()
+        assert "data" in data
+
+
 class TestEdgeCases:
     """Edge cases and validation tests."""
 

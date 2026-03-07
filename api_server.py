@@ -251,6 +251,30 @@ def signal_distribution():
         conn.close()
 
 
+# ── 1d. GET /api/signals/timeline — 每日信號數量 (must be before {signal_id}) ──
+@app.get("/api/signals/timeline", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Signals"])
+def signal_timeline(
+    days: int = Query(90, ge=7, le=365, description="回溯天數"),
+):
+    """每日信號數量時間線 — 用於趨勢圖表"""
+    conn = get_db()
+    try:
+        rows = conn.execute("""
+            SELECT DATE(created_at) as date, COUNT(*) as count
+            FROM alpha_signals
+            WHERE created_at >= DATE('now', ? || ' days')
+            GROUP BY DATE(created_at)
+            ORDER BY date
+        """, (f"-{days}",)).fetchall()
+        return {
+            "days": days,
+            "timeline": [dict(r) for r in rows],
+            "total_signals": sum(r["count"] for r in rows),
+        }
+    finally:
+        conn.close()
+
+
 # ── 2. GET /api/signals/{id} — 單一訊號 ──
 @app.get("/api/signals/{signal_id}", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Signals"])
 def get_signal(signal_id: str = Path(..., description="訊號 ID")):
@@ -1122,9 +1146,39 @@ def pipeline_status():
         return {
             "stages": stages,
             "last_etl": dict(last_etl) if last_etl else None,
-            "test_count": 498,
-            "api_version": "2.5.0",
+            "test_count": 547,
+            "api_version": "2.6.0",
         }
+    finally:
+        conn.close()
+
+
+# ── 29. GET /api/politicians/leaderboard — 政治人物排行榜 ──
+@app.get("/api/politicians/leaderboard", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Politicians"])
+def politician_leaderboard(
+    limit: int = Query(20, ge=5, le=100),
+):
+    """政治人物排行榜 — 結合 PIS 排名與信號績效"""
+    conn = get_db()
+    try:
+        rows = conn.execute("""
+            SELECT
+                pr.politician_name,
+                pr.chamber,
+                pr.total_trades,
+                pr.pis_total,
+                pr.rank,
+                COUNT(DISTINCT sp.id) as evaluated_signals,
+                AVG(CASE WHEN sp.hit_5d = 1 THEN 1.0 ELSE 0.0 END) as hit_rate_5d,
+                AVG(sp.actual_alpha_5d) as avg_alpha_5d
+            FROM politician_rankings pr
+            LEFT JOIN alpha_signals a ON pr.politician_name = a.politician_name
+            LEFT JOIN signal_performance sp ON a.id = sp.signal_id
+            GROUP BY pr.politician_name
+            ORDER BY pr.pis_total DESC
+            LIMIT ?
+        """, (clamp_limit(limit),)).fetchall()
+        return {"data": rows_to_dicts(rows), "total": len(rows)}
     finally:
         conn.close()
 
