@@ -981,7 +981,45 @@ def ticker_concentration(
         conn.close()
 
 
-# ── 24. GET /api/signals/distribution — 信號分布統計 ──
+# ── 24. GET /api/chambers/comparison — 院別比較 ──
+@app.get("/api/chambers/comparison", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Trades"])
+def chamber_comparison():
+    """院別比較 — Senate vs House 一站式統計"""
+    conn = get_db()
+    try:
+        result = {}
+        for chamber in ["Senate", "House"]:
+            stats = conn.execute("""
+                SELECT COUNT(*) as trades,
+                       COUNT(DISTINCT politician_name) as politicians,
+                       AVG(CASE WHEN filing_date IS NOT NULL AND transaction_date IS NOT NULL
+                           THEN julianday(filing_date) - julianday(transaction_date) END) as avg_lag
+                FROM congress_trades WHERE chamber = ?
+            """, (chamber,)).fetchone()
+
+            alpha = conn.execute("""
+                SELECT COUNT(*) as n,
+                       AVG(actual_alpha_5d) as avg_alpha,
+                       AVG(CASE WHEN hit_5d = 1 THEN 1.0 ELSE 0.0 END) as hit_rate
+                FROM signal_performance sp
+                JOIN alpha_signals a ON sp.signal_id = a.id
+                WHERE a.chamber = ? AND sp.hit_5d IS NOT NULL
+            """, (chamber,)).fetchone()
+
+            result[chamber.lower()] = {
+                "trades": stats[0],
+                "politicians": stats[1],
+                "avg_filing_lag_days": round(stats[2], 1) if stats[2] else None,
+                "signals_evaluated": alpha[0],
+                "avg_alpha_5d": round(alpha[1], 4) if alpha[1] else None,
+                "hit_rate_5d": round(alpha[2] * 100, 1) if alpha[2] else None,
+            }
+        return result
+    finally:
+        conn.close()
+
+
+# ── 25. GET /api/signals/distribution — 信號分布統計 ──
 @app.get("/api/signals/distribution", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Signals"])
 def signal_distribution():
     """信號分布統計 — signal_strength, confidence, sqs_score 的直方圖數據"""

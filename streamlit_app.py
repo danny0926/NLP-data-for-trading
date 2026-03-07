@@ -1110,22 +1110,27 @@ def page_trade_explorer(start_date: str, end_date: str, chambers: List[str]):
         }, inplace=True)
         st.dataframe(display_trades, width="stretch", hide_index=True, height=500)
 
-        # Filing lag distribution
-        st.subheader("申報延遲分布")
-        lag_data = trades_df["filing_lag"].dropna()
-        if not lag_data.empty:
+        # Filing lag distribution by chamber
+        st.subheader("申報延遲分布 (依院別)")
+        lag_valid = trades_df[trades_df["filing_lag"].notna() & (trades_df["filing_lag"] > 0) & (trades_df["filing_lag"] < 365)].copy()
+        if not lag_valid.empty:
             fig = px.histogram(
-                lag_data, nbins=30,
-                color_discrete_sequence=[COLORS["primary"]],
-                labels={"value": "申報延遲 (天)", "count": "數量"},
+                lag_valid, x="filing_lag", color="chamber", nbins=40,
+                color_discrete_map={"Senate": COLORS["purple"], "House": COLORS["primary"]},
+                barmode="overlay", opacity=0.7,
+                labels={"filing_lag": "申報延遲 (天)", "count": "數量", "chamber": "院別"},
             )
+            fig.add_vline(x=45, line_dash="dash", line_color=COLORS["red"],
+                          annotation_text="STOCK Act 45天", annotation_position="top right")
             fig.update_layout(
-                margin=dict(t=20, b=40),
-                xaxis_title="申報延遲 (天)",
-                yaxis_title="數量",
-                height=300,
+                margin=dict(t=30, b=40),
+                xaxis_title="申報延遲 (天)", yaxis_title="數量",
+                height=320,
+                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="#e2e8f0"),
             )
-            st.plotly_chart(fig, width="stretch")
+            st.plotly_chart(fig, use_container_width=True)
+            st.caption("RB-017: Senate 平均 51d vs House 41d，但中位數幾乎相同 (28 vs 27d)。Senate alpha 來自資訊品質而非速度。")
 
         # Monthly trading activity heatmap
         st.subheader("交易活動熱力圖")
@@ -1723,6 +1728,47 @@ def page_signal_performance():
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
         )
         st.plotly_chart(fig_decay, use_container_width=True)
+
+    # Amount Range vs Alpha (RB-015b)
+    amount_alpha = query_db("""
+        SELECT amount_range,
+               AVG(mkt_car_5d) * 100 as avg_5d,
+               AVG(mkt_car_20d) * 100 as avg_20d,
+               COUNT(*) as n
+        FROM fama_french_results
+        WHERE mkt_car_5d IS NOT NULL
+          AND transaction_type IN ('Purchase', 'Buy')
+          AND amount_range IS NOT NULL
+        GROUP BY amount_range
+        HAVING n >= 10
+        ORDER BY n DESC
+    """)
+    if not amount_alpha.empty:
+        st.subheader("交易金額 vs Alpha (Buy-Only)")
+        fig_amt = go.Figure()
+        fig_amt.add_trace(go.Bar(
+            x=amount_alpha["amount_range"], y=amount_alpha["avg_5d"],
+            name="CAR 5d (%)", marker_color=COLORS["primary"],
+            text=[f"{v:.2f}%" for v in amount_alpha["avg_5d"]],
+            textposition="outside",
+        ))
+        fig_amt.add_trace(go.Bar(
+            x=amount_alpha["amount_range"], y=amount_alpha["avg_20d"],
+            name="CAR 20d (%)", marker_color=COLORS["green"],
+            text=[f"{v:.2f}%" for v in amount_alpha["avg_20d"]],
+            textposition="outside",
+        ))
+        fig_amt.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5)
+        fig_amt.update_layout(
+            barmode="group", height=380, margin=dict(t=30, b=80),
+            xaxis_title="Amount Range", yaxis_title="Market-Adjusted CAR (%)",
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#e2e8f0"),
+            xaxis=dict(tickangle=-45),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        )
+        st.plotly_chart(fig_amt, use_container_width=True)
+        st.caption("RB-015b: $1M+ trades 顯示 +4.4% 20d alpha（但 N=28，小樣本警告）。$15K-$50K 在大樣本中 alpha 接近零。")
 
     # Party Performance Comparison
     party_perf = query_db("""
