@@ -4,6 +4,90 @@ Research findings organized by RB (Research Brief) number.
 
 ---
 
+## 2026-03-07 RB-026: Amount-Size Alpha Curve (Granular Brackets)
+
+**Hypothesis**: Trade amount size has a non-linear relationship with alpha. RB-015b found $1M+ has +4.4% 20d alpha (N=28).
+**Type**: ALPHA FACTOR
+**Result**: CONDITIONAL SHELVE (suggestive pattern, not statistically significant)
+
+### Data Coverage
+- Source: `fama_french_results` table, Buy only, non-null FF3 CAR 5d+20d
+- N=16,882 trades across 9 amount brackets
+- Date range: 2023-03-08 to 2026-03-02
+
+### Bracket Results (Buy Only, FF3-adjusted)
+
+| Bracket | N | Mean CAR_5d | Std 5d | HR 5d | Mean CAR_20d | Std 20d | HR 20d |
+|---------|---|-------------|--------|-------|--------------|---------|--------|
+| < $1K | 16 | -1.302% | 6.177% | 43.8% | +0.570% | 8.806% | 50.0% |
+| $1K-$15K | 12,929 | -0.068% | 4.262% | 48.6% | +0.182% | 7.883% | 50.6% |
+| $15K-$50K | 2,668 | -0.080% | 4.239% | 49.8% | -0.036% | 8.043% | 50.8% |
+| $50K-$100K | 708 | -0.100% | 4.370% | 48.4% | +0.166% | 7.492% | 49.9% |
+| $100K-$250K | 402 | +0.055% | 4.034% | 47.8% | +0.557% | 7.653% | 51.0% |
+| $250K-$500K | 89 | -0.149% | 5.178% | 52.8% | -0.355% | 8.448% | 53.9% |
+| **$500K-$1M** | **35** | **+0.096%** | 5.232% | **68.6%** | **+0.760%** | 5.674% | **71.4%** |
+| **$1M-$5M** | **28** | **+0.769%** | 3.419% | **71.4%** | **+3.650%** | 7.515% | **71.4%** |
+| **$5M-$25M** | **7** | **+1.108%** | 2.337% | **71.4%** | **+1.730%** | 5.835% | **57.1%** |
+
+### Aggregate Groups
+
+| Group | N | Mean CAR_5d | HR 5d | Mean CAR_20d | HR 20d |
+|-------|---|-------------|-------|--------------|--------|
+| SMALL (<$50K) | 15,613 | -0.071% | 48.8% | +0.145% | 50.6% |
+| MEDIUM ($50K-$250K) | 1,110 | -0.044% | 48.2% | +0.308% | 50.3% |
+| LARGE (>$250K) | 159 | +0.122% | 60.4% | +0.688% | 61.0% |
+
+### Statistical Tests
+
+| Test | Statistic | p-value | Sig |
+|------|-----------|---------|-----|
+| Kruskal-Wallis (5d) | H=8.823 | 0.3574 | ns |
+| Kruskal-Wallis (20d) | H=9.453 | 0.3055 | ns |
+| Spearman midpoint vs CAR_5d | r=+0.008 | 0.2914 | ns |
+| Spearman midpoint vs CAR_20d | r=+0.006 | 0.4063 | ns |
+| Large vs Small (5d, MWU) | - | 0.0263 | * |
+| Large vs Small (20d, MWU) | - | 0.0539 | ns |
+| Best vs Worst (20d, MWU) $1M-$5M vs $250K-$500K | - | 0.0422 | ns (Bonf) |
+
+### Key Findings
+
+1. **Monotonic trend visible but not significant**: $500K+ brackets consistently show positive alpha and higher hit rates (68-71% vs 48-50%), but sample sizes are tiny (N=7 to 35).
+2. **$1M-$5M is the standout**: +0.769% 5d, +3.650% 20d, 71.4% hit rate (confirms RB-015b's +4.4% finding). But N=28 remains underpowered.
+3. **$250K-$500K is the anomaly**: Worst 20d alpha (-0.355%) despite being a "large" bracket. Breaks the monotonic pattern.
+4. **Aggregate Large vs Small**: Marginal significance at 5d (p=0.026) but not at 20d (p=0.054). After Bonferroni correction, nothing survives.
+5. **Spearman correlation near zero**: r=+0.008, no linear (or monotonic) relationship at the individual trade level.
+6. **The "curve" is flat in the middle**: $1K-$250K brackets are all near zero alpha. Only the extremes (<$1K negative, >$500K positive) deviate.
+
+### Alpha Curve (Visual)
+
+```
+$5M-$25M    |  +1.108% | ++++++++++++++++++++++
+$1M-$5M     |  +0.769% | +++++++++++++++
+$500K-$1M   |  +0.096% | +
+$100K-$250K |  +0.055% | +
+$1K-$15K    |  -0.068% | -
+$15K-$50K   |  -0.080% | -
+$50K-$100K  |  -0.100% | -
+$250K-$500K |  -0.149% | --
+< $1K       |  -1.302% | --------------------------
+```
+
+### Conclusion: CONDITIONAL SHELVE
+
+**Rationale**: The pattern is suggestive -- large trades ($500K+) show 60-71% hit rates and positive alpha, while small trades (<$50K) hover around 49% hit rate with near-zero alpha. However:
+- KW test is non-significant (p=0.36 for 5d, p=0.31 for 20d)
+- Spearman correlation is essentially zero (r=+0.008)
+- The large-bracket samples are too small (N=7 to 35) for reliable inference
+- $250K-$500K anomaly breaks the monotonic assumption
+
+**Action Items**:
+- Keep as a *soft filter* in portfolio optimizer: prioritize $500K+ trades when available, but do not exclude smaller trades
+- Re-evaluate when $500K+ sample reaches N>=100 (currently N=70 total for Buy, need ~6 more months of data)
+- Do NOT implement hard cutoff -- 97% of data is <$100K, would destroy signal volume
+- Current portfolio_optimizer already has amount scoring (RB-001); no change needed
+
+---
+
 ## 2026-03-07 RB-025: Alpha Time-Decay (Trading Day vs Filing Day)
 
 **Hypothesis**: If alpha decays from transaction_date (as SSRN Ozlen & Batumoglu 2025 claims 70-80% gone by Day+1), then trades with shorter filing_lag should show LARGER post-filing CAR, because the filing is closer to the information event.
