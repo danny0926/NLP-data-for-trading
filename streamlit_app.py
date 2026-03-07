@@ -301,13 +301,18 @@ def page_overview(start_date: str, end_date: str, chambers: List[str]):
     hr5 = perf_df.iloc[0]["hr5"]
     aa5 = perf_df.iloc[0]["aa5"]
 
-    k1, k2, k3, k4, k5, k6 = st.columns(6)
+    # NSM: weekly signal count
+    weekly_df = query_db("SELECT COUNT(*) as cnt FROM alpha_signals WHERE created_at >= date('now', '-7 days')")
+    weekly_signals = int(weekly_df.iloc[0]["cnt"]) if not weekly_df.empty else 0
+
+    k1, k2, k3, k4, k5, k6, k7 = st.columns(7)
     k1.metric("Trades Tracked", f"{total_trades:,}")
     k2.metric("Alpha Signals", f"{active_signals:,}")
     k3.metric("Enhanced (PACS)", f"{enhanced:,}")
     k4.metric("Portfolio", f"{portfolio_pos} holdings")
     k5.metric("5d Hit Rate", f"{hr5*100:.0f}%" if hr5 else "N/A")
-    k6.metric("Social Intel", f"{social_posts} posts")
+    k6.metric("Signals/Week", f"{weekly_signals}", help="NSM: Actionable Text Signals per Week")
+    k7.metric("Social Intel", f"{social_posts} posts")
 
     st.markdown("---")
 
@@ -1249,6 +1254,41 @@ def page_signal_performance():
             yaxis=dict(gridcolor="rgba(148,163,184,0.1)", range=[0, 100]),
         )
         st.plotly_chart(fig_tier, width="stretch")
+
+    # Top Politician Performance
+    pol_perf = query_db("""
+        SELECT a.politician_name, COUNT(*) as n,
+               AVG(sp.hit_5d) as hit_rate,
+               AVG(sp.actual_alpha_5d) as avg_alpha
+        FROM signal_performance sp
+        JOIN alpha_signals a ON sp.signal_id = a.id
+        WHERE sp.hit_5d IS NOT NULL AND a.politician_name IS NOT NULL
+        GROUP BY a.politician_name
+        HAVING COUNT(*) >= 5
+        ORDER BY AVG(sp.hit_5d) DESC
+        LIMIT 10
+    """)
+    if not pol_perf.empty:
+        st.subheader("Top 政治人物績效 (≥5 訊號)")
+        pol_perf["label"] = pol_perf.apply(
+            lambda r: f'{r["politician_name"]} (n={int(r["n"])})', axis=1)
+        fig_pol = go.Figure()
+        fig_pol.add_trace(go.Bar(
+            y=pol_perf["label"], x=pol_perf["hit_rate"] * 100,
+            orientation="h", name="Hit Rate",
+            marker_color=[COLORS["green"] if r >= 0.5 else COLORS["red"] for r in pol_perf["hit_rate"]],
+            text=[f'{r*100:.0f}% | α={a:+.1f}%' for r, a in zip(pol_perf["hit_rate"], pol_perf["avg_alpha"])],
+            textposition="outside",
+        ))
+        fig_pol.add_vline(x=50, line_dash="dash", line_color="gray", annotation_text="50%")
+        fig_pol.update_layout(
+            height=400, margin=dict(t=30, b=40, l=160),
+            xaxis_title="Hit Rate (%)", xaxis=dict(range=[0, 100]),
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#e2e8f0"), showlegend=False,
+            yaxis=dict(autorange="reversed"),
+        )
+        st.plotly_chart(fig_pol, use_container_width=True)
 
     # Scatter: expected vs actual alpha
     scatter_df = perf_df[perf_df["actual_alpha_5d"].notna()].copy()
