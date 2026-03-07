@@ -505,3 +505,30 @@ Cohen's d (5d): -0.027 (negligible effect size)
 - Possible explanation: Friday filings are "dump" filings (bad news buried before weekend)
 - **Verdict: CONDITIONAL SHELVE** — suggestive pattern but underpowered (Tuesday N=26, Thursday N=8). Kruskal-Wallis p=0.056 just misses significance. Revisit when signal_performance N > 1000.
 
+---
+
+## 2026-03-07 RB-023: Convergence Window Timing vs Alpha
+
+**Hypothesis**: Tight convergence (<=7 days) produces higher alpha than wide windows (16-30 days)
+**Type**: ALPHA
+**Status**: REJECT
+
+### Data (N=1,292 matched pairs)
+| Window | N | Mean Alpha_5d | Hit Rate |
+|--------|---|---------------|----------|
+| Tight (<=7d) | 232 | +0.951% | 53.4% |
+| Medium (8-15d) | 253 | +0.608% | 53.0% |
+| Wide (16-30d) | 807 | +0.835% | 55.8% |
+
+### Statistical Tests
+- Kruskal-Wallis: H=0.60, p=0.742 (not significant)
+- Pairwise Mann-Whitney: all p > 0.4
+- Spearman (span_days vs alpha): r=0.018, p=0.52
+- Cohen's d (Tight vs Wide): 0.021 (negligible)
+- Politician count (2 vs 3+): p=0.79 (not significant)
+
+### Findings
+- No significant difference between convergence window widths
+- Current 30-day window with time_density weighting is optimal
+- **Verdict: REJECT** — no changes to convergence_detector.py warranted
+
