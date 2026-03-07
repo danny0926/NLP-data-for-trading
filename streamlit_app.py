@@ -569,6 +569,46 @@ def page_alpha_signals(start_date: str, end_date: str, chambers: List[str]):
         height=400,
     )
 
+    # PACS Distribution + Insider Confirmation
+    enh_df = query_db("SELECT pacs_score, insider_confirmed, ticker, politician_name, enhanced_strength FROM enhanced_signals WHERE pacs_score IS NOT NULL")
+    if not enh_df.empty:
+        pacs_col1, pacs_col2 = st.columns(2)
+        with pacs_col1:
+            st.subheader("PACS Score 分布")
+            fig_pacs = px.histogram(
+                enh_df, x="pacs_score", nbins=30,
+                color_discrete_sequence=[COLORS["purple"]],
+                labels={"pacs_score": "PACS Score"},
+            )
+            # Add quartile lines
+            q1 = enh_df["pacs_score"].quantile(0.25)
+            q3 = enh_df["pacs_score"].quantile(0.75)
+            fig_pacs.add_vline(x=q1, line_dash="dot", line_color=COLORS["yellow"],
+                              annotation_text=f"Q1={q1:.2f}")
+            fig_pacs.add_vline(x=q3, line_dash="dot", line_color=COLORS["green"],
+                              annotation_text=f"Q3={q3:.2f}")
+            fig_pacs.update_layout(
+                height=300, margin=dict(t=30, b=40),
+                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="#e2e8f0"),
+            )
+            st.plotly_chart(fig_pacs, use_container_width=True)
+        with pacs_col2:
+            insider_count = int(enh_df["insider_confirmed"].sum()) if "insider_confirmed" in enh_df.columns else 0
+            total_enh = len(enh_df)
+            st.subheader("Insider 確認")
+            st.metric("Insider 確認訊號", f"{insider_count} / {total_enh}",
+                       help="國會議員 + SEC Form 4 內部人同向交易")
+            if insider_count > 0:
+                insider_df = enh_df[enh_df["insider_confirmed"] == 1].sort_values("enhanced_strength", ascending=False).head(10)
+                st.dataframe(
+                    insider_df[["ticker", "politician_name", "pacs_score", "enhanced_strength"]].rename(
+                        columns={"ticker": "Ticker", "politician_name": "Politician",
+                                 "pacs_score": "PACS", "enhanced_strength": "Strength"}
+                    ),
+                    hide_index=True, use_container_width=True,
+                )
+
     # Top 10 bar chart
     st.subheader("前 10 強訊號")
     top10 = signals_df.head(10)
