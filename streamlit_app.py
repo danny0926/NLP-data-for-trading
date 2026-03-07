@@ -1004,7 +1004,7 @@ def page_signal_performance():
 
     if n_5d > 0:
         hr_5d = perf_df.loc[has_5d, "hit_5d"].mean() * 100
-        avg_alpha_5d = perf_df.loc[has_5d, "actual_alpha_5d"].mean() * 100
+        avg_alpha_5d = perf_df.loc[has_5d, "actual_alpha_5d"].mean()
         col1.metric("5 日勝率", f"{hr_5d:.1f}%", help=f"基於 {n_5d} 個樣本")
         col2.metric("5 日平均 Alpha", f"{avg_alpha_5d:+.2f}%", help=f"n={n_5d}")
     else:
@@ -1013,7 +1013,7 @@ def page_signal_performance():
 
     if n_20d > 0:
         hr_20d = perf_df.loc[has_20d, "hit_20d"].mean() * 100
-        avg_alpha_20d = perf_df.loc[has_20d, "actual_alpha_20d"].mean() * 100
+        avg_alpha_20d = perf_df.loc[has_20d, "actual_alpha_20d"].mean()
         col3.metric("20 日勝率", f"{hr_20d:.1f}%", help=f"基於 {n_20d} 個樣本")
         col4.metric("20 日平均 Alpha", f"{avg_alpha_20d:+.2f}%", help=f"n={n_20d}")
     else:
@@ -1027,23 +1027,31 @@ def page_signal_performance():
 
     # Statistical significance warning
     min_samples = 200
-    if n_5d < min_samples:
+    if n_5d > 0 and n_5d < min_samples:
+        ci = 1.96 * (50 / (n_5d ** 0.5))
         st.warning(
             f"⚠ **Statistical Warning**: 5-day hit rate is based on only **{n_5d} samples** "
             f"(minimum {min_samples} needed for significance). "
-            f"Results should be interpreted with extreme caution. "
             f"A {hr_5d:.0f}% hit rate with n={n_5d} has a 95% CI of approximately "
-            f"±{1.96 * (50 / (n_5d ** 0.5)):.0f}% — indistinguishable from random."
-            if n_5d > 0 else
-            f"⚠ **Statistical Warning**: No samples with actual returns yet. "
-            f"Minimum {min_samples} samples needed for statistically meaningful results."
+            f"±{ci:.0f}% — interpret with caution."
+        )
+    elif n_5d >= min_samples:
+        ci = 1.96 * (50 / (n_5d ** 0.5))
+        st.info(
+            f"**{n_5d} samples evaluated** — 95% CI: {hr_5d:.0f}% ± {ci:.0f}%. "
+            f"{'Statistically significant edge detected.' if hr_5d > 50 + ci else 'Edge not yet statistically significant.'}"
+        )
+    elif n_5d == 0:
+        st.warning(
+            f"⚠ No samples with actual returns yet. "
+            f"Minimum {min_samples} samples needed."
         )
 
     # Cumulative Alpha Chart
     cum_df = perf_df[perf_df["actual_alpha_5d"].notna()].sort_values("signal_date").copy()
     if not cum_df.empty and "signal_date" in cum_df.columns:
         st.subheader("累積 Alpha 曲線 (5 日)")
-        cum_df["cum_alpha"] = (cum_df["actual_alpha_5d"] * 100).cumsum()
+        cum_df["cum_alpha"] = cum_df["actual_alpha_5d"].cumsum()
         cum_df["signal_num"] = range(1, len(cum_df) + 1)
         fig_cum = go.Figure()
         fig_cum.add_trace(go.Scatter(
@@ -1063,6 +1071,74 @@ def page_signal_performance():
         )
         st.plotly_chart(fig_cum, width="stretch")
 
+    # Cumulative Return vs SPY (time-series, date-averaged)
+    cum_ts = perf_df[perf_df["actual_alpha_5d"].notna() & perf_df["signal_date"].notna()].copy()
+    if not cum_ts.empty:
+        st.subheader("Cumulative Return vs SPY")
+        st.caption("Equal-weight daily average: signals on the same date are averaged, then cumulated over time.")
+
+        # Group by date to avoid double-counting SPY on multi-signal days
+        daily = cum_ts.groupby("signal_date").agg(
+            avg_stock=("actual_return_5d", "mean"),
+            avg_spy=("spy_return_5d", "mean"),
+            avg_alpha=("actual_alpha_5d", "mean"),
+            n_signals=("ticker", "count"),
+        ).reset_index().sort_values("signal_date")
+
+        daily["cum_stock"] = daily["avg_stock"].cumsum()
+        daily["cum_spy"] = daily["avg_spy"].cumsum()
+        daily["cum_alpha"] = daily["avg_alpha"].cumsum()
+
+        fig_vs = go.Figure()
+        fig_vs.add_trace(go.Scatter(
+            x=daily["signal_date"], y=daily["cum_stock"],
+            mode="lines+markers", name="PAM Signals (avg/day)",
+            line=dict(color=COLORS["green"], width=2.5),
+            marker=dict(size=4),
+            hovertemplate="%{x}<br>Cum Return: %{y:.1f}%<extra>PAM</extra>",
+        ))
+        fig_vs.add_trace(go.Scatter(
+            x=daily["signal_date"], y=daily["cum_spy"],
+            mode="lines+markers", name="SPY (Benchmark)",
+            line=dict(color=COLORS["red"], width=2, dash="dash"),
+            marker=dict(size=4),
+            hovertemplate="%{x}<br>Cum Return: %{y:.1f}%<extra>SPY</extra>",
+        ))
+        fig_vs.add_trace(go.Scatter(
+            x=daily["signal_date"], y=daily["cum_alpha"],
+            mode="lines", name="Alpha (PAM - SPY)",
+            line=dict(color=COLORS["primary"], width=1.5, dash="dot"),
+            fill="tozeroy", fillcolor="rgba(56,189,248,0.08)",
+            hovertemplate="%{x}<br>Cum Alpha: %{y:.1f}%<extra>Alpha</extra>",
+        ))
+        fig_vs.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.3)
+        fig_vs.update_layout(
+            height=420, margin=dict(t=30, b=40),
+            xaxis_title="Signal Date", yaxis_title="Cumulative Return (%)",
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#e2e8f0"),
+            xaxis=dict(gridcolor="rgba(148,163,184,0.1)"),
+            yaxis=dict(gridcolor="rgba(148,163,184,0.1)"),
+        )
+        st.plotly_chart(fig_vs, use_container_width=True)
+
+        # Summary metrics
+        final_stock = daily["cum_stock"].iloc[-1]
+        final_spy = daily["cum_spy"].iloc[-1]
+        final_alpha = daily["cum_alpha"].iloc[-1]
+        total_signals = int(daily["n_signals"].sum())
+        n_days = len(daily)
+        date_range = f'{daily["signal_date"].iloc[0]} to {daily["signal_date"].iloc[-1]}'
+
+        mc1, mc2, mc3, mc4 = st.columns(4)
+        mc1.metric("PAM Cumulative", f"{final_stock:+.1f}%")
+        mc2.metric("SPY Cumulative", f"{final_spy:+.1f}%")
+        mc3.metric("Total Alpha", f"{final_alpha:+.1f}%",
+                    delta="Outperforming" if final_alpha > 0 else "Underperforming",
+                    delta_color="normal" if final_alpha > 0 else "inverse")
+        mc4.metric("Signal Days", f"{n_days}", help=f"{total_signals} signals over {date_range}")
+
     # Hit rate by signal strength tier
     tier_df = perf_df[perf_df["hit_5d"].notna()].copy()
     if not tier_df.empty and "signal_strength" in tier_df.columns:
@@ -1076,7 +1152,7 @@ def page_signal_performance():
             avg_alpha=("actual_alpha_5d", "mean"),
         ).reset_index()
         tier_stats["hit_rate_pct"] = (tier_stats["hit_rate"] * 100).round(1)
-        tier_stats["avg_alpha_pct"] = (tier_stats["avg_alpha"] * 100).round(2)
+        tier_stats["avg_alpha_pct"] = tier_stats["avg_alpha"].round(2)
 
         fig_tier = go.Figure()
         colors = {"Strong (>=1.0)": COLORS["green"], "Moderate (0.5-1.0)": COLORS["yellow"], "Weak (<0.5)": COLORS["red"]}
@@ -1103,8 +1179,8 @@ def page_signal_performance():
     scatter_df = perf_df[perf_df["actual_alpha_5d"].notna()].copy()
     if not scatter_df.empty:
         st.subheader("預期 vs 實際 Alpha (5 日)")
-        scatter_df["actual_alpha_5d_pct"] = scatter_df["actual_alpha_5d"] * 100
-        scatter_df["expected_alpha_5d_pct"] = scatter_df["expected_alpha_5d"] * 100
+        scatter_df["actual_alpha_5d_pct"] = scatter_df["actual_alpha_5d"]
+        scatter_df["expected_alpha_5d_pct"] = scatter_df["expected_alpha_5d"]
         fig = px.scatter(
             scatter_df,
             x="expected_alpha_5d_pct",
@@ -1122,8 +1198,8 @@ def page_signal_performance():
     mae_mfe_df = perf_df[perf_df["max_favorable_excursion"].notna()].copy()
     if not mae_mfe_df.empty:
         st.subheader("MAE/MFE 分析")
-        mae_mfe_df["MFE"] = mae_mfe_df["max_favorable_excursion"] * 100
-        mae_mfe_df["MAE"] = mae_mfe_df["max_adverse_excursion"] * 100
+        mae_mfe_df["MFE"] = mae_mfe_df["max_favorable_excursion"]
+        mae_mfe_df["MAE"] = mae_mfe_df["max_adverse_excursion"]
         fig2 = px.scatter(
             mae_mfe_df,
             x="MAE",
