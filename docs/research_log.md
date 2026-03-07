@@ -278,6 +278,24 @@ New module: `src/etl/capitoltrades_bulk.py`
 
 ---
 
+## 2026-03-07 RB-017 Mini: Filing Lag by Chamber (25K Dataset)
+
+**Hypothesis**: Senate files faster, explaining Senate > House alpha
+**Result**: REJECTED — Senate files SLOWER but has BETTER alpha
+
+| Chamber | Avg Lag | Median Lag | N |
+|---------|---------|------------|---|
+| Senate | 51.3 days | 28 days | 2,394 |
+| House | 41.2 days | 27 days | 21,203 |
+
+- t=6.235, p<0.001 — Senate significantly slower filers
+- But RB-004 shows Senate >> House in alpha (+1.39% vs -1.27% 20d)
+- **Conclusion**: Senate alpha comes from INFORMATION QUALITY, not filing speed
+- Senate has fewer members, more committee access, less scrutiny → better trades
+- Median lag is almost identical (28 vs 27), mean skewed by Senate outliers
+
+---
+
 ## 2026-03-07 RB-016 Mini: Bipartisan Alpha — Republican vs Democrat (25K Dataset)
 
 **Hypothesis**: Party affiliation affects trading alpha

@@ -1151,6 +1151,34 @@ def page_trade_explorer(start_date: str, end_date: str, chambers: List[str]):
                 font=dict(color="#e2e8f0"),
             )
             st.plotly_chart(fig_hm, use_container_width=True)
+
+        # Ticker concentration
+        st.subheader("國會最關注的標的 (Top 20)")
+        ticker_conc = trades_df.groupby("ticker").agg(
+            total=("ticker", "count"),
+            buys=("transaction_type", lambda x: (x.isin(["Purchase", "Buy"])).sum()),
+        ).reset_index()
+        ticker_conc["sells"] = ticker_conc["total"] - ticker_conc["buys"]
+        ticker_conc["buy_ratio"] = (ticker_conc["buys"] / ticker_conc["total"] * 100).round(1)
+        ticker_conc = ticker_conc.sort_values("total", ascending=True).tail(20)
+
+        fig_tc = go.Figure()
+        fig_tc.add_trace(go.Bar(
+            y=ticker_conc["ticker"], x=ticker_conc["buys"],
+            name="Buy", orientation="h", marker_color=COLORS["green"],
+        ))
+        fig_tc.add_trace(go.Bar(
+            y=ticker_conc["ticker"], x=ticker_conc["sells"],
+            name="Sell", orientation="h", marker_color=COLORS["red"],
+        ))
+        fig_tc.update_layout(
+            barmode="stack", height=500, margin=dict(t=20, b=40, l=80),
+            xaxis_title="Trade Count", yaxis_title="",
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#e2e8f0"),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        )
+        st.plotly_chart(fig_tc, use_container_width=True)
     else:
         st.info("目前篩選條件下無交易資料")
 
@@ -1695,6 +1723,65 @@ def page_signal_performance():
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
         )
         st.plotly_chart(fig_decay, use_container_width=True)
+
+    # Party Performance Comparison
+    party_perf = query_db("""
+        SELECT e.party, sp.signal_date, sp.actual_alpha_5d
+        FROM signal_performance sp
+        JOIN alpha_signals a ON sp.signal_id = a.id
+        JOIN enhanced_signals e ON CAST(a.trade_id AS TEXT) = e.trade_id
+        WHERE sp.actual_alpha_5d IS NOT NULL AND e.party IN ('Republican', 'Democrat')
+        ORDER BY sp.signal_date
+    """)
+    if not party_perf.empty and len(party_perf) >= 20:
+        st.subheader("黨派績效比較 (R vs D)")
+        import numpy as np
+        for party in ["Republican", "Democrat"]:
+            subset = party_perf[party_perf["party"] == party].copy()
+            subset["cum_alpha"] = subset["actual_alpha_5d"].cumsum() * 100
+        pp_col1, pp_col2 = st.columns(2)
+        with pp_col1:
+            party_stats = party_perf.groupby("party").agg(
+                n=("actual_alpha_5d", "count"),
+                avg_alpha=("actual_alpha_5d", "mean"),
+            ).reset_index()
+            party_stats["avg_alpha_pct"] = (party_stats["avg_alpha"] * 100).round(3)
+            fig_pp = px.bar(
+                party_stats, x="party", y="avg_alpha_pct",
+                color="party",
+                color_discrete_map={"Republican": "#ef4444", "Democrat": "#3b82f6"},
+                text="avg_alpha_pct",
+                labels={"avg_alpha_pct": "Avg Alpha 5d (%)", "party": "Party"},
+            )
+            fig_pp.update_layout(height=300, margin=dict(t=20, b=40), showlegend=False,
+                                 paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                                 font=dict(color="#e2e8f0"))
+            fig_pp.update_traces(texttemplate="%{text:.3f}%", textposition="outside")
+            st.plotly_chart(fig_pp, use_container_width=True)
+        with pp_col2:
+            party_hr = query_db("""
+                SELECT e.party,
+                       AVG(CASE WHEN sp.hit_5d = 1 THEN 1.0 ELSE 0.0 END) * 100 as hr5
+                FROM signal_performance sp
+                JOIN alpha_signals a ON sp.signal_id = a.id
+                JOIN enhanced_signals e ON CAST(a.trade_id AS TEXT) = e.trade_id
+                WHERE sp.hit_5d IS NOT NULL AND e.party IN ('Republican', 'Democrat')
+                GROUP BY e.party
+            """)
+            if not party_hr.empty:
+                fig_hr = px.bar(
+                    party_hr, x="party", y="hr5",
+                    color="party",
+                    color_discrete_map={"Republican": "#ef4444", "Democrat": "#3b82f6"},
+                    text="hr5",
+                    labels={"hr5": "Hit Rate 5d (%)", "party": "Party"},
+                )
+                fig_hr.update_layout(height=300, margin=dict(t=20, b=40), showlegend=False,
+                                     paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                                     font=dict(color="#e2e8f0"))
+                fig_hr.update_traces(texttemplate="%{text:.1f}%", textposition="outside")
+                st.plotly_chart(fig_hr, use_container_width=True)
+        st.caption("RB-016: 共和黨 5d alpha 顯著較高 (p=0.02)，但 20d 差異消失。可能反映執政黨的短期政策資訊優勢。")
 
     # Factor Correlation Analysis
     factor_df = query_db("""

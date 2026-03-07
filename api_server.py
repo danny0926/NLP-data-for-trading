@@ -981,7 +981,46 @@ def ticker_concentration(
         conn.close()
 
 
-# ── 24. GET /api/flow/weekly — 國會每週淨買賣壓力 ──
+# ── 24. GET /api/signals/distribution — 信號分布統計 ──
+@app.get("/api/signals/distribution", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Signals"])
+def signal_distribution():
+    """信號分布統計 — signal_strength, confidence, sqs_score 的直方圖數據"""
+    conn = get_db()
+    try:
+        import numpy as np
+        result = {}
+        for field, table in [
+            ("signal_strength", "alpha_signals"),
+            ("confidence", "alpha_signals"),
+            ("sqs_score", "alpha_signals"),
+            ("pacs_score", "enhanced_signals"),
+        ]:
+            vals = [r[0] for r in conn.execute(
+                f"SELECT {field} FROM {table} WHERE {field} IS NOT NULL"
+            ).fetchall()]
+            if vals:
+                arr = np.array(vals)
+                hist, bin_edges = np.histogram(arr, bins=20)
+                result[field] = {
+                    "n": len(vals),
+                    "mean": round(float(np.mean(arr)), 4),
+                    "std": round(float(np.std(arr)), 4),
+                    "min": round(float(np.min(arr)), 4),
+                    "max": round(float(np.max(arr)), 4),
+                    "q25": round(float(np.percentile(arr, 25)), 4),
+                    "q50": round(float(np.percentile(arr, 50)), 4),
+                    "q75": round(float(np.percentile(arr, 75)), 4),
+                    "histogram": {
+                        "counts": hist.tolist(),
+                        "bin_edges": [round(float(b), 4) for b in bin_edges],
+                    },
+                }
+        return result
+    finally:
+        conn.close()
+
+
+# ── 25. GET /api/flow/weekly — 國會每週淨買賣壓力 ──
 @app.get("/api/flow/weekly", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Trades"])
 def weekly_flow(
     weeks: int = Query(26, ge=4, le=104, description="回溯週數"),
