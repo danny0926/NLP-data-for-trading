@@ -1641,9 +1641,12 @@ def page_todays_action():
                    WHEN e.confidence_v2 >= 0.5 THEN '🟡 Medium'
                    ELSE '🔴 Low'
                END as confidence_label,
-               e.vix_zone
+               e.vix_zone,
+               ct.filing_date,
+               CAST(julianday('now') - julianday(ct.filing_date) AS INTEGER) as days_since_filing
         FROM enhanced_signals e
         LEFT JOIN alpha_signals a ON e.trade_id = a.trade_id
+        LEFT JOIN congress_trades ct ON a.trade_id = ct.id
         WHERE e.direction = 'LONG'
         ORDER BY e.pacs_score DESC
         LIMIT 5
@@ -1655,13 +1658,22 @@ def page_todays_action():
             alpha_str = f"+{row['expected_alpha_20d']:.1f}%" if pd.notna(row['expected_alpha_20d']) else "N/A"
             insider_badge = ' <span style="background:#eab308;color:#000;padding:1px 6px;border-radius:4px;font-size:0.7rem;font-weight:700;">INSIDER CONFIRMED</span>' if row.get('insider_confirmed', 0) == 1 else ""
             pacs_str = f"PACS: {row['pacs_score']:.2f}" if pd.notna(row.get('pacs_score')) else ""
+            # Signal freshness badge
+            days_old = int(row['days_since_filing']) if pd.notna(row.get('days_since_filing')) else 999
+            if days_old <= 20:
+                fresh_badge = f' <span style="background:#4ade80;color:#000;padding:1px 6px;border-radius:4px;font-size:0.65rem;font-weight:600;">FRESH {days_old}d</span>'
+            elif days_old <= 40:
+                decay_pct = max(0, 100 - (days_old - 20) * 5)
+                fresh_badge = f' <span style="background:#fbbf24;color:#000;padding:1px 6px;border-radius:4px;font-size:0.65rem;font-weight:600;">DECAYING {decay_pct}%</span>'
+            else:
+                fresh_badge = ' <span style="background:#f87171;color:#000;padding:1px 6px;border-radius:4px;font-size:0.65rem;font-weight:600;">EXPIRED</span>'
             st.markdown(
                 f'<div style="background:#1e293b;border-left:4px solid #4ade80;border-radius:8px;'
                 f'padding:1rem;margin-bottom:0.8rem;">'
                 f'<div style="display:flex;justify-content:space-between;align-items:center;">'
                 f'<div>'
                 f'<span style="color:#4ade80;font-size:1.3rem;font-weight:700;">{row["ticker"]}</span>'
-                f'<span style="color:#94a3b8;margin-left:0.5rem;">{asset}</span>{insider_badge}'
+                f'<span style="color:#94a3b8;margin-left:0.5rem;">{asset}</span>{insider_badge}{fresh_badge}'
                 f'</div>'
                 f'<div style="text-align:right;">'
                 f'<span style="color:#e2e8f0;">{row["strength_label"]}</span>'
