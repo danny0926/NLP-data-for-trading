@@ -674,6 +674,39 @@ def page_portfolio():
         fig.update_layout(margin=dict(t=20, b=40), height=350)
         st.plotly_chart(fig, width="stretch")
 
+    # Conviction vs Expected Alpha scatter
+    st.subheader("信念分數 vs 預期 Alpha")
+    fig_conv = px.scatter(
+        pos_df, x="conviction_score", y="expected_alpha",
+        size="weight", color="sector", hover_data=["ticker"],
+        labels={"conviction_score": "信念分數", "expected_alpha": "預期 Alpha", "sector": "板塊"},
+        color_discrete_sequence=PLOTLY_COLORS,
+    )
+    fig_conv.update_layout(
+        height=350, margin=dict(t=20, b=40),
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="#e2e8f0"),
+    )
+    st.plotly_chart(fig_conv, use_container_width=True)
+
+    # Rebalance history summary
+    rebal_df = query_db("SELECT action, COUNT(*) as cnt FROM rebalance_history GROUP BY action ORDER BY cnt DESC")
+    if not rebal_df.empty:
+        st.subheader("最新再平衡建議")
+        rb1, rb2 = st.columns(2)
+        with rb1:
+            for _, row in rebal_df.iterrows():
+                icon = {"BUY": "🟢", "SELL": "🔴", "INCREASE": "📈", "DECREASE": "📉", "HOLD": "⚪"}.get(row["action"], "•")
+                st.metric(f"{icon} {row['action']}", int(row["cnt"]))
+        with rb2:
+            fig_rb = px.pie(rebal_df, names="action", values="cnt",
+                           color="action",
+                           color_discrete_map={"BUY": COLORS["green"], "SELL": COLORS["red"],
+                                               "INCREASE": COLORS["primary"], "DECREASE": COLORS["orange"],
+                                               "HOLD": "#475569"})
+            fig_rb.update_layout(height=250, margin=dict(t=20, b=20))
+            st.plotly_chart(fig_rb, use_container_width=True)
+
     # Positions table with intuitive ratings
     st.subheader("所有持倉")
     display_pos = pos_df[["ticker", "sector", "weight", "conviction_score",
