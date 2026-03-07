@@ -1599,6 +1599,47 @@ def page_signal_performance():
         )
         st.plotly_chart(fig_decay, use_container_width=True)
 
+    # Factor Correlation Analysis
+    factor_df = query_db("""
+        SELECT sp.signal_strength, sp.confidence, sp.actual_alpha_5d,
+               a.sqs_score, a.filing_lag_days
+        FROM signal_performance sp
+        JOIN alpha_signals a ON sp.signal_id = a.id
+        WHERE sp.actual_alpha_5d IS NOT NULL
+          AND sp.signal_strength IS NOT NULL
+    """)
+    if not factor_df.empty and len(factor_df) >= 20:
+        st.subheader("因子相關性分析")
+        st.caption("哪些因子真正能預測 alpha？(相關係數)")
+        numeric_cols = ["signal_strength", "confidence", "sqs_score", "filing_lag_days", "actual_alpha_5d"]
+        avail = [c for c in numeric_cols if c in factor_df.columns]
+        corr_matrix = factor_df[avail].corr()
+
+        labels_map = {
+            "signal_strength": "Signal Strength",
+            "confidence": "Confidence",
+            "sqs_score": "SQS Score",
+            "filing_lag_days": "Filing Lag",
+            "actual_alpha_5d": "Actual Alpha 5d",
+        }
+        display_labels = [labels_map.get(c, c) for c in avail]
+
+        fig_corr = go.Figure(data=go.Heatmap(
+            z=corr_matrix.values,
+            x=display_labels, y=display_labels,
+            colorscale="RdBu_r", zmid=0, zmin=-1, zmax=1,
+            text=[[f"{v:.3f}" for v in row] for row in corr_matrix.values],
+            texttemplate="%{text}",
+            hovertemplate="Row: %{y}<br>Col: %{x}<br>r = %{z:.3f}<extra></extra>",
+        ))
+        fig_corr.update_layout(
+            height=380, margin=dict(t=30, b=40),
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#e2e8f0"),
+        )
+        st.plotly_chart(fig_corr, use_container_width=True)
+        st.caption(f"Based on {len(factor_df)} evaluated signals. Confidence (r={corr_matrix.loc['confidence','actual_alpha_5d']:.3f}) is the best alpha predictor.")
+
     # Performance table
     st.subheader("績效明細")
     display_cols = ["ticker", "politician_name", "direction", "signal_strength", "confidence",
