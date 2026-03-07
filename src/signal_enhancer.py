@@ -1,8 +1,8 @@
-"""Signal Enhancer v2 — 基於回測實證的信號增強模組
+"""Signal Enhancer v2 — 基於回測實證的信號增強模組 (PACS v3)
 
-將 RB-001~RB-007, RB-021 的研究發現整合進信號評分系統:
+將 RB-001~RB-007, RB-021, RB-025 的研究發現整合進信號評分系統:
   1. VIX 體制偵測: VIX 14-16 黃金區間加乘, <14 或 >16 降權 (RB-004)
-  2. PACS 多信號融合: 50% signal_strength + 25% filing_lag_inv + 15% options_sentiment + 10% convergence (RB-006)
+  2. PACS v3 多信號融合: 65% signal_strength + 10% filing_lag_inv + 15% options_sentiment + 10% convergence (RB-006, RB-025)
   3. SQS 權重修正: SQS 負相關問題修正 — actionability 優先 (RB-006)
   4. Buy-Only 模式: Buy +1.10% vs Sale -3.21% CAR_20d (RB-004)
   5. 社群媒體情緒整合: social_signals 表的 sentiment 加權 (新模組)
@@ -51,13 +51,13 @@ VIX_ZONES = {
 }
 
 # ============================================================================
-# PACS 權重 (RB-006: Political Alpha Composite Score)
+# PACS v3 權重 (RB-006 + RB-025: filing_lag 與 alpha 無線性關係, p=0.753)
 # ============================================================================
 
-PACS_WEIGHT_SIGNAL_STRENGTH = 0.50    # 原始信號強度
-PACS_WEIGHT_FILING_LAG_INV = 0.25     # Filing lag 反向 (越快越好)
-PACS_WEIGHT_OPTIONS_SENTIMENT = 0.15  # 選擇權情緒
-PACS_WEIGHT_CONVERGENCE = 0.10        # 匯聚信號
+PACS_WEIGHT_SIGNAL_STRENGTH = 0.65    # 原始信號強度 (was 0.50, RB-025)
+PACS_WEIGHT_FILING_LAG_INV = 0.10     # Filing lag 二元模式 (was 0.25, RB-025: p=0.753)
+PACS_WEIGHT_OPTIONS_SENTIMENT = 0.15  # 選擇權情緒 (unchanged)
+PACS_WEIGHT_CONVERGENCE = 0.10        # 匯聚信號 (unchanged)
 
 # ============================================================================
 # 修正後的信心度權重 (解決 SQS r=-0.50 問題)
@@ -343,10 +343,10 @@ class SignalEnhancer:
         contract_data: Optional[dict] = None,
         ticker_trade_count: int = 0,
     ) -> Tuple[float, dict]:
-        """計算 PACS (Political Alpha Composite Score)。
+        """計算 PACS v3 (Political Alpha Composite Score, based on RB-025)。
 
-        公式: PACS = 50% * signal_strength_norm
-                   + 25% * filing_lag_inverse_norm
+        公式: PACS = 65% * signal_strength_norm
+                   + 10% * filing_lag_binary (≤45d→1.0, >45d→0.7)
                    + 15% * options_sentiment_norm
                    + 10% * convergence_norm
                    + contract_bonus (additive, 0 / 0.1 / 0.2)
@@ -355,16 +355,17 @@ class SignalEnhancer:
         Returns:
             (pacs_score, component_details)
         """
-        # 1. Signal Strength (50%) — 正規化到 [0, 1]
+        # 1. Signal Strength (65%) — 正規化到 [0, 1]
         raw_strength = signal.get("signal_strength", 0)
         # 典型範圍 0 ~ 2.0，用 sigmoid-like 正規化
         strength_norm = min(raw_strength / 1.5, 1.0)
 
-        # 2. Filing Lag Inverse (25%) — 越快越好
+        # 2. Filing Lag Inverse (10%, PACS v3) — 二元模式 (RB-025: 無線性關係, p=0.753)
+        #    Normal filers (16-30d) 反而表現最好，線性懲罰不合理
+        #    改為: ≤45d → 1.0 (full), >45d → 0.7 (penalty for extreme outliers)
         filing_lag = signal.get("filing_lag_days")
         if filing_lag is not None and filing_lag >= 0:
-            # 0 天 → 1.0, 15 天 → 0.7, 30 天 → 0.4, 45 天 → 0.1
-            lag_inv = max(0.0, 1.0 - filing_lag / 50.0)
+            lag_inv = 1.0 if filing_lag <= 45 else 0.7
         else:
             lag_inv = 0.5  # 未知時給中間值
 

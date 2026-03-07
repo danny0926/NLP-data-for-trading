@@ -113,9 +113,10 @@ class TestPACSScore:
         assert pacs_strong > pacs_weak
 
     def test_pacs_lower_filing_lag_gives_higher_score(self):
+        """PACS v3: binary filing_lag — ≤45d gets 1.0, >45d gets 0.7."""
         enhancer = self._make_enhancer()
         sig_fast = {"signal_strength": 0.8, "filing_lag_days": 3}
-        sig_slow = {"signal_strength": 0.8, "filing_lag_days": 40}
+        sig_slow = {"signal_strength": 0.8, "filing_lag_days": 60}
         pacs_fast, _ = enhancer._calc_pacs_score(sig_fast, None, None)
         pacs_slow, _ = enhancer._calc_pacs_score(sig_slow, None, None)
         assert pacs_fast > pacs_slow

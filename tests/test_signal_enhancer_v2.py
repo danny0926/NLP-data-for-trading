@@ -208,9 +208,10 @@ class TestPACSScore:
             os.unlink(dl)
 
     def test_low_lag_better_pacs(self):
+        """PACS v3: binary filing_lag — ≤45d gets 1.0, >45d gets 0.7."""
         today = date.today().strftime("%Y-%m-%d")
         tf = [("t-f", "AAPL", "A", "Senate", "Buy", today, today, "LONG", 0.77, 1.10, 0.65, 0.8, 0, "A", 3, 60.0)]
-        ts = [("t-s", "AAPL", "A", "Senate", "Buy", today, today, "LONG", 0.77, 1.10, 0.65, 0.8, 0, "A", 40, 60.0)]
+        ts = [("t-s", "AAPL", "A", "Senate", "Buy", today, today, "LONG", 0.77, 1.10, 0.65, 0.8, 0, "A", 60, 60.0)]
         df, ds = _make_db(tf), _make_db(ts)
         try:
             rf = _enhancer(df).enhance_signals()
@@ -237,9 +238,8 @@ class TestPACSScore:
         db = _make_db()
         try:
             r = _enhancer(db).enhance_signals()
-            # signal component = strength_norm (0.6667), lag = 0.8 for lag=10
-            # Signal weight is 50% vs lag 25%, so weighted signal > weighted lag
-            assert r[0]["pacs_signal_component"] * 0.50 >= r[0]["pacs_lag_component"] * 0.25
+            # PACS v3: signal weight 65% vs lag 10%, so weighted signal > weighted lag
+            assert r[0]["pacs_signal_component"] * 0.65 >= r[0]["pacs_lag_component"] * 0.10
         finally:
             os.unlink(db)
 
