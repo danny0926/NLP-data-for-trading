@@ -391,6 +391,43 @@ def page_overview(start_date: str, end_date: str, chambers: List[str]):
     with src4:
         st.metric("Convergence Events", f"{convergence}")
 
+    # Filing lag distribution
+    st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
+    st.subheader("Filing Lag 分布 (交易日→申報日)")
+    lag_df = query_db("""
+        SELECT CAST(julianday(filing_date) - julianday(transaction_date) AS INTEGER) as lag_days
+        FROM congress_trades
+        WHERE filing_date IS NOT NULL AND transaction_date IS NOT NULL
+          AND filing_date > transaction_date
+          AND julianday(filing_date) - julianday(transaction_date) <= 120
+    """)
+    if not lag_df.empty:
+        col_lag1, col_lag2, col_lag3 = st.columns(3)
+        median_lag = int(lag_df["lag_days"].median())
+        mean_lag = lag_df["lag_days"].mean()
+        under_45 = (lag_df["lag_days"] <= 45).mean() * 100
+        col_lag1.metric("中位數 Lag", f"{median_lag} 天")
+        col_lag2.metric("平均 Lag", f"{mean_lag:.0f} 天")
+        col_lag3.metric("≤45天 (合規)", f"{under_45:.0f}%")
+        fig_lag = px.histogram(
+            lag_df, x="lag_days", nbins=50,
+            color_discrete_sequence=[COLORS["primary"]],
+            labels={"lag_days": "Filing Lag (天)"},
+        )
+        fig_lag.add_vline(x=45, line_dash="dash", line_color=COLORS["red"],
+                          annotation_text="STOCK Act 45天", annotation_position="top right")
+        fig_lag.add_vline(x=median_lag, line_dash="dot", line_color=COLORS["green"],
+                          annotation_text=f"Median {median_lag}d", annotation_position="top left")
+        fig_lag.update_layout(
+            height=280, margin=dict(t=30, b=40),
+            xaxis_title="Filing Lag (天)", yaxis_title="交易數",
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#e2e8f0"),
+            xaxis=dict(gridcolor="rgba(148,163,184,0.1)"),
+            yaxis=dict(gridcolor="rgba(148,163,184,0.1)"),
+        )
+        st.plotly_chart(fig_lag, use_container_width=True)
+
     # Signal generation timeline
     st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
     st.subheader("Signal Generation Timeline")
@@ -1250,6 +1287,53 @@ def page_signal_performance():
         fig2.add_shape(type="line", x0=-10, y0=-10, x1=10, y1=10, line=dict(dash="dash", color="gray"))
         fig2.update_layout(height=400, margin=dict(t=30))
         st.plotly_chart(fig2, width="stretch")
+
+    # Chamber Comparison (Senate vs House)
+    chamber_perf = query_db("""
+        SELECT a.chamber, COUNT(*) as n,
+               AVG(sp.hit_5d) as hit_rate,
+               AVG(sp.actual_alpha_5d) as avg_alpha
+        FROM signal_performance sp
+        JOIN alpha_signals a ON sp.signal_id = a.id
+        WHERE sp.hit_5d IS NOT NULL AND a.chamber IS NOT NULL
+        GROUP BY a.chamber
+    """)
+    if not chamber_perf.empty and len(chamber_perf) >= 2:
+        st.subheader("院別績效比較 (Senate vs House)")
+        cc1, cc2 = st.columns(2)
+        with cc1:
+            fig_chr = go.Figure()
+            fig_chr.add_trace(go.Bar(
+                x=chamber_perf["chamber"], y=chamber_perf["hit_rate"] * 100,
+                text=[f'{r*100:.1f}%<br>n={n}' for r, n in zip(chamber_perf["hit_rate"], chamber_perf["n"])],
+                textposition="outside",
+                marker_color=[COLORS["purple"] if c == "Senate" else COLORS["primary"] for c in chamber_perf["chamber"]],
+            ))
+            fig_chr.add_hline(y=50, line_dash="dash", line_color="gray", annotation_text="50% baseline")
+            fig_chr.update_layout(
+                height=300, margin=dict(t=30, b=40),
+                yaxis_title="Hit Rate (%)", yaxis=dict(range=[0, 100]),
+                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="#e2e8f0"), showlegend=False,
+            )
+            st.plotly_chart(fig_chr, use_container_width=True)
+        with cc2:
+            fig_ca = go.Figure()
+            fig_ca.add_trace(go.Bar(
+                x=chamber_perf["chamber"], y=chamber_perf["avg_alpha"],
+                text=[f'{a:+.2f}%' for a in chamber_perf["avg_alpha"]],
+                textposition="outside",
+                marker_color=[COLORS["purple"] if c == "Senate" else COLORS["primary"] for c in chamber_perf["chamber"]],
+            ))
+            fig_ca.add_hline(y=0, line_dash="dash", line_color="gray")
+            fig_ca.update_layout(
+                height=300, margin=dict(t=30, b=40),
+                yaxis_title="Avg Alpha (%)",
+                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="#e2e8f0"), showlegend=False,
+            )
+            st.plotly_chart(fig_ca, use_container_width=True)
+        st.caption("Senate 訊號明顯優於 House (RB-004 驗證)")
 
     # Alpha Horizon Decay (from Fama-French results)
     ff3_df = query_db("""
