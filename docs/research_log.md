@@ -4,6 +4,60 @@ Research findings organized by RB (Research Brief) number.
 
 ---
 
+## 2026-03-07 RB-024: VIX Regime Alpha Validation (Updated Dataset)
+
+**Hypothesis**: VIX low-volatility periods (<20) produce significantly higher signal alpha than high-volatility periods (>=20)
+**Type**: REGIME
+**Result**: CONDITIONAL SHELVE
+**Previous**: N=485, p=0.036 (significant). Updated: N=537, p=0.0955 (not significant).
+
+### Data Coverage
+- N=537 signals, date range 2026-01-14 to 2026-02-27
+- VIX range in period: 16.15 - 21.77 (only moderate + high zones observed)
+- No data for ultra_low (<14), goldilocks (14-16), or extreme (>30) zones
+
+### Per-Zone Results
+| Zone | VIX Range | N | Avg alpha_5d | HR_5d | Avg alpha_20d | N_20d |
+|------|-----------|---|-------------|-------|--------------|-------|
+| moderate | 16-20 | 375 | +0.214% | 50.1% | +2.845% | 40 |
+| high | 20-30 | 162 | +1.074% | 59.3% | +4.477% | 1 |
+| **TOTAL** | all | 537 | +0.473% | 52.9% | +2.885% | 41 |
+
+### Median Split (VIX <20 vs >=20)
+| Group | N | Avg alpha_5d | HR_5d |
+|-------|---|-------------|-------|
+| Low (<20) | 375 | +0.214% | 50.1% |
+| High (>=20) | 162 | +1.074% | 59.3% |
+
+**Counterintuitive**: High VIX signals actually outperform Low VIX, opposite to hypothesis.
+
+### Statistical Tests
+| Test | Statistic | p-value | Sig |
+|------|-----------|---------|-----|
+| Mann-Whitney (alpha_5d) | U=27624 | 0.0955 | ns |
+| Mann-Whitney (HR_5d) | U=27603 | 0.0521 | ns |
+| Kruskal-Wallis (zones) | H=2.780 | 0.0955 | ns |
+| Spearman (VIX vs alpha_5d) | rho=+0.011 | 0.794 | ns |
+| Spearman (VIX vs alpha_20d) | rho=+0.053 | 0.740 | ns |
+| Cohen's d (alpha_5d) | -0.142 | small effect | - |
+
+### Multiplier Assessment
+Current multipliers penalize high VIX (0.5x) and reward goldilocks (1.3x), but empirical data shows high VIX has 2.27x relative alpha vs 0.45x for moderate. The current multiplier scheme is **directionally wrong** for this dataset.
+
+### Key Issues
+1. **Narrow VIX range**: Only 16.15-21.77 observed (2 of 5 zones). Cannot validate full regime model.
+2. **Direction reversal**: High VIX outperforms Low VIX (opposite of prior N=485 finding).
+3. **Prior result likely spurious**: p=0.036 at N=485 did not replicate at N=537 (p=0.096).
+4. **20d data sparse**: Only 41 signals have 20d alpha (40 in moderate, 1 in high).
+
+### Recommendation
+- **CONDITIONAL SHELVE** -- Do not use VIX multipliers for signal weighting until broader VIX range data is available (need bull market + bear market periods).
+- Current VIX multipliers should be **neutralized** (set all to 1.0) or removed entirely.
+- Revisit when dataset spans a full VIX cycle (12-24 months covering VIX 10-35+).
+- The goldilocks (14-16) zone hypothesis from RB-004 remains unvalidated.
+
+---
+
 ## 2026-02-28 RB-001: Signal Quality + Alpha Validation
 
 **Hypothesis**: Congressional Buy trades have positive abnormal returns
