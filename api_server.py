@@ -49,7 +49,7 @@ app = FastAPI(
         "認證：設定 `X-API-Key` header（若伺服器啟用 API_SERVER_KEY）\n\n"
         f"⚠ {LEGAL_DISCLAIMER}"
     ),
-    version="2.4.0",
+    version="2.5.0",
     openapi_tags=[
         {"name": "Signals", "description": "Alpha 訊號與增強訊號"},
         {"name": "Portfolio", "description": "投資組合與板塊輪動"},
@@ -170,6 +170,83 @@ def list_signals(
             params + [clamp_limit(limit), offset],
         ).fetchall()
         return paginated_response(rows_to_dicts(rows), total, clamp_limit(limit), offset)
+    finally:
+        conn.close()
+
+
+# ── 1b. GET /api/signals/aging — 訊號新鮮度分析 (must be before {signal_id}) ──
+@app.get("/api/signals/aging", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Signals"])
+def signal_aging_summary():
+    """訊號新鮮度分析 — FRESH/DECAYING/EXPIRED 分類"""
+    conn = get_db()
+    try:
+        rows = conn.execute("""
+            SELECT a.id, a.ticker, a.politician_name, a.direction, a.signal_strength,
+                   a.created_at,
+                   ct.filing_date,
+                   CAST(julianday('now') - julianday(ct.filing_date) AS INTEGER) as days_since_filing,
+                   CASE
+                       WHEN julianday('now') - julianday(ct.filing_date) <= 20 THEN 'FRESH'
+                       WHEN julianday('now') - julianday(ct.filing_date) <= 40 THEN 'DECAYING'
+                       ELSE 'EXPIRED'
+                   END as freshness
+            FROM alpha_signals a
+            LEFT JOIN congress_trades ct ON a.trade_id = ct.id
+            WHERE ct.filing_date IS NOT NULL
+            ORDER BY ct.filing_date DESC
+        """).fetchall()
+
+        signals = rows_to_dicts(rows)
+        summary = {"FRESH": 0, "DECAYING": 0, "EXPIRED": 0}
+        for s in signals:
+            tier = s.get("freshness", "EXPIRED")
+            summary[tier] = summary.get(tier, 0) + 1
+
+        return {
+            "summary": summary,
+            "total": len(signals),
+            "fresh_pct": round(summary["FRESH"] / max(len(signals), 1) * 100, 1),
+            "signals": signals[:50],
+        }
+    finally:
+        conn.close()
+
+
+# ── 1c. GET /api/signals/distribution — 信號分布統計 (must be before {signal_id}) ──
+@app.get("/api/signals/distribution", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Signals"])
+def signal_distribution():
+    """信號分布統計 — signal_strength, confidence, sqs_score 的直方圖數據"""
+    conn = get_db()
+    try:
+        import numpy as np
+        result = {}
+        for field, table in [
+            ("signal_strength", "alpha_signals"),
+            ("confidence", "alpha_signals"),
+            ("sqs_score", "alpha_signals"),
+            ("pacs_score", "enhanced_signals"),
+        ]:
+            vals = [r[0] for r in conn.execute(
+                f"SELECT {field} FROM {table} WHERE {field} IS NOT NULL"
+            ).fetchall()]
+            if vals:
+                arr = np.array(vals)
+                hist, bin_edges = np.histogram(arr, bins=20)
+                result[field] = {
+                    "n": len(vals),
+                    "mean": round(float(np.mean(arr)), 4),
+                    "std": round(float(np.std(arr)), 4),
+                    "min": round(float(np.min(arr)), 4),
+                    "max": round(float(np.max(arr)), 4),
+                    "q25": round(float(np.percentile(arr, 25)), 4),
+                    "q50": round(float(np.percentile(arr, 50)), 4),
+                    "q75": round(float(np.percentile(arr, 75)), 4),
+                    "histogram": {
+                        "counts": hist.tolist(),
+                        "bin_edges": [round(float(b), 4) for b in bin_edges],
+                    },
+                }
+        return result
     finally:
         conn.close()
 
@@ -541,44 +618,6 @@ def list_enhanced_signals(
             params + [clamp_limit(limit), offset],
         ).fetchall()
         return paginated_response(rows_to_dicts(rows), total, clamp_limit(limit), offset)
-    finally:
-        conn.close()
-
-
-# ── 12b. GET /api/signals/aging — 訊號新鮮度分析 ──
-@app.get("/api/signals/aging", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Signals"])
-def signal_aging_summary():
-    """訊號新鮮度分析 — FRESH/DECAYING/EXPIRED 分類"""
-    conn = get_db()
-    try:
-        rows = conn.execute("""
-            SELECT a.id, a.ticker, a.politician_name, a.direction, a.signal_strength,
-                   a.created_at,
-                   ct.filing_date,
-                   CAST(julianday('now') - julianday(ct.filing_date) AS INTEGER) as days_since_filing,
-                   CASE
-                       WHEN julianday('now') - julianday(ct.filing_date) <= 20 THEN 'FRESH'
-                       WHEN julianday('now') - julianday(ct.filing_date) <= 40 THEN 'DECAYING'
-                       ELSE 'EXPIRED'
-                   END as freshness
-            FROM alpha_signals a
-            LEFT JOIN congress_trades ct ON a.trade_id = ct.id
-            WHERE ct.filing_date IS NOT NULL
-            ORDER BY ct.filing_date DESC
-        """).fetchall()
-
-        signals = rows_to_dicts(rows)
-        summary = {"FRESH": 0, "DECAYING": 0, "EXPIRED": 0}
-        for s in signals:
-            tier = s.get("freshness", "EXPIRED")
-            summary[tier] = summary.get(tier, 0) + 1
-
-        return {
-            "summary": summary,
-            "total": len(signals),
-            "fresh_pct": round(summary["FRESH"] / max(len(signals), 1) * 100, 1),
-            "signals": signals[:50],  # top 50 most recent
-        }
     finally:
         conn.close()
 
@@ -1014,45 +1053,6 @@ def chamber_comparison():
                 "avg_alpha_5d": round(alpha[1], 4) if alpha[1] else None,
                 "hit_rate_5d": round(alpha[2] * 100, 1) if alpha[2] else None,
             }
-        return result
-    finally:
-        conn.close()
-
-
-# ── 25. GET /api/signals/distribution — 信號分布統計 ──
-@app.get("/api/signals/distribution", dependencies=[Depends(rate_limit), Depends(verify_api_key)], tags=["Signals"])
-def signal_distribution():
-    """信號分布統計 — signal_strength, confidence, sqs_score 的直方圖數據"""
-    conn = get_db()
-    try:
-        import numpy as np
-        result = {}
-        for field, table in [
-            ("signal_strength", "alpha_signals"),
-            ("confidence", "alpha_signals"),
-            ("sqs_score", "alpha_signals"),
-            ("pacs_score", "enhanced_signals"),
-        ]:
-            vals = [r[0] for r in conn.execute(
-                f"SELECT {field} FROM {table} WHERE {field} IS NOT NULL"
-            ).fetchall()]
-            if vals:
-                arr = np.array(vals)
-                hist, bin_edges = np.histogram(arr, bins=20)
-                result[field] = {
-                    "n": len(vals),
-                    "mean": round(float(np.mean(arr)), 4),
-                    "std": round(float(np.std(arr)), 4),
-                    "min": round(float(np.min(arr)), 4),
-                    "max": round(float(np.max(arr)), 4),
-                    "q25": round(float(np.percentile(arr, 25)), 4),
-                    "q50": round(float(np.percentile(arr, 50)), 4),
-                    "q75": round(float(np.percentile(arr, 75)), 4),
-                    "histogram": {
-                        "counts": hist.tolist(),
-                        "bin_edges": [round(float(b), 4) for b in bin_edges],
-                    },
-                }
         return result
     finally:
         conn.close()
